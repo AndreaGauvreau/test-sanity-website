@@ -3,6 +3,7 @@ import { draftMode } from 'next/headers'
 import Link from 'next/link'
 import { VisualEditing } from 'next-sanity/visual-editing'
 
+import { Analytics } from '@/components/Analytics'
 import { DraftModeBanner } from '@/components/DraftModeBanner'
 import {
   LiveStatus,
@@ -25,6 +26,8 @@ export default async function SiteLayout({ children }: LayoutProps<'/'>) {
 
   return (
     <>
+      {/* GTM (+ GA4) : ici plutôt que dans le layout racine, pour ne pas mesurer l'admin. */}
+      <Analytics />
       <header>
         <Link href="/" className="logo">
           LyonDrive

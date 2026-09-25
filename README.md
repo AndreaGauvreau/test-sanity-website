@@ -83,6 +83,22 @@ après l'import du contenu). `npm run build` le vide avant chaque build.
 API CDN, API directe, cache de données Next et `sanityFetch` ; plus un bouton pour mesurer
 depuis ton navigateur.
 
+## Analytics (GTM + GA4)
+
+Google Tag Manager `GTM-KK83GHRF`, qui charge GA4 `G-DE4VPDJ8CS` (Google Tag sur
+« Initialization - All Pages », mesure améliorée activée). Code : `src/components/Analytics.tsx`.
+
+- Chargé seulement sur le **déploiement de production Vercel** (`VERCEL_ENV=production`) :
+  rien en dev, rien sur les previews. Pour tester en local : `ENABLE_ANALYTICS=true` puis
+  `npm run prod` (la valeur est lue au build).
+- Seulement sur le **site** : ni sur `/admin`, ni dans l'aperçu live (Draft Mode).
+- Pas de gtag.js en plus de GTM (sinon chaque `page_view` compte double). Les navigations
+  internes de Next sont comptées par la mesure améliorée de GA4 (changements d'historique) :
+  un `page_view` par page, vérifié.
+- Les 404 remontent avec un titre distinct (« Page introuvable » / « Article introuvable »).
+- **Pas encore de bandeau cookies ni de Consent Mode v2** : obligatoire avant un vrai site
+  public en France (CNIL). Le consentement par défaut devra être posé avant GTM, dans `Analytics.tsx`.
+
 ## Mesuré pendant le setup (25/09/2026, Mac en local, Sanity depuis la France)
 
 | | |

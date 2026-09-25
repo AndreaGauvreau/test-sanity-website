@@ -12,6 +12,12 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "prod"],
       "port": 4040
+    },
+    {
+      "name": "sanity-test-analytics",
+      "runtimeExecutable": "env",
+      "runtimeArgs": ["ENABLE_ANALYTICS=true", "PORT=4041", "npm", "run", "prod"],
+      "port": 4041
     }
   ]
 }

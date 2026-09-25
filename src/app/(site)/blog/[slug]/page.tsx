@@ -17,7 +17,10 @@ export async function generateStaticParams() {
 export async function generateMetadata({ params }: PageProps<'/blog/[slug]'>): Promise<Metadata> {
   const { slug } = await params
   const { data: post } = await sanityFetch({ query: POST_QUERY, params: { slug }, stega: false })
-  return post ? { title: `${post.title} — LyonDrive`, description: post.subtitle } : {}
+  // Article introuvable : titre distinct pour repérer ces 404 dans GA4 (page_title).
+  return post
+    ? { title: `${post.title} — LyonDrive`, description: post.subtitle }
+    : { title: 'Article introuvable — LyonDrive' }
 }
 
 export default async function PostPage({ params }: PageProps<'/blog/[slug]'>) {
