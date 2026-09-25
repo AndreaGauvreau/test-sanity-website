@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "sanity-test",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "port": 4040
+    },
+    {
+      "name": "sanity-test-prod",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "prod"],
+      "port": 4040
+    }
+  ]
+}

@@ -1,0 +1,88 @@
+/* Repris tel quel de payload-car-test, pour comparer les deux CMS sur le même site. */
+* { box-sizing: border-box; margin: 0; }
+body { font-family: Georgia, serif; background: #0f172a; color: #f8fafc; }
+a { color: inherit; text-decoration: none; }
+header { display: flex; justify-content: space-between; align-items: center; padding: 24px 64px; border-bottom: 1px solid #1e293b; }
+.logo { font-size: 24px; font-weight: 700; color: #e11d48; }
+nav { display: flex; gap: 32px; }
+main { width: 1100px; margin: 0 auto; padding: 80px 0; }
+.hero { padding: 80px 0; }
+.hero h1 { font-size: 72px; line-height: 1.05; max-width: 900px; }
+.hero p { font-size: 22px; color: #94a3b8; margin: 32px 0 48px; max-width: 700px; font-family: system-ui; }
+.button { display: inline-block; background: #e11d48; padding: 18px 36px; font-family: system-ui; font-weight: 600; }
+.blog h1, .post h1 { font-size: 56px; margin-bottom: 48px; }
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
+.card { display: flex; flex-direction: column; gap: 12px; }
+.card img, .post img { width: 100%; }
+.card h2 { font-size: 28px; }
+.card p, .subtitle { color: #94a3b8; font-family: system-ui; }
+time, .meta { font-size: 14px; color: #64748b; font-family: system-ui; }
+.post { width: 760px; margin: 0 auto; }
+.post h1 { margin-bottom: 16px; }
+.subtitle { font-size: 22px; }
+.meta { display: flex; gap: 24px; margin: 24px 0 40px; }
+.content { margin-top: 40px; font-size: 19px; line-height: 1.7; }
+.content h2 { font-size: 32px; margin-bottom: 16px; }
+.content p { margin-bottom: 20px; }
+
+/* --- Ajouts sanity-test --- */
+
+/* next/image : garder les proportions quand la largeur est fluide */
+.card img, .post img { height: auto; display: block; }
+
+/* Texte riche : ce que Portable Text peut produire en plus de Payload */
+.content h3 { font-size: 24px; margin: 32px 0 12px; }
+.content ul, .content ol { margin: 0 0 20px; padding-left: 28px; }
+.content li { margin-bottom: 6px; }
+.content blockquote { margin: 0 0 20px; padding-left: 20px; border-left: 3px solid #e11d48; color: #cbd5e1; font-style: italic; }
+.content a { color: #fb7185; text-decoration: underline; text-underline-offset: 3px; }
+.content figure { margin: 36px 0; }
+.content figcaption { margin-top: 10px; font-size: 14px; color: #64748b; font-family: system-ui; }
+
+/* Pastille live dans l'en-tête */
+nav { align-items: center; }
+.live { display: inline-flex; align-items: center; gap: 8px; padding: 4px 10px; border: 1px solid #1e293b; border-radius: 999px; font: 500 12px/1.4 system-ui; color: #94a3b8; }
+.live::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: #64748b; }
+.live--connected { color: #86efac; border-color: #14532d; }
+.live--connected::before { background: #22c55e; box-shadow: 0 0 0 3px rgb(34 197 94 / 0.2); }
+.live--error { color: #fca5a5; border-color: #7f1d1d; }
+.live--error::before { background: #ef4444; }
+
+/* Heure de génération du HTML */
+.stamp { margin-top: 64px; font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; color: #475569; }
+
+/* Bandeau Draft Mode */
+.draft-banner { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); padding: 10px 18px; background: #f8fafc; color: #0f172a; border-radius: 999px; font: 500 14px/1.4 system-ui; box-shadow: 0 8px 30px rgb(0 0 0 / 0.35); z-index: 10; }
+.draft-banner a { text-decoration: underline; }
+
+/* Page /bench */
+.bench h1 { font-size: 56px; margin-bottom: 16px; }
+.bench .lead { font: 18px/1.6 system-ui; color: #94a3b8; max-width: 760px; margin-bottom: 56px; }
+.bench h2 { font-size: 30px; margin: 56px 0 8px; }
+.bench .note { font: 15px/1.6 system-ui; color: #94a3b8; max-width: 760px; margin-bottom: 20px; }
+.bench code, .hero code { font: 0.9em ui-monospace, SFMono-Regular, Menlo, monospace; color: #fda4af; }
+.bench table { width: 100%; border-collapse: collapse; font: 15px/1.4 system-ui; }
+.bench th { text-align: left; font-weight: 500; color: #64748b; padding: 10px 12px; border-bottom: 1px solid #1e293b; }
+.bench td { padding: 12px; border-bottom: 1px solid #1e293b; vertical-align: top; }
+.bench td.num, .bench th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.bench td small { display: block; color: #64748b; margin-top: 2px; }
+.bench .strong { color: #f8fafc; font-weight: 600; }
+.bench .button { border: 0; color: #fff; cursor: pointer; font-size: 15px; padding: 14px 24px; }
+.bench .button:disabled { opacity: 0.6; cursor: progress; }
+.bench .error { font: 15px/1.6 system-ui; color: #fca5a5; margin-top: 16px; }
+
+/* Petits écrans (le CSS de départ est pensé desktop uniquement) */
+@media (max-width: 1160px) {
+  header { padding: 20px 24px; }
+  main { width: auto; padding: 48px 24px; }
+  .post { width: auto; max-width: 760px; }
+}
+@media (max-width: 720px) {
+  header { flex-direction: column; align-items: flex-start; gap: 16px; }
+  nav { gap: 20px; flex-wrap: wrap; }
+  .hero { padding: 32px 0; }
+  .hero h1 { font-size: 44px; }
+  .blog h1, .post h1, .bench h1 { font-size: 38px; }
+  .grid { grid-template-columns: 1fr; }
+  .bench table { display: block; overflow-x: auto; }
+}
