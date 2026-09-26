@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react'
 
+import styles from './LiveStatus.module.css'
+
 type Status = 'connecting' | 'connected' | 'error'
 
 const EVENT = 'sanity-live-status'
@@ -34,13 +36,19 @@ export function onLiveGoAway(_event: unknown, _context: unknown, setPollingInter
   setPollingInterval(30_000) // garde le repli par défaut de next-sanity
 }
 
+const modifiers: Record<Status, string | undefined> = {
+  connecting: undefined,
+  connected: styles.connected,
+  error: styles.error,
+}
+
 const labels: Record<Status, string> = {
   connecting: 'Connexion…',
   connected: 'Live',
   error: 'Live coupé',
 }
 
-// Pastille dans l'en-tête : le site écoute-t-il les publications de l'admin ?
+// Pastille (page /bench) : le site écoute-t-il les publications de l'admin ?
 export function LiveStatus() {
   const [status, setStatus] = useState<Status>(lastStatus)
 
@@ -53,7 +61,7 @@ export function LiveStatus() {
 
   return (
     <span
-      className={`live live--${status}`}
+      className={[styles.live, modifiers[status]].filter(Boolean).join(' ')}
       title="Connexion au Live Content API de Sanity : une publication dans l'admin met à jour cette page sans recharger."
     >
       {labels[status]}

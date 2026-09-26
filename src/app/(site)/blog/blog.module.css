@@ -1,0 +1,20 @@
+/* Liste du blog, provisoire : grille des cartes de la section « Learn and grow » du Figma
+   (269:511). La carte elle-même : components/ui/PostCard. */
+.blog {
+  padding-block: var(--section-space);
+  padding-inline: var(--page-inset);
+}
+
+.title {
+  margin-block-end: 2.75rem; /* 44 */
+  font: var(--text-title-xl);
+  letter-spacing: var(--text-title-xl-tracking);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 20rem), 1fr));
+  gap: 2.5rem 1.25rem;
+  padding: 0;
+  list-style: none;
+}

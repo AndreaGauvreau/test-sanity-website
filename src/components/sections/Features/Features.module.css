@@ -1,0 +1,98 @@
+/*
+ * Fonctionnalités — Figma 269:216 (desktop 1440).
+ * Mobile : cartes empilées, illustration au-dessus du texte. À partir de 810 px : une carte
+ * par rangée, illustration à gauche et texte à droite. À partir de 1024 px : trois colonnes,
+ * comme le Figma.
+ */
+.features {
+  /* Le titre de carte suit le style 16 px à interligne 1.2 (19,2 px de haut) ; le Figma le
+     pose à interligne 1 (16 px). Les 3,2 px en trop sont retirés des marges autour, en
+     gardant une marge ronde au-dessus : le navigateur n'arrondit pas la ligne et les
+     lettres tombent au pixel près du Figma. */
+  --title-trim-start: 0.0625rem; /* 1 */
+  --title-trim-end: 0.1375rem; /* 2,2 */
+
+  padding-block: var(--section-space-lg); /* 120 à 1440 */
+  padding-inline: var(--page-inset);
+}
+
+.list {
+  display: grid;
+  gap: 3rem 2rem; /* 48 entre cartes empilées, 32 entre colonnes (Figma) */
+  padding: 0;
+  list-style: none;
+}
+
+.card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas:
+    "media"
+    "title"
+    "text";
+  align-content: start;
+}
+
+/* Emplacement d'illustration, en attendant l'illustration : le rectangle gris du Figma
+   (405,33 × 382), qui garde ses proportions. */
+.card::before {
+  content: "";
+  grid-area: media;
+  aspect-ratio: 1216 / 1146;
+  margin-block-end: calc(2rem - var(--title-trim-start)); /* 32 */
+  background: var(--color-surface-muted);
+}
+
+.cardTitle {
+  grid-area: title;
+  font: var(--text-title-sm);
+  letter-spacing: var(--text-title-sm-tracking);
+  text-wrap: balance;
+}
+
+.text {
+  grid-area: text;
+  margin-block-start: calc(1.25rem - var(--title-trim-end)); /* 20 */
+  color: var(--color-text-muted);
+}
+
+/* Tablette : une carte par rangée, texte centré en hauteur à côté de l'illustration.
+   L'illustration est plafonnée à 320 px de large (302 de haut) pour ne pas laisser un grand
+   vide à côté d'un texte court. */
+@media (min-width: 50.625rem) {
+  .card {
+    grid-template-columns: minmax(0, 20rem) minmax(0, 1fr); /* 320 */
+    grid-template-rows: 1fr auto auto 1fr;
+    grid-template-areas:
+      "media ."
+      "media title"
+      "media text"
+      "media .";
+    column-gap: 2rem; /* 32 */
+  }
+
+  .card::before {
+    margin-block-end: 0;
+  }
+}
+
+/* Ordinateur : trois colonnes, comme le Figma ; chaque carte reprend l'empilement mobile. */
+@media (min-width: 64rem) {
+  .list {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .card {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: none;
+    grid-template-areas:
+      "media"
+      "title"
+      "text";
+    column-gap: 0;
+  }
+
+  .card::before {
+    margin-block-end: calc(2rem - var(--title-trim-start)); /* 32 */
+  }
+}

@@ -1,0 +1,28 @@
+/* Page /bench : outil de mesure, hors charte. Garde le thème sombre du site de test d'origine ;
+   toutes les règles sont limitées à .bench. */
+.bench {
+  padding: 5rem var(--page-inset);
+  background: #0f172a;
+  color: #f8fafc;
+  font: 16px / 1.5 Georgia, serif;
+  letter-spacing: normal;
+}
+.bench h1 { font-size: 56px; line-height: 1.1; margin-bottom: 16px; }
+.bench .lead { font: 18px/1.6 system-ui; color: #94a3b8; max-width: 760px; margin-bottom: 56px; }
+.bench h2 { font-size: 30px; line-height: 1.2; margin: 56px 0 8px; }
+.bench .note { font: 15px/1.6 system-ui; color: #94a3b8; max-width: 760px; margin-bottom: 20px; }
+.bench code { font: 0.9em ui-monospace, SFMono-Regular, Menlo, monospace; color: #fda4af; }
+.bench table { width: 100%; border-collapse: collapse; font: 15px/1.4 system-ui; }
+.bench th { text-align: left; font-weight: 500; color: #64748b; padding: 10px 12px; border-bottom: 1px solid #1e293b; }
+.bench td { padding: 12px; border-bottom: 1px solid #1e293b; vertical-align: top; }
+.bench td.num, .bench th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.bench td small { display: block; color: #64748b; margin-top: 2px; }
+.bench .strong { color: #f8fafc; font-weight: 600; }
+.bench .button { display: inline-block; background: #e11d48; border: 0; color: #fff; cursor: pointer; font: 600 15px/1.4 system-ui; padding: 14px 24px; }
+.bench .button:disabled { opacity: 0.6; cursor: progress; }
+.bench .error { font: 15px/1.6 system-ui; color: #fca5a5; margin-top: 16px; }
+
+@media (max-width: 720px) {
+  .bench h1 { font-size: 38px; }
+  .bench table { display: block; overflow-x: auto; }
+}

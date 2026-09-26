@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1681" height="694" viewBox="0 0 1681 694" preserveAspectRatio="none">
+  <!-- Masque du flou progressif (Figma 269:336), dans la boîte de la photo : nul en bas à
+       gauche, entier en haut à droite, sur l'axe du voile (65,70°). -->
+  <defs>
+    <linearGradient id="ramp" gradientUnits="userSpaceOnUse" x1="12.18" y1="720.98" x2="1668.82" y2="-26.98">
+      <stop offset="0.054404" stop-opacity="0"/>
+      <stop offset="0.84456"/>
+    </linearGradient>
+  </defs>
+  <rect width="1681" height="694" fill="url(#ramp)"/>
+</svg>

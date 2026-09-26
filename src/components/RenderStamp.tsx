@@ -1,3 +1,5 @@
+import styles from './RenderStamp.module.css'
+
 // Heure à laquelle le serveur a généré ce HTML.
 // En `npm run prod`, elle ne bouge pas tant que la page sort du cache, puis
 // change quelques secondes après une publication dans l'admin : c'est la
@@ -13,7 +15,7 @@ export function RenderStamp() {
     .find((part) => part.type === 'timeZoneName')?.value
 
   return (
-    <p className="stamp">
+    <p className={styles.stamp}>
       HTML généré par le serveur à {time}.{ms}
       {zone && ` (${zone})`}
     </p>

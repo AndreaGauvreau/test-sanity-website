@@ -1,8 +1,14 @@
 # sanity-test — Next.js + Sanity, sans Payload
 
-Le même site que `../payloadjs-test/payload-car-test` (LyonDrive : accueil + blog), mais
-avec Sanity à la place de Payload : l'admin est un Sanity Studio monté **dans** l'app Next,
-sur `/admin`, comme l'admin de Payload.
+Banc d'essai Sanity, passé de la démo LyonDrive (le même site que
+`../payloadjs-test/payload-car-test`) à un vrai cas : la page « Dock Scheduling » de Conduit,
+intégrée section par section depuis le Figma
+[Get Conduit — client](https://www.figma.com/design/8kB82qwpBhg1uykFYdmdG0/Get-Conduit---client?node-id=269-176).
+L'admin est un Sanity Studio monté **dans** l'app Next, sur `/admin`, comme l'admin de Payload.
+
+Seules trois collections passent par l'admin : **Blog**, **Témoignages**, **FAQ**. Le reste
+de la page est dans le code (`src/components/sections/`). Header et footer sont des
+emplacements gris, pas encore dessinés.
 
 | | |
 | --- | --- |
@@ -35,8 +41,8 @@ npm run seed                                                 # contenu de démo
 ## Ce qu'il y a à tester
 
 **Admin** — `/admin`, connexion Google.
-- *Contenu* : la page d'accueil (document unique) et les articles. Brouillon ↔ publié,
-  historique, collaboration en temps réel (ouvre deux onglets sur le même article).
+- *Contenu* : Blog, Témoignages, FAQ. Brouillon ↔ publié, historique, collaboration en
+  temps réel (ouvre deux onglets sur le même document).
 - *Aperçu live* : le site dans l'admin. Les brouillons s'affichent pendant la frappe,
   survol + clic sur un texte du site → le bon champ s'ouvre.
 - *Médias* : tous les assets, réutilisables d'un article à l'autre (≈ collection `media` de Payload).
@@ -46,9 +52,9 @@ L'admin en ligne (`*.sanity.studio`, pour le téléphone) a tout sauf l'aperçu 
 peut pas afficher un site qui tourne sur `localhost`.
 
 **Mise à jour du site** — ouvre un article dans un onglet, publie une modif dans l'admin :
-la page ouverte se met à jour seule en quelques secondes (pastille « Live » dans l'en-tête).
-`npm run touch` publie une modif sans passer par l'admin (comme depuis le téléphone),
-`npm run touch -- reset` l'annule.
+la page ouverte se met à jour seule en quelques secondes (pastille « Live » sur `/bench`).
+`npm run touch` publie une modif sans passer par l'admin (comme depuis le téléphone) sur la
+première question de la FAQ, `npm run touch -- reset` l'annule.
 
 Le cache se voit mieux en build de prod :
 
@@ -118,7 +124,7 @@ Google Tag Manager `GTM-KK83GHRF`, qui charge GA4 `G-DE4VPDJ8CS` (Google Tag sur
 | `npm run prod` | build de production (cache de données vidé) + serveur |
 | `npm run studio` | le même admin hors de Next (port 3333), aperçu live sur le site local |
 | `npm run deploy:studio` | met en ligne l'admin sur `kuartz-sanity-test.sanity.studio` (login Sanity requis pour y accéder) |
-| `npm run seed` | remet le contenu de démo (écrase tes modifs et brouillons sur ces documents) |
+| `npm run seed` | remet le contenu de démo tiré du Figma (témoignage, FAQ) et supprime l'ancienne démo LyonDrive ; écrase tes modifs sur ces documents |
 | `npm run touch` | publie une modif de test hors de l'admin (`-- reset` pour annuler) |
 | `npm run typegen` | schéma → types TypeScript des requêtes GROQ (`src/sanity/types.ts`) |
 | `npm run typecheck` | vérification TypeScript |
@@ -126,11 +132,14 @@ Google Tag Manager `GTM-KK83GHRF`, qui charge GA4 `G-DE4VPDJ8CS` (Google Tag sur
 ## Où est quoi
 
 ```
-sanity.config.ts            admin : outils, singleton, aperçu live
+sanity.config.ts            admin : outils, aperçu live
 sanity.cli.ts               CLI : projet, déploiement, typegen
-src/sanity/schemaTypes/     modèles de contenu (home, post)
+src/sanity/schemaTypes/     modèles de contenu (post = Blog, testimonial, faq)
 src/sanity/lib/             client, live (sanityFetch + SanityLive), images, requêtes GROQ
-src/app/(site)/             le site (même CSS que payload-car-test) + /bench
+src/app/(site)/             le site + /bench
+src/styles/                 tokens (couleurs, styles de texte, mise en page) et base CSS
+src/components/sections/    les sections de la page, une par dossier (CSS Module + assets)
+src/components/ui/          composants partagés (Button)
 src/app/admin/              l'admin embarqué (+ son écoute des publications)
 src/app/api/draft-mode/     entrée/sortie du mode brouillon (aperçu live)
 scripts/                    seed (contenu de démo), touch (publication de test)

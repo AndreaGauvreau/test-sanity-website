@@ -15,6 +15,181 @@
 export declare const internalGroqTypeReferenceTo: unique symbol;
 
 // Source: schema.json
+export type GetStartedSection = {
+  _type: "getStartedSection";
+  eyebrow: string;
+  title: string;
+  titleMuted?: string;
+  text: string;
+  primaryCta?: Cta;
+  secondaryCta?: Cta;
+};
+
+export type InsightsSection = {
+  _type: "insightsSection";
+  eyebrow: string;
+  title: string;
+};
+
+export type FaqSection = {
+  _type: "faqSection";
+  eyebrow: string;
+  title: string;
+  supportText: string;
+  supportCta?: Cta;
+};
+
+export type TourSection = {
+  _type: "tourSection";
+  title: string;
+  lede: string;
+  cta: Cta;
+};
+
+export type IntegrationsSection = {
+  _type: "integrationsSection";
+  eyebrow: string;
+  title: string;
+  body: string;
+  cta?: Cta;
+  statValue: string;
+  statLabel: string;
+};
+
+export type TestimonialReference = {
+  _ref: string;
+  _type: "reference";
+  _weak?: boolean;
+  [internalGroqTypeReferenceTo]?: "testimonial";
+};
+
+export type TestimonialSection = {
+  _type: "testimonialSection";
+  item?: TestimonialReference;
+  cta?: Cta;
+  title: string;
+};
+
+export type CustomerStorySection = {
+  _type: "customerStorySection";
+  eyebrow: string;
+  title: string;
+  cta?: Cta;
+  summary: string;
+  stats: Array<{
+    value: string;
+    label: string;
+    _type: "stat";
+    _key: string;
+  }>;
+  results: Array<{
+    label: string;
+    _type: "result";
+    _key: string;
+  }>;
+};
+
+export type PerformanceSection = {
+  _type: "performanceSection";
+  eyebrow: string;
+  title: string;
+  benefits: Array<{
+    icon: "chartPieSlice" | "speedometer" | "calendarDots";
+    title: string;
+    text: string;
+    _type: "benefit";
+    _key: string;
+  }>;
+};
+
+export type SystemSection = {
+  _type: "systemSection";
+  eyebrow: string;
+  title: string;
+  lede: string;
+  cta?: Cta;
+  modules: Array<{
+    title: string;
+    text: string;
+    link?: Cta;
+    _type: "module";
+    _key: string;
+  }>;
+};
+
+export type FeaturesSection = {
+  _type: "featuresSection";
+  title: string;
+  items: Array<{
+    title: string;
+    text: string;
+    _type: "feature";
+    _key: string;
+  }>;
+};
+
+export type HeroSection = {
+  _type: "heroSection";
+  title: string;
+  lede: string;
+  primaryCta?: Cta;
+  secondaryCta?: Cta;
+  ratings?: Array<{
+    platform: "g2" | "capterra";
+    label: string;
+    href?: string;
+    _type: "rating";
+    _key: string;
+  }>;
+};
+
+export type Cta = {
+  _type: "cta";
+  label: string;
+  href?: string;
+};
+
+export type Faq = {
+  _id: string;
+  _type: "faq";
+  _createdAt: string;
+  _updatedAt: string;
+  _rev: string;
+  question: string;
+  answer: Array<{
+    children?: Array<{
+      marks?: Array<string>;
+      text?: string;
+      _type: "span";
+      _key: string;
+    }>;
+    style?: "normal";
+    listItem?: never;
+    markDefs?: Array<{
+      href?: string;
+      _type: "link";
+      _key: string;
+    }>;
+    level?: number;
+    _type: "block";
+    _key: string;
+  }>;
+  order: number;
+};
+
+export type Testimonial = {
+  _id: string;
+  _type: "testimonial";
+  _createdAt: string;
+  _updatedAt: string;
+  _rev: string;
+  quote: string;
+  name: string;
+  role?: string;
+  company: string;
+  caseStudyUrl?: string;
+};
+
 export type SanityImageAssetReference = {
   _ref: string;
   _type: "reference";
@@ -29,8 +204,8 @@ export type Post = {
   _updatedAt: string;
   _rev: string;
   title: string;
-  subtitle: string;
   slug: Slug;
+  category: "Operations" | "Buyer's guide" | "Analysis";
   publishedAt: string;
   image: {
     asset: SanityImageAssetReference;
@@ -40,6 +215,7 @@ export type Post = {
     alt?: string;
     _type: "image";
   };
+  excerpt: string;
   content: Array<
     | {
         children?: Array<{
@@ -94,15 +270,25 @@ export type Slug = {
   source?: string;
 };
 
-export type Home = {
+export type DockSchedulingPage = {
   _id: string;
-  _type: "home";
+  _type: "dockSchedulingPage";
   _createdAt: string;
   _updatedAt: string;
   _rev: string;
-  title: string;
-  subtitle: string;
-  buttonLabel: string;
+  hero?: HeroSection;
+  features?: FeaturesSection;
+  system?: SystemSection;
+  performance?: PerformanceSection;
+  customerStory?: CustomerStorySection;
+  testimonial?: TestimonialSection;
+  integrations?: IntegrationsSection;
+  tour?: TourSection;
+  faq?: FaqSection;
+  insights?: InsightsSection;
+  getStarted?: GetStartedSection;
+  seoTitle: string;
+  seoDescription: string;
 };
 
 export type MediaFolderReference = {
@@ -229,12 +415,27 @@ export type Geopoint = {
 };
 
 export type AllSanitySchemaTypes =
+  | GetStartedSection
+  | InsightsSection
+  | FaqSection
+  | TourSection
+  | IntegrationsSection
+  | TestimonialReference
+  | TestimonialSection
+  | CustomerStorySection
+  | PerformanceSection
+  | SystemSection
+  | FeaturesSection
+  | HeroSection
+  | Cta
+  | Faq
+  | Testimonial
   | SanityImageAssetReference
   | Post
   | SanityImageCrop
   | SanityImageHotspot
   | Slug
-  | Home
+  | DockSchedulingPage
   | MediaFolderReference
   | MediaFolder
   | MediaTag
@@ -248,23 +449,104 @@ export type AllSanitySchemaTypes =
   | Geopoint;
 
 // Source: src/sanity/lib/queries.ts
-// Variable: HOME_QUERY
-// Query: *[_type == "home" && _id == "home"][0]{  title,  subtitle,  buttonLabel}
-export type HOME_QUERY_RESULT = {
-  title: string;
-  subtitle: string;
-  buttonLabel: string;
+// Variable: PAGE_QUERY
+// Query: *[_type == "dockSchedulingPage" && _id == "dockSchedulingPage"][0]{  ...,  testimonial{    ...,    "item": coalesce(item->, *[_type == "testimonial"] | order(_createdAt desc)[0]){      _id,      quote,      name,      role,      company,      caseStudyUrl    }  }}
+export type PAGE_QUERY_RESULT = {
+  _id: "dockSchedulingPage";
+  _type: "dockSchedulingPage";
+  _createdAt: string;
+  _updatedAt: string;
+  _rev: string;
+  hero?: HeroSection;
+  features?: FeaturesSection;
+  system?: SystemSection;
+  performance?: PerformanceSection;
+  customerStory?: CustomerStorySection;
+  testimonial: {
+    _type: "testimonialSection";
+    item: {
+      _id: string;
+      quote: string;
+      name: string;
+      role: string | null;
+      company: string;
+      caseStudyUrl: string | null;
+    } | null;
+    cta?: Cta;
+    title: string;
+  } | null;
+  integrations?: IntegrationsSection;
+  tour?: TourSection;
+  faq?: FaqSection;
+  insights?: InsightsSection;
+  getStarted?: GetStartedSection;
+  seoTitle: string;
+  seoDescription: string;
 } | null;
 
 // Source: src/sanity/lib/queries.ts
+// Variable: FAQS_QUERY
+// Query: *[_type == "faq" && defined(answer)] | order(order asc){  _id,  question,  answer}
+export type FAQS_QUERY_RESULT = Array<{
+  _id: string;
+  question: string;
+  answer: Array<{
+    children?: Array<{
+      marks?: Array<string>;
+      text?: string;
+      _type: "span";
+      _key: string;
+    }>;
+    style?: "normal";
+    listItem?: never;
+    markDefs?: Array<{
+      href?: string;
+      _type: "link";
+      _key: string;
+    }>;
+    level?: number;
+    _type: "block";
+    _key: string;
+  }>;
+}>;
+
+// Source: src/sanity/lib/queries.ts
+// Variable: LATEST_POSTS_QUERY
+// Query: *[_type == "post" && defined(slug.current)] | order(publishedAt desc)[0...4]{  _id,  title,  "slug": slug.current,  category,  publishedAt,  "readingTime": round(length(pt::text(content)) / 5 / 180),  image{    alt,    crop,    hotspot,    asset->{ _id, metadata{ lqip, dimensions{ width, height } } }  }}
+export type LATEST_POSTS_QUERY_RESULT = Array<{
+  _id: string;
+  title: string;
+  slug: string;
+  category: "Analysis" | "Buyer's guide" | "Operations";
+  publishedAt: string;
+  readingTime: number;
+  image: {
+    alt: string | null;
+    crop: SanityImageCrop | null;
+    hotspot: SanityImageHotspot | null;
+    asset: {
+      _id: string;
+      metadata: {
+        lqip: string | null;
+        dimensions: {
+          width: number;
+          height: number;
+        } | null;
+      } | null;
+    };
+  };
+}>;
+
+// Source: src/sanity/lib/queries.ts
 // Variable: POSTS_QUERY
-// Query: *[_type == "post" && defined(slug.current)] | order(publishedAt desc){  _id,  title,  subtitle,  "slug": slug.current,  publishedAt,  image{    alt,    crop,    hotspot,    asset->{ _id, metadata{ lqip, dimensions{ width, height } } }  }}
+// Query: *[_type == "post" && defined(slug.current)] | order(publishedAt desc){  _id,  title,  "slug": slug.current,  category,  publishedAt,  "readingTime": round(length(pt::text(content)) / 5 / 180),  image{    alt,    crop,    hotspot,    asset->{ _id, metadata{ lqip, dimensions{ width, height } } }  }}
 export type POSTS_QUERY_RESULT = Array<{
   _id: string;
   title: string;
-  subtitle: string;
   slug: string;
+  category: "Analysis" | "Buyer's guide" | "Operations";
   publishedAt: string;
+  readingTime: number;
   image: {
     alt: string | null;
     crop: SanityImageCrop | null;
@@ -284,14 +566,15 @@ export type POSTS_QUERY_RESULT = Array<{
 
 // Source: src/sanity/lib/queries.ts
 // Variable: POST_QUERY
-// Query: *[_type == "post" && slug.current == $slug][0]{  _id,  title,  subtitle,  "slug": slug.current,  publishedAt,  _updatedAt,  image{    alt,    crop,    hotspot,    asset->{ _id, metadata{ lqip, dimensions{ width, height } } }  },  content[]{    ...,    _type == "image" => {      ...,      asset->{ _id, metadata{ lqip, dimensions{ width, height } } }    }  }}
+// Query: *[_type == "post" && slug.current == $slug][0]{  _id,  title,  "slug": slug.current,  category,  publishedAt,  excerpt,  "readingTime": round(length(pt::text(content)) / 5 / 180),  image{    alt,    crop,    hotspot,    asset->{ _id, metadata{ lqip, dimensions{ width, height } } }  },  content[]{    ...,    _type == "image" => {      ...,      asset->{ _id, metadata{ lqip, dimensions{ width, height } } }    }  }}
 export type POST_QUERY_RESULT = {
   _id: string;
   title: string;
-  subtitle: string;
   slug: string;
+  category: "Analysis" | "Buyer's guide" | "Operations";
   publishedAt: string;
-  _updatedAt: string;
+  excerpt: string;
+  readingTime: number;
   image: {
     alt: string | null;
     crop: SanityImageCrop | null;
@@ -357,11 +640,11 @@ export type POST_SLUGS_QUERY_RESULT = Array<{
 
 // Source: src/sanity/lib/queries.ts
 // Variable: BENCH_QUERY
-// Query: *[_type == "post" && defined(slug.current)] | order(publishedAt desc){  _id,  title,  subtitle,  "slug": slug.current,  "imageUrl": image.asset->url,  "imageSize": image.asset->size}
+// Query: *[_type == "post" && defined(slug.current)] | order(publishedAt desc){  _id,  title,  category,  "slug": slug.current,  "imageUrl": image.asset->url,  "imageSize": image.asset->size}
 export type BENCH_QUERY_RESULT = Array<{
   _id: string;
   title: string;
-  subtitle: string;
+  category: "Analysis" | "Buyer's guide" | "Operations";
   slug: string;
   imageUrl: string;
   imageSize: number;
@@ -370,11 +653,13 @@ export type BENCH_QUERY_RESULT = Array<{
 // Query TypeMap
 declare global {
   interface SanityQueries {
-    '*[_type == "home" && _id == "home"][0]{\n  title,\n  subtitle,\n  buttonLabel\n}': HOME_QUERY_RESULT;
-    '*[_type == "post" && defined(slug.current)] | order(publishedAt desc){\n  _id,\n  title,\n  subtitle,\n  "slug": slug.current,\n  publishedAt,\n  image{\n    alt,\n    crop,\n    hotspot,\n    asset->{ _id, metadata{ lqip, dimensions{ width, height } } }\n  }\n}': POSTS_QUERY_RESULT;
-    '*[_type == "post" && slug.current == $slug][0]{\n  _id,\n  title,\n  subtitle,\n  "slug": slug.current,\n  publishedAt,\n  _updatedAt,\n  image{\n    alt,\n    crop,\n    hotspot,\n    asset->{ _id, metadata{ lqip, dimensions{ width, height } } }\n  },\n  content[]{\n    ...,\n    _type == "image" => {\n      ...,\n      asset->{ _id, metadata{ lqip, dimensions{ width, height } } }\n    }\n  }\n}': POST_QUERY_RESULT;
+    '*[_type == "dockSchedulingPage" && _id == "dockSchedulingPage"][0]{\n  ...,\n  testimonial{\n    ...,\n    "item": coalesce(item->, *[_type == "testimonial"] | order(_createdAt desc)[0]){\n      _id,\n      quote,\n      name,\n      role,\n      company,\n      caseStudyUrl\n    }\n  }\n}': PAGE_QUERY_RESULT;
+    '*[_type == "faq" && defined(answer)] | order(order asc){\n  _id,\n  question,\n  answer\n}': FAQS_QUERY_RESULT;
+    '*[_type == "post" && defined(slug.current)] | order(publishedAt desc)[0...4]{\n  _id,\n  title,\n  "slug": slug.current,\n  category,\n  publishedAt,\n  "readingTime": round(length(pt::text(content)) / 5 / 180),\n  image{\n    alt,\n    crop,\n    hotspot,\n    asset->{ _id, metadata{ lqip, dimensions{ width, height } } }\n  }\n}': LATEST_POSTS_QUERY_RESULT;
+    '*[_type == "post" && defined(slug.current)] | order(publishedAt desc){\n  _id,\n  title,\n  "slug": slug.current,\n  category,\n  publishedAt,\n  "readingTime": round(length(pt::text(content)) / 5 / 180),\n  image{\n    alt,\n    crop,\n    hotspot,\n    asset->{ _id, metadata{ lqip, dimensions{ width, height } } }\n  }\n}': POSTS_QUERY_RESULT;
+    '*[_type == "post" && slug.current == $slug][0]{\n  _id,\n  title,\n  "slug": slug.current,\n  category,\n  publishedAt,\n  excerpt,\n  "readingTime": round(length(pt::text(content)) / 5 / 180),\n  image{\n    alt,\n    crop,\n    hotspot,\n    asset->{ _id, metadata{ lqip, dimensions{ width, height } } }\n  },\n  content[]{\n    ...,\n    _type == "image" => {\n      ...,\n      asset->{ _id, metadata{ lqip, dimensions{ width, height } } }\n    }\n  }\n}': POST_QUERY_RESULT;
     '*[_type == "post" && defined(slug.current)]{\n  "slug": slug.current\n}': POST_SLUGS_QUERY_RESULT;
-    '*[_type == "post" && defined(slug.current)] | order(publishedAt desc){\n  _id,\n  title,\n  subtitle,\n  "slug": slug.current,\n  "imageUrl": image.asset->url,\n  "imageSize": image.asset->size\n}': BENCH_QUERY_RESULT;
+    '*[_type == "post" && defined(slug.current)] | order(publishedAt desc){\n  _id,\n  title,\n  category,\n  "slug": slug.current,\n  "imageUrl": image.asset->url,\n  "imageSize": image.asset->size\n}': BENCH_QUERY_RESULT;
   }
 }
 // Lets @sanity/client releases that predate the global registry read it too

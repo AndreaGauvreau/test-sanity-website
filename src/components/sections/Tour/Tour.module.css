@@ -1,0 +1,102 @@
+/*
+ * Visite guidée — Figma 269:420 (desktop 1440) : carte bleue de 1280 × 408, marge interne 60.
+ * Une seule grille sur la section : trois colonnes (marge de carte, contenu, marge de carte).
+ * ::before peint l'aplat de la carte sur toute la grille, ::after porte le graphisme de lignes.
+ * Mobile : titre, texte, bouton, puis le graphisme en bas de carte, rogné à gauche.
+ * À partir de 810 px : graphisme calé en bas à droite, à l'échelle de la carte, sous le texte.
+ */
+.tour {
+  --card-pad: clamp(1.5rem, 0.7077rem + 3.3803vw, 3.75rem); /* 24 → 60 à 1440 */
+  /* Hors jetons : l'air au-dessus de la carte (48 à 1440) et l'approche du texte (-2,3 %). */
+  --space-before: clamp(2rem, 1.6479rem + 1.5023vw, 3rem); /* 32 → 48 à 1440 */
+  --lede-tracking: -0.023em; /* -0.322 px */
+
+  display: grid;
+  grid-template-columns: var(--card-pad) minmax(0, 1fr) var(--card-pad);
+  grid-template-rows: var(--card-pad) auto auto auto auto;
+  grid-template-areas:
+    ".       .       ."
+    ".       title   ."
+    ".       lede    ."
+    ".       cta     ."
+    "graphic graphic graphic";
+  justify-items: start;
+  /* Les deux pseudo-éléments passent sous le texte, au-dessus du fond blanc de la section. */
+  isolation: isolate;
+  padding-block: var(--space-before) var(--section-space);
+  padding-inline: var(--page-inset);
+}
+
+/* L'aplat de la carte. */
+.tour::before {
+  content: "";
+  z-index: -1;
+  grid-area: 1 / 1 / -1 / -1;
+  justify-self: stretch;
+  background: var(--color-surface-brand);
+}
+
+/* Graphisme « Line Screen » du Figma (un shader) : son rendu exact, vectorisé en un SVG de
+   954 × 408 (barres blanches sur fond transparent). Décoratif. Mobile : une bande en bas de
+   carte (≈ 8:5 de la carte à 375, 272 au plus), le graphisme à sa hauteur, calé à droite et
+   rogné à gauche, où il n'y a presque rien. */
+.tour::after {
+  content: "";
+  z-index: -1;
+  grid-area: graphic;
+  justify-self: stretch;
+  block-size: min(17rem, 55vw); /* 206 à 375, 272 au plus */
+  margin-block-start: 1.5rem; /* 24 */
+  background: url("./line-screen.svg") no-repeat right bottom / auto 100%;
+}
+
+.title {
+  grid-area: title;
+  max-inline-size: 26rem; /* 416 */
+  color: var(--color-text-inverse);
+  font: var(--text-title-xl);
+  letter-spacing: var(--text-title-xl-tracking);
+  text-wrap: balance;
+}
+
+/* Le chapô tient sur une ligne à 1440 (404 px dans le Figma). */
+.lede {
+  grid-area: lede;
+  max-inline-size: 26rem; /* 416 */
+  margin-block: 1.5rem 1.75rem; /* 24 sous le titre, 28 avant le bouton */
+  color: var(--color-text-on-brand-muted);
+  letter-spacing: var(--lede-tracking);
+}
+
+.cta {
+  grid-area: cta;
+}
+
+@media (min-width: 50.625rem) {
+  .tour {
+    grid-template-rows: var(--card-pad) auto auto auto 1fr var(--card-pad);
+    grid-template-areas:
+      ". .     ."
+      ". title ."
+      ". lede  ."
+      ". cta   ."
+      ". .     ."
+      ". .     .";
+  }
+
+  /* 408 de haut comme dans le Figma : le texte reste au-dessus du graphisme dès 810 px. */
+  .tour::before {
+    min-block-size: 25.5rem; /* 408 */
+  }
+
+  /* 954 × 408 dans la carte de 1280, en bas à droite ; même proportion quand elle rétrécit. */
+  .tour::after {
+    grid-area: 1 / 1 / -1 / -1;
+    justify-self: end;
+    align-self: end;
+    inline-size: calc(954 / 1280 * 100%);
+    block-size: auto;
+    aspect-ratio: 954 / 408;
+    margin-block-start: 0;
+  }
+}

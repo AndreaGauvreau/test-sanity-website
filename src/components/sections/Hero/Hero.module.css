@@ -1,0 +1,148 @@
+/*
+ * Hero — Figma 269:177 (desktop 1440).
+ * Mobile : tout empilé dans l'ordre du DOM. À partir de 810 px : titre et actions à gauche,
+ * chapô et notes à droite, les deux colonnes alignées par le bas comme dans le Figma.
+ */
+.hero {
+  --gap: 1.75rem; /* 28 : titre → actions */
+  --gap-visual: 3rem; /* 48 : actions → visuel */
+
+  display: grid;
+  row-gap: var(--gap);
+  /* 70 = 38 d'air sous l'en-tête + 32 de marge interne du hero */
+  padding-block: 4.375rem var(--section-space);
+  padding-inline: var(--page-inset);
+}
+
+.title {
+  max-inline-size: 28.625rem; /* 458 */
+  font: var(--text-display);
+  letter-spacing: var(--text-display-tracking);
+  text-wrap: balance;
+}
+
+.lede {
+  max-inline-size: 28.75rem; /* 460 */
+  color: var(--color-text-muted);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+}
+
+.ratings {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  padding: 0;
+  list-style: none;
+}
+
+.rating {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--color-text-muted);
+  font: var(--text-caption);
+  letter-spacing: var(--text-caption-tracking);
+  text-decoration-thickness: from-font;
+  text-underline-position: from-font;
+}
+
+/* Logos décoratifs : le texte du lien nomme déjà la plateforme. */
+.rating::before {
+  content: "";
+  flex: none;
+  inline-size: 1rem;
+  block-size: 1rem;
+}
+
+.g2::before {
+  background: url("./g2.svg") no-repeat center / contain;
+}
+
+/* Pastille grise et logo posé à 2 × 3,5 px du coin, comme le calque Figma. */
+.capterra::before {
+  border-radius: 50%;
+  background: #f2f2f2 url("./capterra.svg") no-repeat 0.125rem 0.21875rem / 0.6131rem 0.6245rem;
+}
+
+/* Scène sombre à motif. Le motif garde sa taille quand la scène rétrécit, comme un
+   remplissage « pattern » Figma ; il part du coin haut droit, comme dans le fichier. */
+.visual {
+  container-type: inline-size;
+  position: relative;
+  aspect-ratio: 1344 / 574;
+  margin-block-start: calc(var(--gap-visual) - var(--gap));
+  background: var(--color-surface-dark) url("./pattern.svg") right top / 101.352px 109.917px;
+}
+
+/* Fenêtre de navigateur. Cotes du composant Figma d'origine (1344 × 574, réduit à 1280) :
+   --u vaut 1 px de ce composant, rapporté à la largeur réelle de la scène. */
+.window {
+  --u: calc(100cqi / 1344);
+
+  position: absolute;
+  inset: calc(44 * var(--u)) calc(44 * var(--u)) 0;
+  /* Blanc translucide posé sur la scène : le rendu du flou d'arrière-plan Figma, sans le flou. */
+  background: linear-gradient(var(--color-surface), rgb(255 255 255 / 0.84)) var(--color-surface-dark);
+}
+
+/* Barre de titre */
+.window::before {
+  content: "";
+  display: block;
+  block-size: calc(39 * var(--u));
+  border-block-end: 1px solid rgb(0 0 0 / 0.06);
+}
+
+/* Feux de la barre de titre : un disque, et deux ombres portées pour les suivants. */
+.window::after {
+  content: "";
+  position: absolute;
+  inset-block-start: calc(12 * var(--u));
+  inset-inline-start: calc(12 * var(--u));
+  inline-size: calc(15 * var(--u));
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: #f05e57;
+  box-shadow:
+    calc(23 * var(--u)) 0 #ffb728,
+    calc(46 * var(--u)) 0 #50be58;
+}
+
+@media (min-width: 50.625rem) {
+  .hero {
+    grid-template-columns: minmax(0, 28.625rem) minmax(0, 28.75rem);
+    grid-template-areas:
+      "title   lede"
+      "actions ratings"
+      "visual  visual";
+    justify-content: space-between;
+    align-items: end;
+    column-gap: 3rem;
+  }
+
+  .title {
+    grid-area: title;
+  }
+
+  .lede {
+    grid-area: lede;
+  }
+
+  .actions {
+    grid-area: actions;
+  }
+
+  .ratings {
+    grid-area: ratings;
+  }
+
+  .visual {
+    grid-area: visual;
+  }
+}

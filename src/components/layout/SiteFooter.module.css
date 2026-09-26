@@ -1,0 +1,5 @@
+/* Emplacement réservé, à la hauteur du rectangle Figma (269:561). */
+.footer {
+  min-block-size: var(--footer-height);
+  background: var(--color-surface-subtle);
+}

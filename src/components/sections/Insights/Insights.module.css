@@ -1,0 +1,67 @@
+/*
+ * Articles « Learn and grow » — Figma 269:511 (desktop 1440, 792 px de haut).
+ * Titre dans la colonne de la page ; dessous, une rangée de cartes de 380 px qui part du bord
+ * du contenu et file jusqu'au bord de l'écran (la 4e carte est coupée à 1440). La rangée
+ * défile dans sa propre zone, jamais la page. Même disposition à toutes les largeurs : sur
+ * mobile, les cartes rétrécissent juste assez pour laisser voir le bord de la suivante.
+ * Au-delà de 1440 aussi : la rangée part du bord de la colonne centrée (1280) et file jusqu'au
+ * bord de l'écran ; en fin de défilement, la dernière carte s'aligne sur le bord droit de la
+ * colonne (d'où un petit défilement à 1920, même quand les quatre cartes sont visibles).
+ */
+.insights {
+  display: grid;
+  row-gap: 2.75rem; /* 44 : titre → cartes */
+  padding-block: var(--section-space);
+}
+
+.heading {
+  display: grid;
+  justify-items: start;
+  row-gap: 1.5rem; /* 24 : sur-titre → titre */
+  padding-inline: var(--page-inset);
+}
+
+.title {
+  font: var(--text-title-xl);
+  letter-spacing: var(--text-title-xl-tracking);
+  text-wrap: balance;
+}
+
+/* Pleine largeur : les cartes passent sous le bord droit de l'écran, pas sous la marge. */
+.scroller {
+  container-type: inline-size;
+  /* 8 px d'air au-dessus et au-dessous des cartes pour le contour de focus, repris par la
+     marge négative : la mise en page ne bouge pas. */
+  margin-block: -0.5rem;
+  padding-block: 0.5rem;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  /* Une carte « calée » s'aligne sur le bord du contenu, comme la première. */
+  scroll-padding-inline: var(--page-inset);
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-text-muted) transparent;
+}
+
+/* Contour de focus dessiné à l'intérieur : la zone touche les bords de l'écran. */
+.scroller:focus-visible {
+  outline-offset: -2px;
+}
+
+/* Largeur du contenu : la marge de fin fait partie de la zone qui défile. */
+.cards {
+  display: flex;
+  gap: 1.25rem; /* 20 */
+  inline-size: max-content;
+  padding: 0;
+  padding-inline: var(--page-inset);
+  list-style: none;
+}
+
+/* 380 px, ou moins sur mobile : il reste alors 3 rem (48 px) à droite de la carte, soit
+   l'espace de 20 px et 28 px de la carte suivante, qui signale que la rangée défile. */
+.card {
+  flex: none;
+  inline-size: min(23.75rem, 100cqi - var(--gutter) - 3rem); /* 380 */
+  scroll-snap-align: start;
+}

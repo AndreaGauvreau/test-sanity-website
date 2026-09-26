@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { connection } from 'next/server'
 
+import { LiveStatus } from '@/components/LiveStatus'
 import { RenderStamp } from '@/components/RenderStamp'
 import { client } from '@/sanity/lib/client'
 import { sanityFetch } from '@/sanity/lib/live'
@@ -10,7 +11,10 @@ import { BENCH_QUERY } from '@/sanity/lib/queries'
 import { BrowserBench } from './browser-bench'
 import { formatBytes, formatMs, median, RUNS } from './stats'
 
-export const metadata: Metadata = { title: 'Bench lecture — LyonDrive' }
+import './bench.css'
+
+// Outil de mesure : hors des moteurs de recherche.
+export const metadata: Metadata = { title: 'Bench lecture', robots: { index: false, follow: false } }
 
 type QueryRow = { label: string; detail: string; samples: number[] }
 type ImageVariant = { label: string; detail: string; url: string; accept: string }
@@ -189,7 +193,7 @@ export default async function BenchPage() {
           </table>
         </>
       ) : (
-        <p className="note">Aucune image publiée pour l’instant : lance le seed ou ajoute un article.</p>
+        <p className="note">Aucune image publiée pour l’instant : publie un article du blog dans l’admin.</p>
       )}
 
       <h2>Depuis ton navigateur</h2>
@@ -200,6 +204,9 @@ export default async function BenchPage() {
         Les pages gardent leurs données en cache jusqu’à ce qu’une publication les invalide. Ça marche
         tout seul quand un onglet du site ou l’admin embarqué est ouvert au moment de la publication.
         Si le contenu a changé sans aucun onglet ouvert (admin hébergé, seed, API), vide le cache ici.
+      </p>
+      <p className="note">
+        Connexion au Live Content API : <LiveStatus />
       </p>
       <form action={purgeSiteCache}>
         <button type="submit" className="button">

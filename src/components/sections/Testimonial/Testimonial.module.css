@@ -1,0 +1,133 @@
+/*
+ * Témoignage — Figma 269:333 (desktop 1440).
+ * Mobile : la photo en bandeau pleine largeur, puis la citation et le bouton sur le fond
+ * sombre. À partir de 810 px : la photo couvre toute la section et le texte se range dans une
+ * colonne à droite (630 px au plus), le bouton plus bas, au niveau du chariot.
+ */
+.testimonial {
+  /* Cadrage de la photo dans le bandeau du mobile : le chariot et le passant. */
+  --focus: 16% 50%;
+  /* Flou d'arrière-plan du calque « blur-progressive » : 3,7 dans Figma, dont le rayon
+     vaut le double de l'écart type CSS (vérifié à la capture). */
+  --scene-blur: 0.1156rem; /* 1,85 */
+  /* Légende : 14,489 px dans le Figma, hors tokens (--text-body fait 14). */
+  --text-attribution: 400 0.9056rem / 1.3 var(--font-sans); /* 14,489 */
+  --text-attribution-tracking: -0.023em;
+  /* Du bas de la légende au bouton : 280 à 1440, 160 à 810. */
+  --cta-gap: clamp(10rem, 0.3571rem + 19.0476vw, 17.5rem);
+
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  align-content: start;
+  justify-items: start;
+  padding-block-end: var(--section-space);
+  padding-inline: var(--page-inset);
+  background: var(--color-surface-dark);
+  color: var(--color-text-inverse);
+}
+
+/* Bandeau photo, bord à bord : il reprend la marge latérale de la section (sous 810 px,
+   --page-inset vaut --gutter). */
+.scene {
+  position: relative;
+  isolation: isolate;
+  justify-self: stretch;
+  aspect-ratio: 4 / 3;
+  max-block-size: 25rem; /* 400 : sur tablette, le bandeau ne mange pas l'écran */
+  margin-inline: calc(-1 * var(--gutter));
+  margin-block-end: 3rem; /* 48 */
+  overflow: hidden;
+}
+
+/* Photo, ombres et passant partagent la même boîte (1681 × 694) et le même cadrage :
+   ils restent superposés quelle que soit la découpe. */
+.photo,
+.person {
+  object-fit: cover;
+  object-position: var(--focus);
+}
+
+.photo {
+  z-index: -1;
+}
+
+/* Au-dessus des ombres, comme dans le Figma : le passant n'est ni flouté ni assombri. */
+.person {
+  z-index: 1;
+}
+
+/* Flou progressif du calque « blur-progressive » : nul en bas à gauche, entier en haut à
+   droite. Le masque (fichier SVG, dans la boîte de la photo) dose le flou. */
+.scene::before,
+.scene::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+
+.scene::before {
+  backdrop-filter: blur(var(--scene-blur));
+  mask: url("./warehouse-blur-ramp.svg") no-repeat var(--focus) / cover;
+}
+
+/* Les dégradés sombres du Figma, dans la boîte de la photo. */
+.scene::after {
+  background: url("./warehouse-shade.svg") no-repeat var(--focus) / cover;
+}
+
+.quote {
+  display: grid;
+  row-gap: 1.75rem; /* 28 */
+}
+
+.text {
+  font: var(--text-quote);
+  letter-spacing: var(--text-quote-tracking);
+}
+
+.author {
+  display: flex;
+  flex-wrap: wrap;
+  /* 8 dans le Figma, mais sa boîte « nom » finit 2 px après la virgule : 10 rend l'écart vu. */
+  gap: 0.25rem 0.625rem; /* 4 · 10 */
+  font: var(--text-attribution);
+  letter-spacing: var(--text-attribution-tracking);
+}
+
+/* Le bouton (lien) : dernier enfant de la grille. */
+.cta {
+  margin-block-start: 2.5rem; /* 40 */
+}
+
+@media (min-width: 50.625rem) {
+  .testimonial {
+    /* À 1440, la photo (1681 px de large) déborde de 108 px à gauche comme dans le Figma :
+       108 / 241 = 44,8 %. */
+    --focus: 44.8% 50%;
+
+    /* Colonne de droite : 630 px au plus, et jamais plus de 55 % de la largeur utile,
+       pour laisser le chariot et le passant dégagés entre 810 et 1280 px. */
+    grid-template-columns: min(39.375rem, 55%); /* 630 */
+    align-content: center;
+    justify-content: end;
+    /* (694 − 450) / 2 = 122 à 1440 : la colonne est centrée dans la hauteur du Figma. */
+    padding-block: calc(var(--section-space-lg) + 0.125rem);
+    /* Au moins la hauteur du Figma : la photo y garde son cadrage de 1440. */
+    min-block-size: 43.375rem; /* 694 */
+  }
+
+  /* La photo passe sous toute la section. */
+  .scene {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    aspect-ratio: auto;
+    max-block-size: none;
+    margin: 0;
+  }
+
+  .cta {
+    margin-block-start: var(--cta-gap);
+  }
+}

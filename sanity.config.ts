@@ -14,9 +14,6 @@ import { resolve } from './src/sanity/presentation'
 import { schemaTypes, singletonTypes } from './src/sanity/schemaTypes'
 import { structure } from './src/sanity/structure'
 
-// Sur un document unique : publier, annuler, restaurer. Ni duplication ni suppression.
-const singletonActions = new Set(['publish', 'discardChanges', 'restore'])
-
 // Le même admin peut aussi tourner hors de Next :
 // - `npm run studio` (localhost:3333) : l'aperçu live affiche le site local (localhost:4040) ;
 // - `npm run deploy:studio` (kuartz-sanity-test.sanity.studio, utilisable sur mobile) : pas
@@ -26,20 +23,24 @@ const standalone = process.env.SANITY_STUDIO_STANDALONE === 'true'
 const hosted = process.env.SANITY_STUDIO_HOSTED === 'true'
 
 export default defineConfig({
-  title: 'LyonDrive',
+  title: 'Conduit',
   basePath: standalone ? '/' : studioUrl,
   projectId,
   dataset,
   schema: {
     types: schemaTypes,
+    // Pas de modèle « nouveau document » pour la page : elle existe une fois, à id fixe.
+    templates: (templates) => templates.filter(({ schemaType }) => !singletonTypes.has(schemaType)),
   },
   document: {
-    // Singleton : absent des menus « Créer », mais son modèle reste déclaré pour que
-    // les valeurs par défaut s'appliquent à la création depuis la colonne de gauche.
-    newDocumentOptions: (options) => options.filter(({ templateId }) => !singletonTypes.has(templateId)),
+    newDocumentOptions: (options, { creationContext }) =>
+      creationContext.type === 'global'
+        ? options.filter(({ templateId }) => !singletonTypes.has(templateId))
+        : options,
+    // Page : publier, annuler les modifications, restaurer une version. Ni suppression ni duplication.
     actions: (actions, { schemaType }) =>
       singletonTypes.has(schemaType)
-        ? actions.filter(({ action }) => action && singletonActions.has(action))
+        ? actions.filter(({ action }) => action && ['publish', 'discardChanges', 'restore'].includes(action))
         : actions,
   },
   plugins: [

@@ -2,15 +2,17 @@ import { defineDocuments, defineLocations, type PresentationPluginOptions } from
 
 // Onglet « Aperçu live » de l'admin : relie chaque URL du site au document qu'elle
 // affiche, et chaque document aux pages où il apparaît.
+const home = { title: 'Page Dock Scheduling', href: '/' }
+
 export const resolve: PresentationPluginOptions['resolve'] = {
   mainDocuments: defineDocuments([
-    { route: '/', filter: `_type == "home" && _id == "home"` },
+    { route: '/', filter: `_type == "dockSchedulingPage" && _id == "dockSchedulingPage"` },
     { route: '/blog/:slug', filter: `_type == "post" && slug.current == $slug` },
   ]),
   locations: {
-    home: defineLocations({
-      message: 'Ce document est affiché sur :',
-      locations: [{ title: 'Accueil', href: '/' }],
+    dockSchedulingPage: defineLocations({
+      message: 'Les textes de la page d’accueil.',
+      locations: [home],
     }),
     post: defineLocations({
       select: { title: 'title', slug: 'slug.current' },
@@ -18,8 +20,11 @@ export const resolve: PresentationPluginOptions['resolve'] = {
         locations: [
           { title: doc?.title || 'Sans titre', href: `/blog/${doc?.slug}` },
           { title: 'Blog', href: '/blog' },
+          home,
         ],
       }),
     }),
+    testimonial: defineLocations({ locations: [home] }),
+    faq: defineLocations({ locations: [home] }),
   },
 }

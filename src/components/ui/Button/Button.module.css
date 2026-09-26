@@ -1,0 +1,53 @@
+/*
+ * CTA du Figma (calques « cta ») : libellé mono en capitales.
+ * - primary : pavé gris + carré orange fléché, séparés de 6 px. Un seul <a>, sans span :
+ *   le pavé est un fond limité à la largeur du libellé, la flèche un ::after.
+ * - secondary : souligné orange.
+ * - tone inverse (fonds sombres et bleus) : pavé blanc, ou libellé blanc pour le souligné.
+ */
+.button {
+  --arrow-width: 2.25rem; /* 36 */
+  --arrow-gap: 0.375rem; /* 6 */
+  --button-surface: var(--color-action-surface);
+
+  display: inline-flex;
+  align-items: center;
+  padding: 0.5rem 1rem;
+  color: var(--color-action-text);
+  font: var(--text-button);
+  letter-spacing: var(--text-button-tracking);
+  text-decoration: none;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.primary {
+  gap: calc(1rem + var(--arrow-gap));
+  padding-inline-end: 0;
+  background: linear-gradient(var(--button-surface) 0 0) no-repeat;
+  background-size: calc(100% - var(--arrow-width) - var(--arrow-gap)) 100%;
+}
+
+.primary::after {
+  content: "";
+  flex: none;
+  align-self: stretch;
+  inline-size: var(--arrow-width);
+  margin-block: -0.5rem;
+  background: var(--color-accent) url("./arrow-right.svg") no-repeat center / 1.01875rem auto;
+}
+
+/* Graisse 600 sur tous les CTA soulignés du Figma, 500 sur les autres. */
+.secondary {
+  padding-block-end: calc(0.5rem - 1px);
+  border-block-end: 1px solid var(--color-accent);
+  font-weight: 600;
+}
+
+.inverse {
+  --button-surface: var(--color-surface);
+}
+
+.inverse.secondary {
+  color: var(--color-text-inverse);
+}

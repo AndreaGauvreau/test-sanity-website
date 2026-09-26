@@ -1,42 +1,39 @@
 import type { Metadata } from 'next'
-import Link from 'next/link'
-import { stegaClean } from 'next-sanity'
 
 import { RenderStamp } from '@/components/RenderStamp'
-import { SanityImage } from '@/components/SanityImage'
-import { formatDate } from '@/lib/format'
+import { PostCard } from '@/components/ui/PostCard/PostCard'
 import { sanityFetch } from '@/sanity/lib/live'
 import { POSTS_QUERY } from '@/sanity/lib/queries'
 
-export const metadata: Metadata = { title: 'Blog — LyonDrive' }
+import styles from './blog.module.css'
 
+export const metadata: Metadata = { title: 'Blog' }
+
+// Liste du blog. Pas encore dessinée : les cartes sont celles de la section
+// « Learn and grow » du Figma (PostCard, partagée avec la page d'accueil).
 export default async function BlogPage() {
   const { data: posts } = await sanityFetch({ query: POSTS_QUERY })
 
   return (
-    <section className="blog">
-      <h1>Blog</h1>
+    <section className={styles.blog} aria-labelledby="blog-title">
+      <h1 id="blog-title" className={styles.title}>
+        Blog
+      </h1>
       {posts.length === 0 ? (
-        <p className="subtitle">Aucun article publié pour l’instant.</p>
+        <p>No articles published yet.</p>
       ) : (
-        <div className="grid">
+        <ul className={styles.grid}>
           {posts.map((post, index) => (
-            <Link key={post._id} href={`/blog/${stegaClean(post.slug)}`} className="card">
-              {post.image && (
-                <SanityImage
-                  image={post.image}
-                  width={1200}
-                  height={630}
-                  sizes="(max-width: 720px) 100vw, (max-width: 1160px) 50vw, 530px"
-                  loading={index < 2 ? 'eager' : 'lazy'}
-                />
-              )}
-              <h2>{post.title}</h2>
-              <p>{post.subtitle}</p>
-              {post.publishedAt && <time dateTime={post.publishedAt}>{formatDate(post.publishedAt)}</time>}
-            </Link>
+            <li key={post._id}>
+              <PostCard
+                post={post}
+                heading="h2"
+                sizes="(min-width: 75rem) 380px, (min-width: 40rem) 50vw, 100vw"
+                loading={index < 3 ? 'eager' : 'lazy'}
+              />
+            </li>
           ))}
-        </div>
+        </ul>
       )}
       <RenderStamp />
     </section>

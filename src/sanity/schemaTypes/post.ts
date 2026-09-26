@@ -1,22 +1,15 @@
 import { DocumentTextIcon } from '@sanity/icons/DocumentText'
 import { ImageIcon } from '@sanity/icons/Image'
-import { LinkIcon } from '@sanity/icons/Link'
 import { defineArrayMember, defineField, defineType } from 'sanity'
 
-// Texte alternatif obligatoire dès qu'une image est choisie.
-const altField = defineField({
-  name: 'alt',
-  title: 'Texte alternatif',
-  type: 'string',
-  validation: (rule) =>
-    rule.custom((alt, context) => {
-      const image = context.parent as { asset?: { _ref?: string } } | undefined
-      return image?.asset?._ref && !alt ? 'Décris l’image pour les lecteurs d’écran' : true
-    }),
-})
+import { altField, linkAnnotation } from './shared'
 
-// Même champs que la collection `posts` du test Payload. L'équivalent de la
-// collection `media` est intégré : chaque image est un asset du CDN Sanity,
+// Catégories des cartes « Learn and grow » du Figma. Liste fermée : les libellés restent
+// identiques d'un article à l'autre. Le libellé est stocké tel quel et affiché par le site.
+const categories = ['Operations', "Buyer's guide", 'Analysis']
+
+// Blog. Une carte affiche : image, catégorie, titre, date et temps de lecture (calculé
+// depuis le contenu, voir queries.ts). Chaque image est un asset du CDN Sanity,
 // réutilisable d'un article à l'autre (onglet « Médias » de l'admin).
 export const post = defineType({
   name: 'post',
@@ -31,21 +24,21 @@ export const post = defineType({
       validation: (rule) => rule.required(),
     }),
     defineField({
-      name: 'subtitle',
-      title: 'Sous-titre',
-      type: 'string',
-      validation: (rule) => rule.required(),
-    }),
-    defineField({
       name: 'slug',
       title: 'Slug',
       type: 'slug',
       options: { source: 'title', maxLength: 96 },
       validation: (rule) => rule.required(),
     }),
-    // Payload trie sur createdAt. Ici une vraie date éditoriale, modifiable (antidater,
-    // réordonner), sert au tri du blog. Ce n'est pas une programmation : un article publié
-    // avec une date future s'affiche tout de suite.
+    defineField({
+      name: 'category',
+      title: 'Catégorie',
+      type: 'string',
+      options: { list: categories, layout: 'radio', direction: 'horizontal' },
+      validation: (rule) => rule.required(),
+    }),
+    // Une vraie date éditoriale, modifiable (antidater, réordonner), qui sert au tri. Ce n'est
+    // pas une programmation : un article publié avec une date future s'affiche tout de suite.
     defineField({
       name: 'publishedAt',
       title: 'Date de publication',
@@ -57,11 +50,22 @@ export const post = defineType({
       name: 'image',
       title: 'Image',
       type: 'image',
-      description: 'Le site l’affiche en 1200×630 : le point focal (hotspot) décide de la partie gardée.',
+      description: 'Le point focal (hotspot) décide de la partie gardée quand le site recadre l’image.',
       options: { hotspot: true },
       fields: [altField],
       // assetRequired : sans lui, un objet image vide (juste un alt) passe la validation.
       validation: (rule) => rule.required().assetRequired(),
+    }),
+    defineField({
+      name: 'excerpt',
+      title: 'Résumé',
+      type: 'text',
+      rows: 3,
+      description: 'Affiché en tête d’article, et repris comme description pour les moteurs de recherche.',
+      validation: (rule) => [
+        rule.required(),
+        rule.max(160).warning('Au-delà de 160 caractères, Google tronque la description.'),
+      ],
     }),
     defineField({
       name: 'content',
@@ -86,33 +90,14 @@ export const post = defineType({
               { title: 'Gras', value: 'strong' },
               { title: 'Italique', value: 'em' },
             ],
-            annotations: [
-              defineArrayMember({
-                name: 'link',
-                title: 'Lien',
-                type: 'object',
-                icon: LinkIcon,
-                fields: [
-                  defineField({
-                    name: 'href',
-                    title: 'URL',
-                    type: 'url',
-                    validation: (rule) =>
-                      rule.uri({ scheme: ['http', 'https', 'mailto', 'tel'], allowRelative: true }),
-                  }),
-                ],
-              }),
-            ],
+            annotations: [linkAnnotation],
           },
         }),
         defineArrayMember({
           type: 'image',
           icon: ImageIcon,
           options: { hotspot: true },
-          fields: [
-            altField,
-            defineField({ name: 'caption', title: 'Légende', type: 'string' }),
-          ],
+          fields: [altField, defineField({ name: 'caption', title: 'Légende', type: 'string' })],
         }),
       ],
     }),
@@ -121,6 +106,6 @@ export const post = defineType({
     { title: 'Plus récents', name: 'publishedAtDesc', by: [{ field: 'publishedAt', direction: 'desc' }] },
   ],
   preview: {
-    select: { title: 'title', subtitle: 'subtitle', media: 'image' },
+    select: { title: 'title', subtitle: 'category', media: 'image' },
   },
 })

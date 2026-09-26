@@ -1,0 +1,163 @@
+/*
+ * Appel final — Figma 269:543 (desktop 1440).
+ * La carte (1280 × 529 à 1440, 44 px de marge interne) n'est pas un élément : c'est un aplat
+ * bleu nuit en ::before, à 48 px du haut et 100 px du bas de la section. La photo s'efface
+ * vers cet aplat par un masque : même rendu que le dégradé posé dessus dans le Figma.
+ * Mobile et tablette : la photo en bandeau en haut de la carte, le texte dessous, sur le bleu
+ * plein (contraste AA garanti quelle que soit la photo). À partir de 1024 px : la photo couvre
+ * la carte, texte en bas à gauche, boutons en bas à droite. À partir de 1280 px : le sur-titre
+ * passe à gauche du titre, comme dans le Figma (il n'y a pas la place avant).
+ */
+.getStarted {
+  --space-top: 3rem; /* 48 : air au-dessus de la carte */
+  --space-bottom: var(--section-space); /* 100 à 1440 */
+  --card-pad: 1.5rem; /* 24, puis 44 à partir de 810 px */
+  /* Valeurs du Figma absentes des tokens */
+  --color-title-muted: rgb(255 255 255 / 0.5); /* suite du titre : blanc à 50 % */
+  --text-lede-tracking: -0.023em; /* -0,322 px à 14 px */
+  /* Bandeau photo : fondu vers le bleu nuit sur sa moitié basse. */
+  --photo-fade: linear-gradient(#000 40%, transparent);
+  --card-fill: var(--color-surface-brand-deep);
+
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  align-content: end;
+  padding-block: calc(var(--space-top) + var(--card-pad)) calc(var(--space-bottom) + var(--card-pad));
+  padding-inline: calc(var(--page-inset) + var(--card-pad));
+  background: var(--color-surface);
+  color: var(--color-text-inverse);
+}
+
+/* La carte, en retrait de la page comme le contenu des autres sections. Une boîte plutôt
+   qu'un fond de la section : ses bords sont calés sur les pixels, comme ceux de la photo. */
+.getStarted::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset-block: var(--space-top) var(--space-bottom);
+  inset-inline: var(--page-inset);
+  background: var(--card-fill);
+}
+
+/* Bandeau : déborde de la marge interne pour toucher les bords de la carte. */
+.photo {
+  inline-size: calc(100% + 2 * var(--card-pad));
+  max-inline-size: none;
+  block-size: auto;
+  margin: calc(-1 * var(--card-pad)) calc(-1 * var(--card-pad)) 0.5rem;
+  object-fit: cover;
+  mask-image: var(--photo-fade);
+}
+
+.heading {
+  display: grid;
+  justify-items: start;
+  row-gap: 1.5rem; /* 24 : sur-titre → titre, comme les autres sections */
+}
+
+.title {
+  max-inline-size: 32.5241rem; /* 520.385 : largeur de la colonne titre du Figma */
+  font: var(--text-title-xl);
+  letter-spacing: var(--text-title-xl-tracking);
+}
+
+/* La suite du titre commence toujours sa propre ligne, comme dans le Figma, quelle que soit
+   la taille du titre (fluide) ou la longueur des textes saisis dans Sanity. L'espace posée
+   avant dans le TSX garde une phrase continue pour les lecteurs d'écran. */
+.muted {
+  display: block;
+  color: var(--color-title-muted);
+}
+
+.text {
+  max-inline-size: 28.75rem; /* 460 */
+  margin-block-start: 1.5rem; /* 24 */
+  color: var(--color-text-on-brand-muted);
+  letter-spacing: var(--text-lede-tracking);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem; /* 16 */
+  margin-block-start: 2rem; /* 32 */
+}
+
+@media (min-width: 50.625rem) {
+  .getStarted {
+    --card-pad: 2.75rem; /* 44 */
+  }
+
+  /* Bandeau au cadrage de la carte du Figma (1280 × 529). */
+  .photo {
+    aspect-ratio: 1280 / 529;
+  }
+}
+
+@media (min-width: 64rem) {
+  .getStarted {
+    grid-template-columns: minmax(0, 32.5241rem) auto;
+    justify-content: space-between;
+    column-gap: 3rem; /* 48 au minimum entre le texte et les boutons */
+    min-block-size: calc(var(--space-top) + 33.0625rem + var(--space-bottom)); /* carte : 529 */
+    /* Le dégradé du Figma, en deux temps : la photo s'efface selon ses arrêts, sur un aplat
+       qui en suit les couleurs (bleu #193c80 → bleu nuit), teinte de mi-hauteur comprise. */
+    --photo-fade: linear-gradient(182.37deg, #000 4.5464%, transparent 85.851%);
+    --card-fill: linear-gradient(
+      182.37deg,
+      var(--color-surface-brand) 4.5464%,
+      var(--color-surface-brand-deep) 85.851%
+    );
+  }
+
+  /* La photo couvre toute la carte, sous le texte. */
+  .photo {
+    position: absolute;
+    z-index: -1;
+    inset-block-start: var(--space-top);
+    inset-inline-start: var(--page-inset);
+    inline-size: calc(100% - 2 * var(--page-inset));
+    block-size: calc(100% - var(--space-top) - var(--space-bottom));
+    margin: 0;
+    aspect-ratio: auto;
+  }
+
+  .heading,
+  .text {
+    grid-column: 1;
+  }
+
+  /* Calés sur le bas du texte. */
+  .actions {
+    grid-column: 2;
+    grid-row: 2;
+    align-self: end;
+    margin-block-start: 0;
+  }
+}
+
+@media (min-width: 80rem) {
+  .getStarted {
+    grid-template-columns: auto minmax(0, 32.5241rem) 1fr;
+    /* 72 = 60 d'écart + 12 de marge droite du calque « item » du sur-titre */
+    column-gap: 4.5rem;
+  }
+
+  /* Sur-titre et titre côte à côte, alignés en haut ; le texte reste sous le titre. */
+  .heading {
+    grid-column: 1 / 3;
+    grid-template-columns: subgrid;
+    align-items: start;
+  }
+
+  .text {
+    grid-column: 2;
+  }
+
+  .actions {
+    grid-column: 3;
+    justify-self: end;
+  }
+}

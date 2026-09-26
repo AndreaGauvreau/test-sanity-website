@@ -1,0 +1,16 @@
+.notFound {
+  display: grid;
+  justify-items: start;
+  gap: 1.75rem;
+  padding-block: var(--section-space);
+  padding-inline: var(--page-inset);
+}
+
+.title {
+  font: var(--text-display);
+  letter-spacing: var(--text-display-tracking);
+}
+
+.text {
+  color: var(--color-text-muted);
+}

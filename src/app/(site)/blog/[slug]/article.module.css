@@ -1,0 +1,79 @@
+/* Article, provisoire : colonne de lecture de 720 px, styles de texte du Figma. */
+.article {
+  max-inline-size: calc(45rem + 2 * var(--gutter));
+  margin-inline: auto;
+  padding: var(--section-space) var(--gutter);
+}
+
+.header {
+  display: grid;
+  gap: 1rem;
+  margin-block-end: 2.5rem;
+}
+
+.category {
+  color: var(--color-text-accent);
+  font: var(--text-label-strong);
+}
+
+.title {
+  font: var(--text-title-xl);
+  letter-spacing: var(--text-title-xl-tracking);
+  text-wrap: balance;
+}
+
+.excerpt,
+.meta {
+  color: var(--color-text-muted);
+}
+
+.article img {
+  inline-size: 100%;
+  block-size: auto;
+}
+
+/* Texte long : plus grand et plus aéré que le texte courant des sections. */
+.content {
+  margin-block-start: 2.5rem;
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.content > * + * {
+  margin-block-start: 1em;
+}
+
+.content h2 {
+  margin-block-start: 2em;
+  font: var(--text-title-lg);
+  letter-spacing: var(--text-title-lg-tracking);
+}
+
+.content h3 {
+  margin-block-start: 1.5em;
+  font: var(--text-title-md);
+  letter-spacing: var(--text-title-md-tracking);
+}
+
+.content ul,
+.content ol {
+  padding-inline-start: 1.5rem;
+}
+
+/* Filet orange des listes de la section « Customer story ». */
+.content blockquote {
+  padding-inline-start: 1.25rem;
+  border-inline-start: 1.5px solid var(--color-accent);
+  color: var(--color-text-muted);
+}
+
+.content a {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.content figcaption {
+  margin-block-start: 0.5rem;
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+}

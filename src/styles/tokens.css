@@ -1,0 +1,104 @@
+/*
+ * Design tokens — relevés sur toute la page Figma « Get Conduit — client » (Solution Pages,
+ * Desktop 1440). Le fichier n'a pas de variables Figma : valeurs brutes, regroupées ici.
+ * Les composants n'utilisent que les rôles (2e bloc), jamais la palette directement.
+ */
+:root {
+  color-scheme: light;
+
+  /* --- Palette ---------------------------------------------------------------------- */
+
+  --color-orange-500: #ff5100;
+  --color-blue-100: #d1d8e6;
+  --color-blue-700: #193c80;
+  --color-blue-900: #0c2a62;
+
+  --color-neutral-0: #ffffff;
+  --color-neutral-50: #f9f9f9;
+  --color-neutral-100: #f5f5f5;
+  --color-neutral-200: #e7e7e7;
+  --color-neutral-400: #b3b3b3;
+  --color-neutral-600: #717278;
+  --color-neutral-800: #34353e;
+  --color-neutral-900: #232325;
+  --color-neutral-1000: #000000;
+  --color-slate-50: #f8fafb;
+
+  /* --- Rôles -------------------------------------------------------------------------- */
+
+  --color-text: var(--color-neutral-900);
+  --color-text-muted: var(--color-neutral-600);
+  --color-text-accent: var(--color-orange-500);
+  --color-text-inverse: var(--color-neutral-0);
+  --color-text-inverse-muted: var(--color-neutral-400);
+  --color-text-on-brand-muted: var(--color-blue-100);
+
+  --color-surface: var(--color-neutral-0);
+  --color-surface-subtle: var(--color-slate-50);
+  --color-surface-muted: var(--color-neutral-100);
+  --color-surface-dark: var(--color-neutral-800);
+  --color-surface-brand: var(--color-blue-700);
+  --color-surface-brand-deep: var(--color-blue-900);
+
+  --color-border: var(--color-neutral-100);
+  /* Emplacements « ILLUSTRATION PLACEHOLDER » du Figma : fond et cadre pointillé. */
+  --color-placeholder-surface: var(--color-neutral-50);
+  --color-placeholder-border: var(--color-neutral-200);
+  --color-accent: var(--color-orange-500);
+
+  --color-action-text: var(--color-neutral-1000);
+  --color-action-surface: var(--color-neutral-50);
+
+  /* --- Typographie ------------------------------------------------------------------ */
+
+  /* --font-geist et --font-geist-mono : next/font, posées sur <html> (app/layout.tsx). */
+  --font-sans: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+  /* Titre du hero uniquement. Pas de webfont sous licence pour l'instant : la police
+     s'affiche si elle est installée sur le poste, sinon Geist prend le relais. */
+  --font-display: "Suisse Int'l", var(--font-sans);
+
+  /* Styles de texte : `font` + `letter-spacing`, par paire.
+     Les grandes tailles sont fluides et atteignent la valeur Figma à 1440 px. */
+  --text-display: 400 clamp(2rem, 1.5rem + 1.1111vw, 2.5rem) / 1 var(--font-display); /* 40 */
+  --text-display-tracking: -0.04em;
+
+  --text-title-xl: 500 clamp(1.75rem, 1.25rem + 1.1111vw, 2.25rem) / 1 var(--font-sans); /* 36 */
+  --text-title-xl-tracking: -0.04em;
+  --text-title-lg: 500 1.5rem / 1.2 var(--font-sans); /* 24 */
+  --text-title-lg-tracking: -0.04em;
+  --text-title-md: 500 1.125rem / 1.4 var(--font-sans); /* 18 */
+  --text-title-md-tracking: -0.04em;
+  --text-title-sm: 500 1rem / 1.2 var(--font-sans); /* 16 */
+  --text-title-sm-tracking: -0.04em;
+
+  --text-quote: 500 1.25rem / 1.5 var(--font-sans); /* 20 */
+  --text-quote-tracking: -0.02em;
+  --text-stat: 500 clamp(2.5rem, 2.3333rem + 0.7407vw, 3rem) / 1.4 var(--font-sans); /* 48 */
+  --text-stat-tracking: -0.011em;
+
+  /* 14 sur 18 : Figma arrondit l'interligne 130 % (18,2) à 18 px par ligne. */
+  --text-body: 400 0.875rem / 1.2857 var(--font-sans); /* 14 / 18 */
+  --text-body-strong: 500 0.875rem / 1.2857 var(--font-sans);
+  --text-body-tracking: -0.016em;
+  --text-label: 400 0.875rem / 1.4 var(--font-sans); /* sur-titres */
+  --text-label-strong: 500 0.875rem / 1.4 var(--font-sans); /* liens « See more » */
+  --text-label-tracking: -0.011em;
+  --text-caption: 500 0.75rem / 1.55 var(--font-sans); /* 12, notes G2 / Capterra */
+  --text-caption-tracking: 0.04em;
+  --text-button: 500 0.75rem / 1.4 var(--font-mono); /* 12, capitales */
+  --text-button-tracking: -0.011em;
+
+  /* --- Mise en page ----------------------------------------------------------------- */
+
+  --page-max: 80rem; /* 1280 */
+  --gutter: clamp(1.5rem, 5.5556vw, 5rem); /* 24 → 80 à 1440 */
+  /* Retrait latéral d'une section pleine largeur : contenu centré sur 1280 px max. */
+  --page-inset: max(var(--gutter), (100% - var(--page-max)) / 2);
+
+  --section-space: clamp(4rem, 3.25rem + 3.3333vw, 6.25rem); /* 64 → 100 */
+  --section-space-lg: clamp(4.5rem, 3.5rem + 4.4444vw, 7.5rem); /* 72 → 120 */
+
+  --header-height: 4.125rem; /* 66, emplacement réservé */
+  --footer-height: 46.25rem; /* 740, emplacement réservé */
+}

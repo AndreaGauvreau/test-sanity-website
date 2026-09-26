@@ -1,0 +1,161 @@
+/*
+ * Intégrations — Figma 269:347 (desktop 1440).
+ * Mobile : tout empilé dans l'ordre du DOM, logos sur deux colonnes.
+ * À partir de 810 px : titre et chiffre côte à côte, logos sur quatre colonnes, pleine largeur.
+ * À partir de 1024 px : la maquette. À gauche, le titre en haut, le texte et le lien en bas ;
+ * à droite, le chiffre puis la grille de logos, calée en bas sur le lien.
+ */
+.integrations {
+  --gap: 1.5rem; /* 24 : sur-titre → titre, texte → lien */
+  --gap-stat: 3rem; /* 48 : lien → chiffre sur mobile, chiffre → logos (Figma) */
+  /* Titre : -1,08 px à 36 px dans le Figma ; le jeton title-xl est à -0.04em. */
+  --title-tracking: -0.03em;
+
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  padding-block: var(--section-space);
+  padding-inline: var(--page-inset);
+}
+
+.heading {
+  display: grid;
+  row-gap: var(--gap);
+}
+
+.title {
+  max-inline-size: 28.75rem; /* 460 */
+  font: var(--text-title-xl);
+  letter-spacing: var(--title-tracking);
+  text-wrap: balance;
+}
+
+.body {
+  max-inline-size: 28.75rem; /* 460 */
+  margin-block-start: var(--gap);
+  color: var(--color-text-muted);
+}
+
+/* Flex : le lien (inline-flex) ne s'assoit pas sur une ligne de texte, pas d'air en dessous. */
+.action {
+  display: flex;
+  margin-block-start: var(--gap);
+}
+
+/* Chiffre au-dessus de sa légende, 3 px d'écart. */
+.stat {
+  display: grid;
+  row-gap: 0.1875rem; /* 3 */
+  justify-self: start;
+  margin-block-start: var(--gap-stat);
+}
+
+.statValue {
+  color: var(--color-text-accent);
+  font: var(--text-stat);
+  letter-spacing: var(--text-stat-tracking);
+}
+
+.statLabel {
+  color: var(--color-text-muted);
+  font: var(--text-label);
+  letter-spacing: var(--text-label-tracking);
+}
+
+.logos {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem; /* 12 */
+  margin-block-start: var(--gap);
+  padding: 0;
+  list-style: none;
+}
+
+/* Tuile 174 × 140 à 1440 : elle garde ses proportions, le logo reste centré à sa taille. */
+.logo {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 174 / 140;
+  background: var(--color-surface-subtle);
+}
+
+/* Taille d'origine du SVG, plutôt que les attributs arrondis posés par next/image. */
+.logo > img {
+  inline-size: auto;
+  block-size: auto;
+}
+
+/* Tracés légèrement décentrés dans leur cadre Figma (76 × 32 et 98,5 × 32) : on reprend
+   le décalage pour que le logo tombe au même endroit dans la tuile. */
+.pfizer {
+  translate: -0.0459rem 0.0431rem; /* -0,73 0,69 */
+}
+
+.americanAirlines {
+  translate: 0.0175rem -0.0965rem; /* 0,28 -1,54 */
+}
+
+@media (min-width: 50.625rem) {
+  .integrations {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "heading stat"
+      "body    ."
+      "action  ."
+      "logos   logos";
+    column-gap: var(--gap-stat);
+  }
+
+  .heading {
+    grid-area: heading;
+  }
+
+  .body {
+    grid-area: body;
+  }
+
+  .action {
+    grid-area: action;
+  }
+
+  /* À droite du titre, calé sur son bas. Largeur plafonnée : une légende longue passe à la
+     ligne au lieu d'élargir sa colonne et d'écraser le titre (colonne auto de 810 à 1023). */
+  .stat {
+    grid-area: stat;
+    justify-self: end;
+    align-self: end;
+    max-inline-size: 15rem; /* 240 : la légende du Figma (≈ 229) tient sur une ligne */
+    margin-block-start: 0;
+  }
+
+  .logos {
+    grid-area: logos;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    margin-block-start: var(--gap-stat);
+  }
+}
+
+/* Deux colonnes, dans le rapport de la maquette (460 / 732, 88 d'écart à 1440).
+   La rangée souple (1fr) s'ouvre sous le titre à la hauteur que demandent chiffre et logos. */
+@media (min-width: 64rem) {
+  .integrations {
+    grid-template-columns: minmax(0, 460fr) minmax(0, 732fr);
+    grid-template-rows: auto 1fr auto auto;
+    grid-template-areas:
+      "heading stat"
+      ".       logos"
+      "body    logos"
+      "action  logos";
+    column-gap: clamp(3rem, 6.1111vw, 5.5rem); /* 48 → 88 à 1440 */
+  }
+
+  /* Dans le Figma, le bas du chiffre est 3 px au-dessus du bas du titre (221 contre 224). */
+  .stat {
+    margin-block-end: 0.1875rem; /* 3 */
+  }
+
+  /* 45 sous le bas du titre, soit 48 sous le chiffre, comme dans le Figma. */
+  .logos {
+    align-self: end;
+    margin-block-start: 2.8125rem; /* 45 */
+  }
+}

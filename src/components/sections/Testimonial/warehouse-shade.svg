@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1681" height="694" viewBox="0 0 1681 694" preserveAspectRatio="none">
+  <!-- Ombres posées sur la photo (Figma 269:335 et 269:336), dans la boîte de la photo :
+       dégradé linéaire 64,46°, halo radial qui dégage le chariot, puis voile linéaire 65,70°. -->
+  <defs>
+    <linearGradient id="shade" gradientUnits="userSpaceOnUse" x1="21.24" y1="738.46" x2="1659.76" y2="-44.46">
+      <stop offset="0.05391" stop-opacity="0"/>
+      <stop offset="0.93459" stop-opacity="0.48"/>
+    </linearGradient>
+    <radialGradient id="halo" gradientUnits="userSpaceOnUse" cx="0" cy="0" r="10" gradientTransform="matrix(36.7 -47.25 114.45 88.894 704 694)">
+      <stop offset="0.4411" stop-opacity="0"/>
+      <stop offset="1" stop-opacity="0.48"/>
+    </radialGradient>
+    <linearGradient id="veil" gradientUnits="userSpaceOnUse" x1="12.18" y1="720.98" x2="1668.82" y2="-26.98">
+      <stop offset="0.054404" stop-opacity="0"/>
+      <stop offset="0.84456" stop-opacity="0.31"/>
+    </linearGradient>
+  </defs>
+  <rect width="1681" height="694" fill="url(#shade)"/>
+  <rect width="1681" height="694" fill="url(#halo)"/>
+  <rect width="1681" height="694" fill="url(#veil)"/>
+</svg>

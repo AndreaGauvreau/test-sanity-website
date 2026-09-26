@@ -1,0 +1,191 @@
+/*
+ * Conduit System — Figma 269:232 (desktop 1440).
+ * Mobile : tout empilé dans l'ordre du DOM. À partir de 810 px : chapô et bouton côte à côte
+ * (bouton aligné en bas, à droite), modules sur trois colonnes. À partir de 1024 px :
+ * l'agencement du Figma, sur-titre seul dans une colonne de 190 px et tout le reste aligné
+ * sur le titre.
+ */
+.system {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  padding-block: var(--section-space-lg);
+  padding-inline: var(--page-inset);
+}
+
+.heading {
+  display: grid;
+  row-gap: 1rem; /* 16 : sur-titre au-dessus du titre, tant qu'ils sont empilés */
+  align-items: start;
+}
+
+.title {
+  font: var(--text-title-xl);
+  letter-spacing: var(--text-title-xl-tracking);
+  text-wrap: balance;
+}
+
+.lede {
+  max-inline-size: 28.75rem; /* 460 */
+  margin-block-start: 1.5rem; /* 24 */
+  color: var(--color-text-muted);
+}
+
+.cta {
+  justify-self: start;
+  margin-block-start: 1.75rem; /* 28 */
+}
+
+/* Emplacement de l'illustration : surface vide, au format du Figma, en attendant le visuel. */
+.visual {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1090 / 520;
+  margin-block-start: 2.5rem; /* 40 */
+  background: var(--color-surface-subtle);
+}
+
+/* Cadre pointillé centré, sans son libellé, en attendant l'illustration :
+   332,7 × 101,9 dans 1090 × 520 au Figma, gardé en proportion à toutes les largeurs. */
+.visual::before {
+  content: "";
+  inline-size: 30.526%; /* 332,7 / 1090 */
+  aspect-ratio: 332.735 / 101.91;
+  border: 1px dashed var(--color-placeholder-border);
+  background: var(--color-placeholder-surface);
+}
+
+.modules {
+  display: grid;
+  row-gap: 2.5rem; /* 40 */
+  margin-block-start: 2.5rem; /* 40 */
+  padding: 0;
+  list-style: none;
+}
+
+.module {
+  display: flex;
+  flex-direction: column;
+  align-items: start;
+}
+
+.moduleTitle {
+  font: var(--text-title-md);
+  letter-spacing: var(--text-title-md-tracking);
+}
+
+.moduleText {
+  max-inline-size: 19.375rem; /* 310 */
+  margin-block-start: 0.75rem; /* 12 */
+  color: var(--color-text-muted);
+}
+
+/* Lien « See more » : libellé orange suivi d'un triangle ▸. La zone de clic gagne 2,4 px en
+   haut et en bas (24 px de haut) sans bouger la mise en page : marges négatives. */
+.more {
+  --tap: 0.15rem; /* 2,4 : 19,6 + 2 × 2,4 ≥ 24 */
+
+  display: inline-flex;
+  align-items: center;
+  gap: 0.625rem; /* 10 */
+  margin-block: calc(1.25rem - var(--tap)) calc(-1 * var(--tap)); /* 20 au-dessus */
+  padding-block: var(--tap);
+  color: var(--color-text-accent);
+  font: var(--text-label-strong);
+  letter-spacing: var(--text-label-tracking);
+  text-decoration: none;
+}
+
+.more:hover {
+  text-decoration: underline;
+  text-decoration-thickness: from-font;
+  text-underline-position: from-font;
+}
+
+/* Triangle décoratif (calque « Polygon 1 ») : pointe en haut dans le fichier, posé dans un
+   carré de 8 px puis tourné d'un quart de tour, comme dans le Figma. */
+.more::after {
+  content: "";
+  flex: none;
+  inline-size: 0.5rem; /* 8 */
+  block-size: 0.5rem;
+  /* 0,68 × 0,2 px de retrait, 6,64 × 5,8 px : cotes du calque dans son carré */
+  background: url("./triangle.svg") no-repeat 0.04265rem 0.0125rem / 0.41475rem 0.3625rem;
+  rotate: 90deg;
+}
+
+@media (min-width: 50.625rem) {
+  .system {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .heading,
+  .visual,
+  .modules {
+    grid-column: 1 / -1;
+  }
+
+  .lede {
+    grid-column: 1;
+  }
+
+  .cta {
+    grid-column: -2;
+    align-self: end;
+    justify-self: end;
+    margin-block-start: 0;
+    margin-inline-start: 2rem; /* 32 au moins entre chapô et bouton */
+  }
+
+  .visual {
+    margin-block-start: 3rem; /* 48 */
+  }
+
+  /* Colonnes de 356,67 px à 10 px d'écart à 1440, comme le Figma ; la marge de fin tient
+     le texte à distance de la colonne suivante quand elles rétrécissent. */
+  .modules {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    column-gap: 0.625rem; /* 10 */
+    margin-block-start: 3rem; /* 48 */
+  }
+
+  .module {
+    padding-inline-end: 2rem; /* 32 */
+  }
+
+  .moduleText {
+    margin-block-start: 1.25rem; /* 20 */
+  }
+
+  .more {
+    margin-block-start: calc(2.25rem - var(--tap)); /* 36 */
+  }
+}
+
+@media (min-width: 64rem) {
+  /* 190 = sur-titre (130) + 60 d'écart dans le Figma. */
+  .system {
+    grid-template-columns: 11.875rem minmax(0, 1fr) auto;
+  }
+
+  /* Sur-titre et titre sur la même ligne, dans les colonnes de la section. */
+  .heading {
+    grid-template-columns: subgrid;
+  }
+
+  .eyebrow {
+    grid-area: 1 / 1;
+  }
+
+  .title {
+    grid-area: 1 / 2 / auto / -1;
+  }
+
+  .lede {
+    grid-column: 2;
+  }
+
+  .visual,
+  .modules {
+    grid-column: 2 / -1;
+  }
+}

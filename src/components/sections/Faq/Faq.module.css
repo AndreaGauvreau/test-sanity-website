@@ -1,0 +1,147 @@
+/*
+ * FAQ — Figma 269:456 (desktop 1440).
+ * Mobile : titre, questions, carte d'aide, empilés dans l'ordre du DOM.
+ * À partir de 810 px : deux colonnes. À gauche le titre en haut et la carte d'aide calée en
+ * bas ; à droite les questions, sur toute la hauteur. Proportions du Figma (607 / 573 à 1440,
+ * 100 px d'écart) quand la place le permet ; plus étroit, la colonne des questions garde sa
+ * largeur minimale et c'est la colonne de gauche, surtout du vide, qui cède.
+ */
+.faq {
+  display: grid;
+  row-gap: 2.5rem; /* 40 */
+  padding-block: var(--section-space);
+  padding-inline: var(--page-inset);
+}
+
+.heading {
+  display: grid;
+  justify-items: start;
+  row-gap: 1.5rem; /* 24 : sur-titre → titre */
+}
+
+.title {
+  font: var(--text-title-xl);
+  letter-spacing: var(--text-title-xl-tracking);
+  text-wrap: balance;
+}
+
+/* --- Questions ------------------------------------------------------------------------ */
+
+.questions {
+  display: grid;
+  align-content: start;
+  row-gap: 0.75rem; /* 12 sur mobile : liste plus dense ; 28 dans le Figma desktop */
+  padding: 0;
+  list-style: none;
+}
+
+/* Ligne de question : 56 px de haut avec le filet, comme le calque « main-faq »
+   (16 px d'air au-dessus, le filet de 1 px pris sur les 16 px du dessous). */
+.question {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem; /* 16 */
+  padding-block: 1rem calc(1rem - 1px); /* 16 / 15 + filet de 1 */
+  border-block-end: 1px solid var(--color-border);
+  font: var(--text-body-strong);
+  letter-spacing: var(--text-body-tracking);
+  list-style: none;
+  cursor: pointer;
+}
+
+/* Marqueur natif retiré (Safari) : le + / − le remplace. */
+.question::-webkit-details-marker {
+  display: none;
+}
+
+/* Icône décorative : + fermé, − ouvert, à la couleur d'accent (orange dans le Figma).
+   Le SVG sert de masque : la couleur vient du token, pas du fichier. */
+.question::after {
+  content: "";
+  flex: none;
+  inline-size: 1.5rem; /* 24 */
+  block-size: 1.5rem; /* 24 */
+  background-color: var(--color-accent);
+  mask: url("./plus.svg") no-repeat center / contain;
+}
+
+.item[open] > .question::after {
+  mask-image: url("./minus.svg");
+}
+
+.question:focus-visible {
+  outline-offset: 0.25rem; /* 4 */
+}
+
+.answer {
+  padding-block: 1rem; /* 16 */
+  color: var(--color-text-muted);
+}
+
+/* Une ligne vide entre les paragraphes, comme dans le Figma. */
+.answer p + p {
+  margin-block-start: 1.3em;
+}
+
+.answer a {
+  text-decoration-thickness: from-font;
+  text-underline-position: from-font;
+}
+
+/* --- Carte d'aide --------------------------------------------------------------------- */
+
+.support {
+  container-type: inline-size;
+  display: grid;
+  justify-items: start;
+  row-gap: 1.75rem; /* 28 : texte → bouton */
+  padding: 1.5rem; /* 24 sur mobile, 32 dans le Figma */
+  background: var(--color-surface-brand);
+  color: var(--color-text-inverse);
+}
+
+.supportText {
+  font: var(--text-title-lg);
+  letter-spacing: var(--text-title-lg-tracking);
+  text-wrap: balance;
+}
+
+/* Le retour à la ligne saisi dans l'admin (deux lignes dans le Figma) n'est gardé que si la
+   carte est assez large pour chaque ligne ; plus étroite, le texte s'équilibre librement
+   au lieu de laisser un mot seul avant la coupure. 400 ≈ « Conduit is always available… ». */
+@container (min-width: 25rem) { /* 400 */
+  .supportText {
+    white-space: pre-line;
+  }
+}
+
+@media (min-width: 50.625rem) { /* 810 */
+  .faq {
+    /* Questions : 573fr comme dans le Figma, mais jamais moins de 472 px (la plus longue
+       question tient sur une ligne avec son icône) ni, sous ~860 px, plus de 55 % de la
+       largeur, pour laisser de la place à la carte d'aide. Gauche : le reste. */
+    grid-template-columns: minmax(0, 607fr) minmax(min(29.5rem /* 472 */, 55%), 573fr);
+    grid-template-rows: auto 1fr;
+    grid-template-areas:
+      "heading questions"
+      "support questions";
+    /* 100 à 1440, ramené à ~56 à 810 pour laisser de la place aux colonnes. */
+    column-gap: clamp(3rem, 6.9444vw, 6.25rem); /* 48 → 100 */
+  }
+
+  .heading {
+    grid-area: heading;
+  }
+
+  .questions {
+    grid-area: questions;
+    row-gap: 1.75rem; /* 28 */
+  }
+
+  .support {
+    grid-area: support;
+    align-self: end;
+    padding: 2rem; /* 32 */
+  }
+}

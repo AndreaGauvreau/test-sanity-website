@@ -1,0 +1,31 @@
+/*
+ * Sur-titre (Figma 269:235 et suivants) : pastille de 8 px + libellé 14 px, 10 px d'écart.
+ * La boîte reprend celle du calque (28 px de haut, 8 px d'air au-dessus du libellé) : les
+ * écarts relevés dans le Figma entre sur-titre et titre s'appliquent tels quels.
+ */
+.eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem; /* 10 */
+  min-block-size: 1.75rem; /* 28, la boîte du calque (le libellé seul fait 19,6) */
+  padding-block-start: 0.5rem; /* 8 */
+  font: var(--text-label);
+  letter-spacing: var(--text-label-tracking);
+}
+
+.eyebrow::before {
+  content: "";
+  flex: none;
+  inline-size: 0.5rem;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.accent {
+  color: var(--color-text-accent);
+}
+
+.inverse {
+  color: var(--color-text-inverse);
+}

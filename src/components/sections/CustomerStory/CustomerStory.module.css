@@ -1,0 +1,145 @@
+/*
+ * Étude de cas — Figma 269:305 (desktop 1440).
+ * Mobile : tout empilé dans l'ordre du DOM. À partir de 810 px : titre, lien et illustration
+ * sur toute la largeur ; le résumé dans la colonne de droite ; chiffres clés à gauche et
+ * résultats à droite, sur une même rangée, sous un filet qui court sur toute la largeur.
+ */
+.customerStory {
+  --rule: 1px solid var(--color-border);
+  --gap-rule: 2rem; /* 32 : contenu → filet, et filet → contenu */
+
+  display: grid;
+  /* Chaque élément garde sa largeur propre (le lien, l'illustration) ; ceux qui doivent
+     s'étirer le disent. */
+  justify-items: start;
+  /* En bas, 2 px de plus que le jeton : 102 à 1440 sous les chiffres clés, comme le Figma. */
+  padding-block: var(--section-space) calc(var(--section-space) + 0.125rem); /* +2 */
+  padding-inline: var(--page-inset);
+}
+
+.heading {
+  justify-self: stretch;
+  display: grid;
+  row-gap: 1.5rem; /* 24 : sur-titre → titre */
+  margin-block-end: 1.75rem; /* 28 : titre → lien */
+}
+
+/* Coupure du Figma (« How Prism Logistics / increased throughput by 20% ») : c'est
+   l'équilibrage des lignes dans 520 px qui la donne, et il suit les textes de l'admin. */
+.title {
+  max-inline-size: 32.5rem; /* 520 */
+  font: var(--text-title-xl);
+  letter-spacing: var(--text-title-xl-tracking);
+  text-wrap: balance;
+}
+
+/* En attendant l'illustration : cadre pointillé vide, aux cotes du Figma (332,7 × 101,9). */
+.illustration {
+  justify-self: center;
+  inline-size: min(100%, 20.7959rem); /* 332.7 */
+  aspect-ratio: 332.735 / 101.91;
+  margin-block: var(--gap-rule);
+  border: 1px dashed var(--color-placeholder-border);
+  background: var(--color-placeholder-surface);
+}
+
+/* 420 et non 422 (la colonne) : le rendu Figma, un peu plus large que celui des
+   navigateurs, coupe « to cut / emails » ; 2 px de moins donnent la même coupure. */
+.summary {
+  justify-self: stretch;
+  max-inline-size: 26.25rem; /* 420 */
+  color: var(--color-text-muted);
+}
+
+/* Chiffres clés : colonnes égales sur mobile (les légendes passent à la ligne au besoin). */
+.stats {
+  justify-self: stretch;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  column-gap: 1.5rem; /* 24 */
+  margin-block-start: var(--gap-rule);
+  padding-block-start: var(--gap-rule);
+  border-block-start: var(--rule);
+}
+
+.stat {
+  display: grid;
+  align-content: start;
+  row-gap: 0.1875rem; /* 3 */
+}
+
+.value {
+  color: var(--color-text-accent);
+  font: var(--text-stat);
+  letter-spacing: var(--text-stat-tracking);
+}
+
+.label {
+  color: var(--color-text-muted);
+  font: var(--text-label);
+  letter-spacing: var(--text-label-tracking);
+}
+
+.results {
+  /* Absent des jetons : le texte des résultats du Figma (14,489 px, -0,3332 px), un peu plus
+     grand que le corps de texte ; même interlignage (1,3). */
+  --text-result-size: 0.9056rem; /* 14.489 */
+  --text-result-tracking: -0.023em; /* -0.3332px */
+
+  justify-self: stretch;
+  display: grid;
+  align-content: start;
+  row-gap: 1rem; /* 16 */
+  margin-block-start: var(--gap-rule);
+  padding-block-start: var(--gap-rule);
+  padding-inline: 0;
+  border-block-start: var(--rule);
+  list-style: none;
+}
+
+/* Trait orange de 1,5 px devant chaque résultat, 20 px avant le texte. */
+.result {
+  padding-inline: 1.25rem; /* 20 */
+  border-inline-start: 0.09375rem solid var(--color-accent); /* 1.5 */
+  color: var(--color-text-muted);
+  font-size: var(--text-result-size);
+  letter-spacing: var(--text-result-tracking);
+}
+
+@media (min-width: 50.625rem) {
+  /* Colonne de droite : 422 px à 1440, 45 % de la largeur plus bas, pour que les deux
+     chiffres tiennent côte à côte à gauche. Pas d'écart entre les colonnes : les filets des
+     chiffres et des résultats se rejoignent en un seul. */
+  .customerStory {
+    grid-template-columns: minmax(0, 1fr) minmax(0, min(26.375rem, 45%));
+  }
+
+  .heading,
+  .illustration {
+    grid-column: 1 / -1;
+  }
+
+  /* Collée sous le lien, centrée sur la section ; 34 px avant le résumé. */
+  .illustration {
+    margin-block: 0 2.125rem;
+  }
+
+  .summary {
+    grid-column: 2;
+  }
+
+  /* Chiffres à leur largeur naturelle : 112 px d'écart à 1440, moins quand la colonne
+     rétrécit ; 24 px gardés avant le trait des résultats (le filet, lui, continue). */
+  .stats {
+    grid-column: 1;
+    grid-auto-columns: auto;
+    justify-content: start;
+    column-gap: min(7rem, 13.5%);
+    padding-inline-end: 1.5rem; /* 24 */
+  }
+
+  .results {
+    grid-column: 2;
+  }
+}

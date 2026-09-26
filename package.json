@@ -9,7 +9,8 @@
     "prod": "npm run build && next start -H 127.0.0.1 -p ${PORT:-4040}",
     "studio": "SANITY_STUDIO_STANDALONE=true sanity dev",
     "deploy:studio": "SANITY_STUDIO_STANDALONE=true SANITY_STUDIO_HOSTED=true sanity deploy",
-    "seed": "sanity exec scripts/seed.ts --with-user-token",
+    "seed": "sanity exec scripts/seed.ts --with-user-token --",
+    "cleanup:legacy": "sanity exec scripts/cleanup-legacy.ts --with-user-token",
     "touch": "sanity exec scripts/touch.ts --with-user-token --",
     "typegen": "sanity schemas extract --force && sanity typegen generate",
     "typecheck": "next typegen && tsc --noEmit"
