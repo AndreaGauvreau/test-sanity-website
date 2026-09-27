@@ -1,0 +1,76 @@
+/* Figma « Status select » 468:1971 : H gap 4, pad 2 6 2 8, rayon 5 ; live bg/tint/info + text/link ;
+   draft bg/tint/neutral + text/secondary ; changed bg/tint/warning + interactive/warning. */
+.pill {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: var(--k-space-4);
+  padding: 2px 6px 2px 8px;
+  border: 0;
+  border-radius: var(--k-radius-sm);
+  font: var(--k-text-body-small);
+  letter-spacing: var(--k-text-body-small-tracking);
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    filter var(--k-duration-fast) ease,
+    transform var(--k-duration-fast) var(--k-ease-out);
+}
+
+.static {
+  padding-right: 8px;
+  cursor: default;
+}
+
+.live {
+  background-color: var(--k-bg-tint-info);
+  color: var(--k-text-link);
+  --k-icon-current: var(--k-icon-primary);
+}
+
+.draft {
+  background-color: var(--k-bg-tint-neutral);
+  color: var(--k-text-secondary);
+  --k-icon-current: var(--k-icon-default);
+}
+
+.changed {
+  background-color: var(--k-bg-tint-warning);
+  color: var(--k-interactive-warning);
+  --k-icon-current: var(--k-icon-warning);
+}
+
+/* Survol : la teinte s'éclaircit (pas d'état Figma dédié). */
+button.pill:hover:not(:disabled),
+button.pill[aria-expanded='true'] {
+  filter: brightness(1.25);
+}
+
+button.pill:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+button.pill:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.label {
+  line-height: 15px;
+}
+
+.chevron {
+  flex-shrink: 0;
+  transition: transform var(--k-duration-fast) var(--k-ease-in-out);
+}
+
+button.pill[aria-expanded='true'] .chevron {
+  transform: rotate(180deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pill,
+  .chevron {
+    transition: none;
+  }
+}

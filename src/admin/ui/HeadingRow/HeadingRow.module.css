@@ -1,0 +1,52 @@
+/* Figma « Heading row » 338:1337 : H gap 8, pad 4 8 (gauche 8/24/40/56 selon le niveau), radius/sm. */
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--k-space-8);
+  min-width: 0;
+  padding: var(--k-space-4) var(--k-space-8);
+  border-radius: var(--k-radius-sm);
+  list-style: none;
+  --k-icon-current: var(--k-icon-default);
+}
+
+.warning {
+  background-color: var(--k-bg-tint-warning);
+  --k-icon-current: var(--k-icon-warning);
+}
+
+/* Pastille de niveau : pad 1 4, radius/sm, bg/subtle, Label Small text/secondary. */
+.level {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  padding: 1px var(--k-space-4);
+  border-radius: var(--k-radius-sm);
+  background-color: var(--k-bg-subtle);
+  color: var(--k-text-secondary);
+  font: var(--k-text-label-small);
+  letter-spacing: var(--k-text-label-small-tracking);
+}
+
+.text {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: var(--k-text-secondary);
+  font: var(--k-text-body);
+  letter-spacing: var(--k-text-body-tracking);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.note {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: var(--k-space-4);
+  color: var(--k-interactive-warning);
+  font: var(--k-text-caption);
+  letter-spacing: var(--k-text-caption-tracking);
+  white-space: nowrap;
+}

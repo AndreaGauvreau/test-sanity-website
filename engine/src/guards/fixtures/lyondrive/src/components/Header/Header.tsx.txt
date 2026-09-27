@@ -1,0 +1,18 @@
+import Link from 'next/link'
+import styles from './Header.module.css'
+
+export function Header() {
+  return (
+    <header className={styles.header} data-edit="header">
+      <div className={`container ${styles.inner}`}>
+        <Link href="/" className={styles.logo} data-edit="header.logo">
+          LyonDrive
+        </Link>
+        <nav className={styles.nav} data-edit="header.nav" aria-label="Navigation principale">
+          <Link href="/">Accueil</Link>
+          <Link href="/blog">Blog</Link>
+        </nav>
+      </div>
+    </header>
+  )
+}

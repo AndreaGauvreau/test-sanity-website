@@ -143,3 +143,17 @@
     grid-column: 2;
   }
 }
+
+/* --- Ancres des zones de l'éditeur IA (src/editor/zones.json) ----------------------------------
+   Une classe par élément modifiable, portée par l'élément marqué data-edit. Un CSS Module n'exporte
+   pas une classe sans déclaration : `order: 0` (valeur initiale, sans effet) la fait exister. */
+
+/* Zone « customerStory.eyebrow ». */
+.eyebrow {
+  order: 0;
+}
+
+/* Zone « customerStory.cta ». */
+.cta {
+  order: 0;
+}

@@ -1,0 +1,74 @@
+/* Figma « Modal » 336:820 : 480 px, radius/lg, bg/elevated, border/default, Elevation/Modal. */
+.layer {
+  position: fixed;
+  inset: 0;
+  z-index: var(--k-z-overlay, 900);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--k-space-32) var(--k-space-16);
+}
+
+.modal {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  max-width: 100%;
+  max-height: 100%;
+  overflow: hidden;
+  border: 1px solid var(--k-border-default);
+  border-radius: var(--k-radius-lg);
+  background-color: var(--k-bg-elevated);
+  box-shadow: var(--k-elevation-modal);
+  --k-icon-current: var(--k-icon-default);
+}
+
+.modal:focus-visible {
+  outline: none;
+}
+
+/* En-tête : H gap 8, pad 16 12 4 20. */
+.header {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: var(--k-space-8);
+  padding: var(--k-space-16) var(--k-space-12) var(--k-space-4) var(--k-space-20);
+}
+
+.title {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  color: var(--k-text-primary);
+  font: var(--k-text-heading-4);
+  letter-spacing: var(--k-text-heading-4-tracking);
+}
+
+/* Corps : V gap 16, pad 4 20 8 20 ; défile si la fenêtre dépasse l'écran. */
+.body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: var(--k-space-16);
+  min-height: 0;
+  padding: var(--k-space-4) var(--k-space-20) var(--k-space-8) var(--k-space-20);
+  overflow-y: auto;
+}
+
+.description {
+  margin: 0;
+  color: var(--k-text-tertiary);
+  font: var(--k-text-body);
+  letter-spacing: var(--k-text-body-tracking);
+}
+
+/* Pied : H gap 8, pad 12 16 16 20, aligné à droite. */
+.footer {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--k-space-8);
+  padding: var(--k-space-12) var(--k-space-16) var(--k-space-16) var(--k-space-20);
+}

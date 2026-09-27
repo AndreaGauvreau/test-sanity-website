@@ -3,6 +3,8 @@ import type { StegaBranded } from 'next-sanity'
 
 import { Button } from '@/components/ui/Button/Button'
 import { Eyebrow } from '@/components/ui/Eyebrow/Eyebrow'
+import { editAttrs } from '@/lib/editor/preview'
+import { HOME_DOCUMENT_ID } from '@/lib/site'
 import type { IntegrationsSection } from '@/sanity/types'
 
 import styles from './Integrations.module.css'
@@ -36,27 +38,35 @@ export function Integrations({ data }: { data: StegaBranded<IntegrationsSection>
   const { eyebrow, title, body, cta, statValue, statLabel } = data
 
   return (
-    <section className={styles.integrations} aria-labelledby="integrations-title">
+    <section
+      className={styles.integrations}
+      aria-labelledby="integrations-title"
+      {...editAttrs('integrations', { doc: HOME_DOCUMENT_ID })}
+    >
       <hgroup className={styles.heading}>
-        <Eyebrow>{eyebrow}</Eyebrow>
-        <h2 id="integrations-title" className={styles.title}>
+        <Eyebrow className={styles.eyebrow} edit={editAttrs('integrations.eyebrow')}>
+          {eyebrow}
+        </Eyebrow>
+        <h2 id="integrations-title" className={styles.title} {...editAttrs('integrations.title')}>
           {title}
         </h2>
       </hgroup>
-      <p className={styles.body}>{body}</p>
+      <p className={styles.body} {...editAttrs('integrations.body')}>
+        {body}
+      </p>
       {cta && (
         <p className={styles.action}>
-          <Button href={cta.href ?? '#'} variant="secondary">
+          <Button href={cta.href ?? '#'} variant="secondary" className={styles.cta} edit={editAttrs('integrations.cta')}>
             {cta.label}
           </Button>
         </p>
       )}
       {/* Une phrase : « 160+ WMS, TMS, ERP, and EDI integrations ». */}
-      <p className={styles.stat}>
+      <p className={styles.stat} {...editAttrs('integrations.stat')}>
         <span className={styles.statValue}>{statValue}</span>{' '}
         <span className={styles.statLabel}>{statLabel}</span>
       </p>
-      <ul className={styles.logos}>
+      <ul className={styles.logos} {...editAttrs('integrations.logos')}>
         {logos.map((logo) => (
           <li key={logo.key} className={styles.logo}>
             <Image src={logo.src} alt={logo.alt} className={logo.className} />

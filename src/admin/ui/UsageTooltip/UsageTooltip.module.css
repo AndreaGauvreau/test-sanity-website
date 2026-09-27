@@ -1,0 +1,74 @@
+/* Figma « Usage tooltip » 336:1082 : 300 px, V gap 10, pad 10, radius/md, bg/elevated, border/default, Elevation/Popover. */
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--k-space-10);
+  width: 300px;
+  padding: var(--k-space-10);
+  --k-icon-current: var(--k-icon-default);
+}
+
+.title {
+  margin: 0;
+  color: var(--k-text-primary);
+  font: var(--k-text-body-small);
+  letter-spacing: var(--k-text-body-small-tracking);
+  overflow-wrap: anywhere;
+}
+
+.place {
+  display: flex;
+  flex-direction: column;
+  gap: var(--k-space-6);
+}
+
+/* Miniature 278 × 124, radius/sm, image recadrée (IMAGE FILL). */
+.miniature {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 124px;
+  overflow: hidden;
+  border-radius: var(--k-radius-sm);
+  background-color: var(--k-bg-subtle);
+}
+
+.image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.placeholder {
+  position: relative;
+}
+
+/* Cadre rouge (interactive/danger, 2 px intérieur, rayon 2) sur l'emplacement du média. */
+.highlight {
+  position: absolute;
+  border: 2px solid var(--k-interactive-danger);
+  border-radius: 2px;
+  pointer-events: none;
+}
+
+.where {
+  display: flex;
+  align-items: center;
+  gap: var(--k-space-6);
+  min-height: 27px;
+}
+
+.label {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: var(--k-text-tertiary);
+  font: var(--k-text-body-small);
+  letter-spacing: var(--k-text-body-small-tracking);
+}
+
+.view {
+  flex-shrink: 0;
+}

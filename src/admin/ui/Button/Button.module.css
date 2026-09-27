@@ -1,0 +1,150 @@
+/*
+ * Figma « Button » 111:286. medium : hug, H gap 8, pad 10 20, radius/md, Label Large (37 px ; 39 avec contour).
+ * small : gap 6, pad 6 14, rayon 6 (valeur en dur du Figma), Label (27 px ; 29 avec contour).
+ * La couleur des icônes suit le mode « Icon color » de la variante (--k-icon-current).
+ */
+.button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  gap: var(--k-space-8);
+  padding: var(--k-space-10) var(--k-space-20);
+  border-radius: var(--k-radius-md);
+  font: var(--k-text-label-large);
+  letter-spacing: var(--k-text-label-large-tracking);
+  white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
+  user-select: none;
+  transition:
+    background-color var(--k-duration-fast) ease,
+    border-color var(--k-duration-fast) ease,
+    opacity var(--k-duration-fast) ease,
+    transform var(--k-duration-fast) var(--k-ease-out);
+}
+
+.button:active:not(:disabled, [data-loading]) {
+  transform: scale(0.98);
+}
+
+.button:focus-visible {
+  outline: 2px solid var(--k-border-focus);
+  outline-offset: 2px;
+}
+
+.button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.button[data-loading] {
+  cursor: progress;
+}
+
+.block {
+  display: flex;
+  width: 100%;
+}
+
+.small {
+  gap: var(--k-space-6);
+  padding: var(--k-space-6) 14px;
+  border-radius: 6px;
+  font: var(--k-text-label);
+  letter-spacing: var(--k-text-label-tracking);
+}
+
+.label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.icon {
+  flex-shrink: 0;
+}
+
+/* ── primary : interactive/primary, texte et icônes on-accent ── */
+.primary {
+  --k-icon-current: var(--k-text-on-accent);
+  background-color: var(--k-interactive-primary);
+  color: var(--k-text-on-accent);
+}
+
+.primary:hover:not(:disabled, [data-loading]) {
+  background-color: var(--k-interactive-primary-hover);
+}
+
+.primary:active:not(:disabled, [data-loading]) {
+  background-color: var(--k-interactive-primary-pressed);
+}
+
+/* ── secondary : bg/input + border/default, pressé = bg/app ── */
+.secondary {
+  --k-icon-current: var(--k-icon-active);
+  background-color: var(--k-bg-input);
+  border: 1px solid var(--k-border-default);
+  color: var(--k-text-primary);
+}
+
+.secondary:hover:not(:disabled, [data-loading]) {
+  background-color: var(--k-bg-input-hover);
+}
+
+.secondary:active:not(:disabled, [data-loading]) {
+  background-color: var(--k-bg-app);
+}
+
+/* ── subtle : bg/tint/neutral sans contour (Cancel, Upload) ; pressé identique au survol ── */
+.subtle {
+  --k-icon-current: var(--k-icon-active);
+  background-color: var(--k-bg-tint-neutral);
+  color: var(--k-text-primary);
+}
+
+.subtle:hover:not(:disabled, [data-loading]),
+.subtle:active:not(:disabled, [data-loading]) {
+  background-color: var(--k-bg-ghost-pressed);
+}
+
+/* ── ghost : sans fond, texte secondaire, icône default ── */
+.ghost {
+  --k-icon-current: var(--k-icon-default);
+  background-color: transparent;
+  color: var(--k-text-secondary);
+}
+
+.ghost:hover:not(:disabled, [data-loading]) {
+  background-color: var(--k-bg-ghost-hover);
+}
+
+.ghost:active:not(:disabled, [data-loading]) {
+  background-color: var(--k-bg-ghost-pressed);
+}
+
+/* ── danger : interactive/danger ── */
+.danger {
+  --k-icon-current: var(--k-text-on-accent);
+  background-color: var(--k-interactive-danger);
+  color: var(--k-text-on-accent);
+}
+
+.danger:hover:not(:disabled, [data-loading]) {
+  background-color: var(--k-interactive-danger-hover);
+}
+
+.danger:active:not(:disabled, [data-loading]) {
+  background-color: var(--k-interactive-danger-pressed);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .button {
+    transition: none;
+  }
+
+  .button:active:not(:disabled, [data-loading]) {
+    transform: none;
+  }
+}

@@ -1,0 +1,95 @@
+/* Figma « Menu » 332:656 (pad 4) et « Menu item » 332:585 (208×28, H gap 8, pad 0 8, radius/sm). */
+.list {
+  display: flex;
+  flex-direction: column;
+  padding: var(--k-space-4);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.list:focus-visible {
+  outline: none;
+}
+
+.group + .group,
+.option + .group {
+  margin-top: var(--k-space-4);
+  padding-top: var(--k-space-4);
+  border-top: 1px solid var(--k-border-subtle);
+}
+
+/* Titre de section du Menu : Caption text/muted, pad 6 8 4 8. */
+.groupLabel {
+  padding: var(--k-space-6) var(--k-space-8) var(--k-space-4) var(--k-space-8);
+  color: var(--k-text-muted);
+  font: var(--k-text-caption);
+  letter-spacing: var(--k-text-caption-tracking);
+}
+
+.option {
+  display: flex;
+  align-items: center;
+  gap: var(--k-space-8);
+  flex-shrink: 0;
+  height: 28px;
+  padding: 0 var(--k-space-8);
+  border-radius: var(--k-radius-sm);
+  color: var(--k-text-secondary);
+  --k-icon-current: var(--k-icon-default);
+  font: var(--k-text-body);
+  letter-spacing: var(--k-text-body-tracking);
+  cursor: default;
+  user-select: none;
+}
+
+.option[data-active] {
+  background-color: var(--k-bg-subtle);
+  color: var(--k-text-primary);
+  --k-icon-current: var(--k-icon-active);
+}
+
+.option[data-selected] {
+  color: var(--k-text-primary);
+  --k-icon-current: var(--k-icon-active);
+}
+
+.option[aria-disabled='true'] {
+  color: var(--k-text-disabled);
+  --k-icon-current: var(--k-text-disabled);
+  background-color: transparent;
+}
+
+.danger,
+.danger[data-active] {
+  color: var(--k-interactive-danger);
+  --k-icon-current: var(--k-icon-error);
+}
+
+.icon {
+  flex-shrink: 0;
+}
+
+.label {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.meta {
+  flex-shrink: 0;
+  color: var(--k-text-muted);
+  font: var(--k-text-body-small);
+  letter-spacing: var(--k-text-body-small-tracking);
+}
+
+/* Coche 12 px toujours présente (opacité 0 hors sélection), comme le calque « check » du Figma. */
+.check {
+  flex-shrink: 0;
+  opacity: 0;
+}
+
+.option[data-selected] .check {
+  opacity: 1;
+}

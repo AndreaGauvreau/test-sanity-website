@@ -1,10 +1,12 @@
 import { HelpCircleIcon } from '@sanity/icons/HelpCircle'
 import { defineArrayMember, defineField, defineType } from 'sanity'
 
-import { linkAnnotation } from './shared'
+import { linkAnnotation, maxLength, orderRankField } from './shared'
 
-// Une question de la FAQ. L'ordre d'affichage est un champ : la première question
-// s'affiche ouverte sur le site.
+// Une question de la FAQ. Ordre d'affichage : ordre manuel (orderRank, glissé dans l'admin) ; la
+// première question s'affiche ouverte sur le site. L'ancien champ `order` (entier) n'est plus au
+// schéma : la migration a converti son ordre en orderRank, et la requête du site s'en sert encore
+// en repli pour un dataset pas encore migré (voir src/sanity/CLAUDE.md).
 export const faq = defineType({
   name: 'faq',
   title: 'Question',
@@ -15,7 +17,7 @@ export const faq = defineType({
       name: 'question',
       title: 'Question',
       type: 'string',
-      validation: (rule) => rule.required(),
+      validation: (rule) => [rule.required(), maxLength(rule, 100)],
     }),
     defineField({
       name: 'answer',
@@ -37,17 +39,10 @@ export const faq = defineType({
         }),
       ],
     }),
-    defineField({
-      name: 'order',
-      title: 'Ordre d’affichage',
-      type: 'number',
-      description: '1 en premier.',
-      validation: (rule) => rule.required().integer().min(1),
-    }),
+    orderRankField('faq'),
   ],
-  orderings: [{ title: 'Ordre d’affichage', name: 'orderAsc', by: [{ field: 'order', direction: 'asc' }] }],
+  orderings: [{ title: 'Ordre manuel', name: 'orderRankAsc', by: [{ field: 'orderRank', direction: 'asc' }] }],
   preview: {
-    select: { title: 'question', order: 'order' },
-    prepare: ({ title, order }) => ({ title, subtitle: order ? `n° ${order}` : undefined }),
+    select: { title: 'question' },
   },
 })

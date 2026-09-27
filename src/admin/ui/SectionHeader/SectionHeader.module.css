@@ -1,0 +1,36 @@
+/* Figma « Section header » 333:1433 : H gap 16, align haut ; texte V gap 2 (Heading 4 + Body Small tertiary). */
+.header {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--k-space-16);
+  min-width: 0;
+}
+
+.text {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: var(--k-space-2);
+  min-width: 0;
+}
+
+.title {
+  margin: 0;
+  color: var(--k-text-primary);
+  font: var(--k-text-heading-4);
+  letter-spacing: var(--k-text-heading-4-tracking);
+}
+
+.description {
+  margin: 0;
+  color: var(--k-text-tertiary);
+  font: var(--k-text-body-small);
+  letter-spacing: var(--k-text-body-small-tracking);
+}
+
+.action {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: var(--k-space-8);
+}

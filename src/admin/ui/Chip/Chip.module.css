@@ -1,0 +1,58 @@
+/*
+ * Figma « Chip » 321:421 : hug, H gap 4, pad 4 10 4 8, radius/full, bg/input + border/default,
+ * Body Small text/secondary, icône 12 (mode default). hover : bg/input-hover + icône active.
+ * on : bg/inverse + text/inverse + icône inverse (Figma retire le contour : 64×23 ; ici le contour prend
+ * la couleur du fond pour garder 66×25 et éviter un saut de mise en page à la bascule).
+ */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: var(--k-space-4);
+  padding: var(--k-space-4) var(--k-space-10) var(--k-space-4) var(--k-space-8);
+  border: 1px solid var(--k-border-default);
+  border-radius: var(--k-radius-full);
+  background-color: var(--k-bg-input);
+  color: var(--k-text-secondary);
+  --k-icon-current: var(--k-icon-default);
+  font: var(--k-text-body-small);
+  letter-spacing: var(--k-text-body-small-tracking);
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color var(--k-duration-fast) ease,
+    border-color var(--k-duration-fast) ease,
+    color var(--k-duration-fast) ease;
+}
+
+.chip:hover:not(:disabled) {
+  background-color: var(--k-bg-input-hover);
+  --k-icon-current: var(--k-icon-active);
+}
+
+.chip[data-state='on'] {
+  background-color: var(--k-bg-inverse);
+  border-color: var(--k-bg-inverse);
+  color: var(--k-text-inverse);
+  --k-icon-current: var(--k-text-inverse);
+}
+
+.chip:focus-visible {
+  outline: 2px solid var(--k-border-focus);
+  outline-offset: 2px;
+}
+
+.chip:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.label {
+  min-width: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chip {
+    transition: none;
+  }
+}

@@ -1,0 +1,14 @@
+import { Features } from '@/components/Features/Features'
+import { Hero } from '@/components/Hero/Hero'
+import { getHome } from '@/lib/cms'
+
+export default async function HomePage() {
+  const home = await getHome()
+
+  return (
+    <>
+      <Hero title={home.title} subtitle={home.subtitle} buttonLabel={home.buttonLabel} />
+      <Features title={home.featuresTitle} items={home.features ?? []} />
+    </>
+  )
+}

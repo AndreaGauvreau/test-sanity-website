@@ -1,0 +1,47 @@
+/* Figma « Row open » 468:2027 : 120 × 44, pad 0 8 0 0, aligné à droite ; fond linear-gradient(#2b2b2b00 0 %, #2b2b2b 45 %). */
+.rowOpen {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  width: 120px;
+  padding-right: var(--k-space-8);
+  background-image: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--k-bg-input-hover) 0%, transparent) 0%,
+    var(--k-bg-input-hover) 45%,
+    var(--k-bg-input-hover) 100%
+  );
+  pointer-events: none;
+  opacity: 1;
+  transition: opacity var(--k-duration-fast) ease;
+}
+
+/* Dans une ligne : masqué hors survol / focus (la ligne pose [data-row]) et collé au bord droit VISIBLE
+   du tableau qui défile (sticky), comme sur C3 (grille de 1 460 px pour 1 120 visibles). */
+:where([data-row]) > .rowOpen {
+  position: sticky;
+  top: auto;
+  bottom: auto;
+  flex-shrink: 0;
+  align-self: stretch;
+  margin-left: -120px;
+  opacity: 0;
+}
+
+:where([data-row]:hover, [data-row]:focus-within) > .rowOpen {
+  opacity: 1;
+}
+
+.button {
+  pointer-events: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rowOpen {
+    transition: none;
+  }
+}

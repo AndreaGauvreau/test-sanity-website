@@ -3,6 +3,8 @@ import { stegaClean, type StegaBranded } from 'next-sanity'
 
 import { Button } from '@/components/ui/Button/Button'
 import { Eyebrow } from '@/components/ui/Eyebrow/Eyebrow'
+import { editAttrs } from '@/lib/editor/preview'
+import { HOME_DOCUMENT_ID } from '@/lib/site'
 import type { SystemSection } from '@/sanity/types'
 
 import styles from './ConduitSystem.module.css'
@@ -15,32 +17,42 @@ export function ConduitSystem({ data }: { data: StegaBranded<SystemSection> }) {
   const { eyebrow, title, lede, cta, modules } = data
 
   return (
-    <section className={styles.system} aria-labelledby="system-title">
+    <section className={styles.system} aria-labelledby="system-title" {...editAttrs('system', { doc: HOME_DOCUMENT_ID })}>
       <hgroup className={styles.heading}>
-        {eyebrow && <Eyebrow className={styles.eyebrow}>{eyebrow}</Eyebrow>}
-        <h2 id="system-title" className={styles.title}>
+        {eyebrow && (
+          <Eyebrow className={styles.eyebrow} edit={editAttrs('system.eyebrow')}>
+            {eyebrow}
+          </Eyebrow>
+        )}
+        <h2 id="system-title" className={styles.title} {...editAttrs('system.title')}>
           {title}
         </h2>
       </hgroup>
-      {lede && <p className={styles.lede}>{lede}</p>}
+      {lede && (
+        <p className={styles.lede} {...editAttrs('system.lede')}>
+          {lede}
+        </p>
+      )}
       {cta && (
-        <Button href={cta.href ?? '#'} className={styles.cta}>
+        <Button href={cta.href ?? '#'} className={styles.cta} edit={editAttrs('system.cta')}>
           {cta.label}
         </Button>
       )}
       {/* Surface vide et cadre pointillé (CSS) en attendant l'illustration du Conduit System. */}
-      <div className={styles.visual} />
+      <div className={styles.visual} {...editAttrs('system.visual')} />
       {modules && modules.length > 0 && (
         <ul className={styles.modules}>
           {modules.map((item) => {
             // stegaClean : la clé sert d'identifiant, elle ne s'affiche pas.
             const id = `system-${stegaClean(item._key)}`
             return (
-              <li key={item._key} className={styles.module}>
-                <h3 id={`${id}-title`} className={styles.moduleTitle}>
+              <li key={item._key} className={styles.module} {...editAttrs('system.module', { key: item._key })}>
+                <h3 id={`${id}-title`} className={styles.moduleTitle} {...editAttrs('system.module.title', { key: item._key })}>
                   {item.title}
                 </h3>
-                <p className={styles.moduleText}>{item.text}</p>
+                <p className={styles.moduleText} {...editAttrs('system.module.text', { key: item._key })}>
+                  {item.text}
+                </p>
                 {/* Nom accessible « See more Driver Check-in » : les trois liens ont le même
                     libellé, le titre du module les distingue hors contexte (liste des liens). */}
                 {item.link && (
@@ -49,6 +61,7 @@ export function ConduitSystem({ data }: { data: StegaBranded<SystemSection> }) {
                     href={stegaClean(item.link.href) ?? '#'}
                     className={styles.more}
                     aria-labelledby={`${id}-link ${id}-title`}
+                    {...editAttrs('system.module.link', { key: item._key })}
                   >
                     {item.link.label}
                   </Link>

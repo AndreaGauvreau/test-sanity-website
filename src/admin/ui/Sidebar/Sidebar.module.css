@@ -1,0 +1,131 @@
+/* Figma « Sidebar » 333:1247 : 240 × 900, bg/primary, trait droit border/subtle ; en-tête V gap 12, pad 12 8 8 8 ;
+   nav pad 0 8 8 8 ; pied V gap 4, pad 8, trait haut border/subtle. */
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  width: 240px;
+  height: 100%;
+  min-height: 0;
+  border-right: 1px solid var(--k-border-subtle);
+  background-color: var(--k-bg-primary);
+  --k-icon-current: var(--k-icon-default);
+}
+
+.header {
+  display: flex;
+  flex-shrink: 0;
+  flex-direction: column;
+  gap: var(--k-space-12);
+  padding: var(--k-space-12) var(--k-space-8) var(--k-space-8) var(--k-space-8);
+}
+
+.site {
+  display: flex;
+  align-items: center;
+  gap: var(--k-space-10);
+  min-width: 0;
+  padding: 0 var(--k-space-4);
+}
+
+.logo {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  overflow: hidden;
+  border-radius: var(--k-radius-md);
+  background-color: var(--k-bg-input-hover);
+}
+
+.logoImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.siteText {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.siteName {
+  color: var(--k-text-primary);
+  font: var(--k-text-label-large);
+  letter-spacing: var(--k-text-label-large-tracking);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.siteUrl {
+  color: var(--k-text-muted);
+  font: var(--k-text-caption);
+  letter-spacing: var(--k-text-caption-tracking);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Ask AI : Button secondary small, rayon 6, icône on-accent (active) — pleine largeur. */
+.askAI {
+  flex-shrink: 0;
+}
+
+.nav {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 0 var(--k-space-8) var(--k-space-8) var(--k-space-8);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.li {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.footer {
+  display: flex;
+  flex-shrink: 0;
+  flex-direction: column;
+  gap: var(--k-space-4);
+  padding: var(--k-space-8);
+  border-top: 1px solid var(--k-border-subtle);
+}
+
+/* Utilisateur : H gap 8, pad 4 4 4 8 ; nom Body Small text/secondary. */
+.user {
+  display: flex;
+  align-items: center;
+  gap: var(--k-space-8);
+  min-width: 0;
+  padding: var(--k-space-4) var(--k-space-4) var(--k-space-4) var(--k-space-8);
+}
+
+.userName {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: var(--k-text-secondary);
+  font: var(--k-text-body-small);
+  letter-spacing: var(--k-text-body-small-tracking);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

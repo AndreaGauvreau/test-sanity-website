@@ -1,0 +1,99 @@
+/* Figma « AI usage » 352:1557 : V gap 14, pad 16, radius/lg, bg/elevated, border/default. */
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+  padding: var(--k-space-16);
+  border: 1px solid var(--k-border-default);
+  border-radius: var(--k-radius-lg);
+  background-color: var(--k-bg-elevated);
+  --k-icon-current: var(--k-icon-default);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: var(--k-space-8);
+  min-width: 0;
+}
+
+.title {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  color: var(--k-text-primary);
+  font: var(--k-text-label);
+  letter-spacing: var(--k-text-label-tracking);
+}
+
+.period {
+  flex: 0 0 150px;
+  width: 150px;
+}
+
+.totals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--k-space-24);
+  margin: 0;
+}
+
+.total {
+  display: flex;
+  flex-direction: column;
+  gap: var(--k-space-2);
+}
+
+.totalLabel {
+  color: var(--k-text-tertiary);
+  font: var(--k-text-body-small);
+  letter-spacing: var(--k-text-body-small-tracking);
+}
+
+.totalValue {
+  margin: 0;
+  color: var(--k-text-primary);
+  font: var(--k-text-heading-2);
+  letter-spacing: var(--k-text-heading-2-tracking);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Détail : V gap 6, pad-top 12, trait haut border/subtle ; lignes en space-between. */
+.byFeature {
+  display: flex;
+  flex-direction: column;
+  gap: var(--k-space-6);
+  margin: 0;
+  padding: var(--k-space-12) 0 0 0;
+  border-top: 1px solid var(--k-border-subtle);
+  list-style: none;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--k-space-12);
+  min-width: 0;
+}
+
+.feature {
+  color: var(--k-text-secondary);
+  font: var(--k-text-body-small);
+  letter-spacing: var(--k-text-body-small-tracking);
+  white-space: nowrap;
+}
+
+.empty {
+  color: var(--k-text-muted);
+  font: var(--k-text-body-small);
+  letter-spacing: var(--k-text-body-small-tracking);
+}
+
+.note {
+  margin: 0;
+  color: var(--k-text-muted);
+  font: var(--k-text-caption);
+  letter-spacing: var(--k-text-caption-tracking);
+}

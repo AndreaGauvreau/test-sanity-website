@@ -1,0 +1,26 @@
+.icon {
+  display: block;
+  flex-shrink: 0;
+  /* Couleur « Icon color / current » du parent ; hors de l'admin, la couleur du texte. */
+  color: var(--k-icon-current, currentColor);
+  /* Quelques tracés 12 px débordent d'un demi-pixel du cadre (export Figma en 13 px). */
+  overflow: visible;
+}
+
+/* Rotation du « loader » : vitesse constante (linear), la seule exception légitime au ease-out. */
+.spin {
+  animation: k-icon-spin 800ms linear infinite;
+  transform-origin: 50% 50%;
+}
+
+@keyframes k-icon-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spin {
+    animation: none;
+  }
+}

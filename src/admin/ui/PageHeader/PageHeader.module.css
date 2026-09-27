@@ -1,0 +1,69 @@
+/* Figma « Page header » 333:1416 : V gap 4 ; titre (Heading 3) + méta (Body muted) H gap 10 alignés sur la ligne de base.
+   Écrans : rangée « page-header » avec boutons (gap 12, C1) ou outils (gap 4, C3), centrés ; onglets à 20 px (C1, E1). */
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--k-space-20);
+  min-width: 0;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--k-space-12);
+  min-width: 0;
+}
+
+.text {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: var(--k-space-4);
+  min-width: 0;
+}
+
+.titleRow {
+  display: flex;
+  align-items: baseline;
+  gap: var(--k-space-10);
+  min-width: 0;
+}
+
+.title {
+  margin: 0;
+  color: var(--k-text-primary);
+  font: var(--k-text-heading-3);
+  letter-spacing: var(--k-text-heading-3-tracking);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.meta {
+  flex-shrink: 0;
+  color: var(--k-text-muted);
+  font: var(--k-text-body);
+  letter-spacing: var(--k-text-body-tracking);
+  white-space: nowrap;
+}
+
+.description {
+  margin: 0;
+  color: var(--k-text-tertiary);
+  font: var(--k-text-body-small);
+  letter-spacing: var(--k-text-body-small-tracking);
+}
+
+.actions {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: var(--k-space-12);
+}
+
+.tools {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: var(--k-space-4);
+}

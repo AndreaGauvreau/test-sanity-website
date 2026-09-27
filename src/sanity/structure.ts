@@ -1,30 +1,50 @@
+import { BlockquoteIcon } from '@sanity/icons/Blockquote'
+import { CogIcon } from '@sanity/icons/Cog'
+import { DocumentsIcon } from '@sanity/icons/Documents'
+import { DocumentTextIcon } from '@sanity/icons/DocumentText'
 import { HelpCircleIcon } from '@sanity/icons/HelpCircle'
 import { HomeIcon } from '@sanity/icons/Home'
-import type { StructureResolver } from 'sanity/structure'
+import { SearchIcon } from '@sanity/icons/Search'
+import type { StructureBuilder, StructureResolver } from 'sanity/structure'
 
-// Colonne de gauche de l'admin : la page (document unique), puis les trois collections.
+import { SINGLETON_IDS } from './schemaTypes'
+
+// Colonne de gauche du Studio (/studio, Kuartz), rangée comme la sidebar de l'admin :
+// réglages, pages (documents uniques à id fixe), puis les collections dans leur ordre manuel.
+// Le journal de consommation IA (aiUsage) n'y figure pas : il est écrit par le moteur.
+const singleton = (S: StructureBuilder, type: keyof typeof SINGLETON_IDS, title: string, icon: typeof HomeIcon) =>
+  S.listItem()
+    .title(title)
+    .id(SINGLETON_IDS[type])
+    .icon(icon)
+    .child(S.document().schemaType(type).documentId(SINGLETON_IDS[type]).title(title))
+
+const collection = (S: StructureBuilder, type: string, title: string, icon: typeof HomeIcon) =>
+  S.listItem()
+    .title(title)
+    .id(type)
+    .icon(icon)
+    .schemaType(type)
+    .child(S.documentTypeList(type).title(title).defaultOrdering([{ field: 'orderRank', direction: 'asc' }]))
+
 export const structure: StructureResolver = (S) =>
   S.list()
     .title('Contenu')
     .items([
+      singleton(S, 'siteSettings', 'Réglages du site', CogIcon),
+      S.divider().title('Pages'),
+      singleton(S, 'dockSchedulingPage', 'Home — Dock Scheduling (/)', HomeIcon),
+      singleton(S, 'blogPage', 'Blog (/blog)', DocumentsIcon),
+      singleton(S, 'articleSeoTemplate', 'Article du blog — SEO (/blog/:slug)', SearchIcon),
+      S.divider().title('Collections'),
+      // Blog : même ordre que le site (du plus récent au plus ancien) ; ordre manuel via le menu de tri.
       S.listItem()
-        .title('Page Dock Scheduling')
-        .id('dockSchedulingPage')
-        .icon(HomeIcon)
-        .child(
-          S.document()
-            .schemaType('dockSchedulingPage')
-            .documentId('dockSchedulingPage')
-            .title('Page Dock Scheduling'),
-        ),
-      S.divider(),
-      S.documentTypeListItem('post').title('Blog'),
-      S.documentTypeListItem('testimonial').title('Témoignages'),
-      // Triée par ordre d'affichage, comme sur le site.
-      S.listItem()
-        .title('FAQ')
-        .id('faq')
-        .icon(HelpCircleIcon)
-        .schemaType('faq')
-        .child(S.documentTypeList('faq').title('FAQ').defaultOrdering([{ field: 'order', direction: 'asc' }])),
+        .title('Blog')
+        .id('post')
+        .icon(DocumentTextIcon)
+        .schemaType('post')
+        .child(S.documentTypeList('post').title('Blog').defaultOrdering([{ field: 'publishedAt', direction: 'desc' }])),
+      collection(S, 'testimonial', 'Témoignages', BlockquoteIcon),
+      // Triée par ordre manuel, comme sur le site.
+      collection(S, 'faq', 'FAQ', HelpCircleIcon),
     ])

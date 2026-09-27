@@ -1,0 +1,45 @@
+.hero {
+  background-color: var(--color-night);
+  padding-block: var(--layout-section);
+  text-align: left;
+}
+
+.title {
+  max-width: 18ch;
+  color: var(--color-ink);
+  font-family: var(--font-serif);
+  font-size: var(--text-4xl);
+  font-weight: var(--weight-bold);
+  line-height: 1.05;
+}
+
+/* Mots mis en avant dans le titre (*…* dans l'admin). */
+.accent {
+  font-style: normal;
+}
+
+.subtitle {
+  max-width: var(--layout-measure);
+  margin-block: var(--space-6) var(--space-7);
+  color: var(--color-mist);
+  font-family: var(--font-sans);
+  font-size: var(--text-lg);
+}
+
+.cta {
+  display: inline-block;
+  padding-block: var(--space-3);
+  padding-inline: var(--space-6);
+  border-radius: var(--radius-full);
+  background-color: var(--color-rose);
+  box-shadow: var(--shadow-none);
+  color: var(--color-white);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  transition: background-color 0.2s ease-out;
+}
+
+.cta:hover {
+  background-color: var(--color-rose-deep);
+}

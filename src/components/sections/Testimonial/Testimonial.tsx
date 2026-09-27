@@ -2,6 +2,8 @@ import Image from 'next/image'
 import type { StegaBranded } from 'next-sanity'
 
 import { Button } from '@/components/ui/Button/Button'
+import { editAttrs } from '@/lib/editor/preview'
+import { HOME_DOCUMENT_ID } from '@/lib/site'
 import type { PAGE_QUERY_RESULT } from '@/sanity/types'
 
 import person from './person-motion-blur.png'
@@ -28,7 +30,11 @@ export function Testimonial({ data }: { data: StegaBranded<TestimonialData> }) {
   const { quote, name, role, company, caseStudyUrl } = item
 
   return (
-    <section className={styles.testimonial} aria-labelledby="testimonial-title">
+    <section
+      className={styles.testimonial}
+      aria-labelledby="testimonial-title"
+      {...editAttrs('testimonial', { doc: HOME_DOCUMENT_ID })}
+    >
       {/* Pas de titre visible dans le Figma : annoncé aux lecteurs d'écran seulement. */}
       <h2 id="testimonial-title" className="visually-hidden">
         {title}
@@ -39,14 +45,15 @@ export function Testimonial({ data }: { data: StegaBranded<TestimonialData> }) {
         <Image src={warehouse} alt="" fill sizes={sceneSizes} className={styles.photo} />
         <Image src={person} alt="" fill sizes={sceneSizes} className={styles.person} />
       </div>
-      <figure className={styles.quote}>
+      {/* Citation et auteur : document « testimonial » (data-edit-doc), pas la page. */}
+      <figure className={styles.quote} {...editAttrs('testimonial.quote', { doc: item._id })}>
         {/* Les guillemets viennent du site : la collection les exclut de la citation. */}
-        <blockquote className={styles.text}>
+        <blockquote className={styles.text} {...editAttrs('testimonial.quote.text', { doc: item._id })}>
           <p>“{quote}”</p>
         </blockquote>
         {/* Un élément par champ : chacun garde son propre repère d'édition dans Presentation
             (deux champs dans un même nœud texte, seul le premier serait cliquable). */}
-        <figcaption className={styles.author}>
+        <figcaption className={styles.author} {...editAttrs('testimonial.quote.author', { doc: item._id })}>
           <span>{name},</span>
           <span>
             {role && (
@@ -60,7 +67,13 @@ export function Testimonial({ data }: { data: StegaBranded<TestimonialData> }) {
       </figure>
       {/* Destination : celle du bouton, sinon le lien du témoignage, sinon `#` en attendant. */}
       {cta && (
-        <Button href={cta.href ?? caseStudyUrl ?? '#'} variant="secondary" tone="inverse" className={styles.cta}>
+        <Button
+          href={cta.href ?? caseStudyUrl ?? '#'}
+          variant="secondary"
+          tone="inverse"
+          className={styles.cta}
+          edit={editAttrs('testimonial.cta', { doc: HOME_DOCUMENT_ID })}
+        >
           {cta.label}
         </Button>
       )}

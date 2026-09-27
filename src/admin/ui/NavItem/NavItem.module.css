@@ -1,0 +1,109 @@
+/* Figma « Nav item » 332:431 : 32 px, H gap 8, pad 0 8 0 16 (38 pour une page article), radius/md, Body. */
+.wrap {
+  position: relative;
+  display: flex;
+  min-width: 0;
+}
+
+.item {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: var(--k-space-8);
+  min-width: 0;
+  height: 32px;
+  padding: 0 var(--k-space-8) 0 var(--k-space-16);
+  border: 0;
+  border-radius: var(--k-radius-md);
+  background-color: transparent;
+  color: var(--k-text-secondary);
+  --k-icon-current: var(--k-icon-default);
+  font: var(--k-text-body);
+  letter-spacing: var(--k-text-body-tracking);
+  text-align: start;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background-color var(--k-duration-fast) ease,
+    color var(--k-duration-fast) ease;
+}
+
+.wrap[data-depth='1'] > .item {
+  padding-left: 38px;
+}
+
+.item:hover {
+  background-color: var(--k-bg-subtle);
+  color: var(--k-text-primary);
+  --k-icon-current: var(--k-icon-active);
+}
+
+.item[data-active],
+.item[data-active]:hover {
+  background-color: var(--k-bg-input-hover);
+  color: var(--k-text-primary);
+  --k-icon-current: var(--k-icon-active);
+}
+
+.item:focus-visible {
+  outline-offset: -2px;
+}
+
+.icon {
+  flex-shrink: 0;
+}
+
+.label {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.count {
+  flex-shrink: 0;
+  color: var(--k-text-muted);
+  font: var(--k-text-body-small);
+  letter-spacing: var(--k-text-body-small-tracking);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Chevron dans la marge (x 3, y 11, 10 px) : bouton 16 × 32 au-dessus du bord gauche de l'élément. */
+.chevron {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  width: 16px;
+  height: 32px;
+  padding: 0 0 0 3px;
+  border: 0;
+  border-radius: var(--k-radius-sm);
+  background: none;
+  --k-icon-current: var(--k-icon-default);
+  cursor: pointer;
+}
+
+.chevron:hover {
+  --k-icon-current: var(--k-icon-active);
+}
+
+.chevron :global(svg) {
+  transform: rotate(-90deg);
+  transition: transform var(--k-duration-fast) var(--k-ease-in-out);
+}
+
+.chevron[data-expanded] :global(svg) {
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .item,
+  .chevron :global(svg) {
+    transition: none;
+  }
+}

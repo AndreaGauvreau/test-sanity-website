@@ -1,6 +1,8 @@
 import { StarIcon } from '@sanity/icons/Star'
 import { defineArrayMember, defineField, defineType } from 'sanity'
 
+import { maxLength } from '../shared'
+
 // Plateformes d'avis dont le site connaît le logo.
 const platforms = [
   { title: 'G2', value: 'g2' },
@@ -19,14 +21,14 @@ export const heroSection = defineType({
       title: 'Titre',
       type: 'string',
       description: 'Le titre principal de la page (h1).',
-      validation: (rule) => rule.required(),
+      validation: (rule) => [rule.required(), maxLength(rule, 70)],
     }),
     defineField({
       name: 'lede',
       title: 'Chapô',
       type: 'text',
       rows: 4,
-      validation: (rule) => rule.required(),
+      validation: (rule) => [rule.required(), maxLength(rule, 320)],
     }),
     defineField({ name: 'primaryCta', title: 'Bouton principal', type: 'cta' }),
     defineField({ name: 'secondaryCta', title: 'Bouton secondaire', type: 'cta' }),
@@ -54,7 +56,7 @@ export const heroSection = defineType({
               title: 'Texte',
               type: 'string',
               description: 'Ex. « 4.7 stars on G2 ».',
-              validation: (rule) => rule.required(),
+              validation: (rule) => [rule.required(), maxLength(rule, 30)],
             }),
             defineField({
               name: 'href',

@@ -1,0 +1,20 @@
+import Link from 'next/link'
+import { formatDate, type Post } from '@/lib/cms'
+import styles from './PostCard.module.css'
+
+export function PostCard({ post }: { post: Post }) {
+  return (
+    <Link href={`/blog/${post.slug}`} className={styles.card} data-edit="post.card" data-edit-doc={post.id}>
+      <img className={styles.image} src={post.image.url} alt={post.image.alt} width={1200} height={630} />
+      <div className={styles.body}>
+        <h2 className={styles.title} data-edit="post.card.title">
+          {post.title}
+        </h2>
+        <p className={styles.subtitle}>{post.subtitle}</p>
+        <time className={styles.date} dateTime={post.createdAt}>
+          {formatDate(post.createdAt)}
+        </time>
+      </div>
+    </Link>
+  )
+}

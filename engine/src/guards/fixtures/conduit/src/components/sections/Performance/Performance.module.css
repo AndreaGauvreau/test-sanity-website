@@ -1,0 +1,187 @@
+/*
+ * Performance — Figma 269:272 (desktop 1440, 809 de haut).
+ * Une « scène » pleine largeur derrière le texte, du fond vers l'avant : la photo (<Image>),
+ * les deux dégradés sombres du Figma (::before), puis les flèches (::after). Photo et flèches
+ * ont la même boîte et le même cadrage « cover » : les flèches restent calées sur le bras.
+ * Mobile : la scène occupe le haut de la section et se fond dans le bleu nuit ; bras et
+ * flèches passent entre le titre et les atouts empilés. À partir de 810 px : la scène couvre
+ * toute la section, atouts sur trois colonnes en bas ; à partir de 1024 px, titre et atouts
+ * décalés vers la droite pour dégager le personnage, comme dans le Figma.
+ */
+.performance {
+  /* Boîte et cadrage de la scène, communs à la photo, aux dégradés et aux flèches. */
+  --scene-size: 38rem; /* 608 : hauteur de la scène sur mobile */
+  --scene-position: 17% 0;
+  /* Bleu nuit du calque « image 1364 » : fond de section, fondu de la scène sur mobile. */
+  --scene-shade: rgb(0 5 18);
+  /* Interlettrage positif des paragraphes (+0,224 px à 14 px), absent des tokens. */
+  --benefit-text-tracking: 0.016em;
+
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  align-content: start;
+  /* 64 sur mobile → 91 à 1440 : les 92 du Figma, dont les boîtes de texte sont arrondies au
+     pixel inférieur ; les pictogrammes tombent ainsi à 565, comme dans la maquette. */
+  padding-block: var(--section-space-lg) clamp(4rem, 3.4058rem + 2.5352vw, 5.6875rem);
+  padding-inline: var(--page-inset);
+  background: var(--scene-shade);
+  color: var(--color-text-inverse);
+}
+
+.photo,
+.performance::before,
+.performance::after {
+  position: absolute;
+  inset: 0 0 auto;
+  inline-size: 100%;
+  block-size: var(--scene-size);
+  pointer-events: none;
+}
+
+.photo {
+  z-index: -3;
+  object-fit: cover;
+  object-position: var(--scene-position);
+}
+
+/* Calques « image 1363 » (dégradé noir vers le coin bas droit) et « image 1364 » (voile
+   bleu nuit sur le bas). Leurs boîtes Figma débordent du cadre : tailles et positions en %
+   du cadre 1440 × 809, pour qu'ils suivent la scène à toutes les largeurs. */
+.performance::before {
+  --shade-1364: linear-gradient(-11.48deg, rgb(0 5 18 / 0.86) 27.28%, rgb(0 0 0 / 0) 49.86%)
+    78.32% 100% / 127.22% 109.89% no-repeat; /* boîte 1832 × 889 en (-307, -80) */
+  --shade-1363: linear-gradient(-34.26deg, rgb(0 0 0 / 0.56) 9.37%, rgb(0 0 0 / 0) 69.07%)
+    100% 0 / 115.9% 100% no-repeat; /* boîte 1669 × 809 en (-229, -2) */
+
+  content: "";
+  z-index: -2;
+  background:
+    /* Mobile : la scène se fond dans le fond de section, sous le premier atout.
+       « transparent » : interpolé en alpha prémultiplié, donc sans voile gris, et il suit
+       --scene-shade si la teinte change. */
+    linear-gradient(transparent 45%, var(--scene-shade)),
+    var(--shade-1364),
+    var(--shade-1363);
+}
+
+/* Flèches orange et blanche (groupe « visual »), masquées par la silhouette du bras. */
+.performance::after {
+  content: "";
+  z-index: -1;
+  background: url("./arrows.svg") var(--scene-position) / cover no-repeat;
+}
+
+.heading {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem; /* 24 */
+}
+
+.title {
+  font: var(--text-title-xl);
+  letter-spacing: var(--text-title-xl-tracking);
+  text-wrap: balance;
+}
+
+.benefits {
+  display: grid;
+  row-gap: 2.5rem; /* 40 */
+  /* Le vide où passent le bras et les flèches. */
+  margin-block-start: 14rem; /* 224 */
+  padding: 0;
+  list-style: none;
+}
+
+.benefit {
+  display: flex;
+  flex-direction: column;
+  align-items: start;
+  gap: 1.25rem; /* 20 */
+}
+
+/* Pictogramme décoratif (20 px, cyan dans le fichier) : le titre dit déjà tout. */
+.benefit::before {
+  content: "";
+  inline-size: 1.25rem; /* 20 */
+  block-size: 1.25rem;
+  background: no-repeat center / contain;
+}
+
+.chartPieSlice::before {
+  background-image: url("./chart-pie-slice.svg");
+}
+
+.speedometer::before {
+  background-image: url("./speedometer.svg");
+}
+
+.calendarDots::before {
+  background-image: url("./calendar-dots.svg");
+}
+
+.benefitTitle {
+  /* Retour à la ligne choisi dans Sanity, comme les deux lignes du Figma. */
+  white-space: pre-line;
+  font: var(--text-title-sm);
+  letter-spacing: var(--text-title-sm-tracking);
+}
+
+.benefitText {
+  max-inline-size: 19.375rem; /* 310 */
+  color: var(--color-text-inverse-muted);
+  letter-spacing: var(--benefit-text-tracking);
+}
+
+@media (min-width: 50.625rem) {
+  .performance {
+    /* La scène couvre toute la section, cadrée à gauche quand elle déborde (sous 1140) :
+       le personnage reste entier et les flèches passent entre le titre et les atouts. */
+    --scene-size: 100%;
+    --scene-position: 0% 25%;
+
+    grid-template-rows: auto auto;
+    align-content: space-between;
+    row-gap: 4rem; /* 64 au minimum entre titre et atouts */
+    /* Proportion du cadre Figma (la photo entière) de 1140 à 1440 ; 640 px au moins en
+       dessous, pour que le titre, plus grand en proportion, ne croise pas les flèches ;
+       809 px au-delà de 1440 : la photo s'élargit et se recadre en hauteur. */
+    min-block-size: min(max(56.1806vw, 40rem), 50.5625rem);
+  }
+
+  /* Plus de fondu : les deux dégradés du Figma seulement. */
+  .performance::before {
+    background:
+      var(--shade-1364),
+      var(--shade-1363);
+  }
+
+  .benefits {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    margin-block-start: 0;
+  }
+
+  /* Colonnes de 356,67 à 1440, sans gouttière : l'air vient de la fin de chaque colonne. */
+  .benefit {
+    padding-inline-end: 2rem; /* 32 */
+  }
+}
+
+@media (min-width: 64rem) {
+  /* 210 / 1070 à 1440 : titre et atouts commencent à 290 px du bord, comme dans le Figma. */
+  .performance {
+    grid-template-columns: minmax(0, 21fr) minmax(0, 107fr);
+  }
+
+  .heading,
+  .benefits {
+    grid-column: 2;
+  }
+}
+
+@media (min-width: 90rem) {
+  /* Cadré à droite : les flèches débordent de 1,5 px à gauche, comme le calque « visual ». */
+  .performance {
+    --scene-position: 100% 25%;
+  }
+}

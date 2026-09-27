@@ -1,0 +1,19 @@
+/* Figma « Variable chip » 445:1898 : hug 17 px, pad 1 6, radius/sm, bg/tint/variable, Body Small text/variable. */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  padding: 1px var(--k-space-6);
+  border-radius: var(--k-radius-sm);
+  background-color: var(--k-bg-tint-variable);
+  color: var(--k-text-variable);
+  font: var(--k-text-body-small);
+  letter-spacing: var(--k-text-body-small-tracking);
+  white-space: nowrap;
+  vertical-align: baseline;
+}
+
+.invalid {
+  background-color: var(--k-bg-tint-danger);
+  color: var(--k-interactive-danger);
+}

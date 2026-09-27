@@ -1,0 +1,63 @@
+/* Figma « Remove badge » 410:1547 : 18×18, radius/full, bg/strong, ombres 0 0.5 0 #0000001a + 0 1 3 #00000033, croix 5×5 icon/default 1.5. */
+.badge {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border-radius: var(--k-radius-full);
+  background-color: var(--k-bg-strong);
+  color: var(--k-icon-default);
+  box-shadow:
+    0 0.5px 0 0 rgba(0, 0, 0, 0.1),
+    0 1px 3px 0 rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+  transition:
+    color var(--k-duration-fast) ease,
+    transform var(--k-duration-fast) var(--k-ease-out);
+}
+
+/* Cible de 28 px pour le pointeur, sans changer le dessin. */
+.badge::before {
+  content: '';
+  position: absolute;
+  inset: -5px;
+  border-radius: var(--k-radius-full);
+}
+
+.badge:hover:not(:disabled) {
+  color: var(--k-icon-active);
+}
+
+.badge:active:not(:disabled) {
+  transform: scale(0.94);
+}
+
+.badge:focus-visible {
+  outline: 2px solid var(--k-border-focus);
+  outline-offset: 2px;
+}
+
+.badge:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.corner {
+  position: absolute;
+  top: -9px;
+  right: -9px;
+  z-index: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .badge {
+    transition: none;
+  }
+
+  .badge:active:not(:disabled) {
+    transform: none;
+  }
+}

@@ -1,0 +1,76 @@
+/* Figma « Top bar » 333:1407 : 48 px, H gap 12, pad 0 12 0 16, bg/primary, trait bas border/subtle. */
+.bar {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: var(--k-space-12);
+  height: 48px;
+  min-width: 0;
+  padding: 0 var(--k-space-12) 0 var(--k-space-16);
+  border-bottom: 1px solid var(--k-border-subtle);
+  background-color: var(--k-bg-primary);
+}
+
+.status {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: var(--k-space-8);
+  min-width: 0;
+}
+
+/* Point 6 px : muted (à jour), warning (en attente), primary (publication), success, danger. */
+.dot {
+  flex-shrink: 0;
+  width: 6px;
+  height: 6px;
+  border-radius: var(--k-radius-full);
+  background-color: var(--k-text-muted);
+  transition: background-color var(--k-duration-base) ease;
+}
+
+.dot[data-state='pending'] {
+  background-color: var(--k-interactive-warning);
+}
+
+.dot[data-state='publishing'] {
+  background-color: var(--k-interactive-primary);
+}
+
+.dot[data-state='published'] {
+  background-color: var(--k-interactive-success);
+}
+
+.dot[data-state='failed'] {
+  background-color: var(--k-interactive-danger);
+}
+
+.statusText {
+  min-width: 0;
+  color: var(--k-text-secondary);
+  font: var(--k-text-body);
+  letter-spacing: var(--k-text-body-tracking);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.autosave {
+  flex-shrink: 0;
+  color: var(--k-text-muted);
+  font: var(--k-text-body-small);
+  letter-spacing: var(--k-text-body-small-tracking);
+  white-space: nowrap;
+}
+
+@media (max-width: 1100px) {
+  .autosave {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dot {
+    transition: none;
+  }
+}

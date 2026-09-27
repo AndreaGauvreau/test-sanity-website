@@ -1,0 +1,56 @@
+/* Figma « Callout » 323:316 : 400 px (fixe, ici fluide), H gap 8, pad 10 12, radius/md, fond bg/tint/<ton>, icône 16. */
+.callout {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--k-space-8);
+  padding: var(--k-space-10) var(--k-space-12);
+  border-radius: var(--k-radius-md);
+  background-color: var(--k-bg-tint-neutral);
+  --k-icon-current: var(--k-icon-default);
+  overflow: hidden;
+}
+
+.icon {
+  flex-shrink: 0;
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--k-space-6);
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.text {
+  color: var(--k-text-secondary);
+  font: var(--k-text-body-small);
+  letter-spacing: var(--k-text-body-small-tracking);
+}
+
+/* L'action (Button ghost small) est posée au bord gauche du corps, comme dans Figma. */
+.action {
+  display: flex;
+  gap: var(--k-space-8);
+}
+
+.info {
+  background-color: var(--k-bg-tint-info);
+  --k-icon-current: var(--k-icon-primary);
+}
+
+.success {
+  background-color: var(--k-bg-tint-success);
+  --k-icon-current: var(--k-icon-success);
+}
+
+.warning {
+  background-color: var(--k-bg-tint-warning);
+  --k-icon-current: var(--k-icon-warning);
+}
+
+.error {
+  background-color: var(--k-bg-tint-danger);
+  --k-icon-current: var(--k-icon-error);
+}

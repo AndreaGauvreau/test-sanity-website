@@ -2,6 +2,8 @@ import type { StegaBranded } from 'next-sanity'
 
 import { Eyebrow } from '@/components/ui/Eyebrow/Eyebrow'
 import { PostCard } from '@/components/ui/PostCard/PostCard'
+import { editAttrs } from '@/lib/editor/preview'
+import { HOME_DOCUMENT_ID } from '@/lib/site'
 import type { InsightsSection, LATEST_POSTS_QUERY_RESULT } from '@/sanity/types'
 
 import styles from './Insights.module.css'
@@ -21,10 +23,16 @@ export function Insights({ data, posts }: Props) {
   const { eyebrow, title } = data
 
   return (
-    <section className={styles.insights} aria-labelledby="insights-title">
+    <section
+      className={styles.insights}
+      aria-labelledby="insights-title"
+      {...editAttrs('insights', { doc: HOME_DOCUMENT_ID })}
+    >
       <hgroup className={styles.heading}>
-        <Eyebrow>{eyebrow}</Eyebrow>
-        <h2 id="insights-title" className={styles.title}>
+        <Eyebrow className={styles.eyebrow} edit={editAttrs('insights.eyebrow')}>
+          {eyebrow}
+        </Eyebrow>
+        <h2 id="insights-title" className={styles.title} {...editAttrs('insights.title')}>
           {title}
         </h2>
       </hgroup>
@@ -34,7 +42,7 @@ export function Insights({ data, posts }: Props) {
       <div className={styles.scroller} role="group" aria-labelledby="insights-title" tabIndex={0}>
         <ul className={styles.cards}>
           {posts.map((post) => (
-            <li key={post._id} className={styles.card}>
+            <li key={post._id} className={styles.card} {...editAttrs('insights.card', { doc: post._id })}>
               <PostCard post={post} heading="h3" sizes="(min-width: 30rem) 380px, calc(100vw - 4.5rem)" />
             </li>
           ))}

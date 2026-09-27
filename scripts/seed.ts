@@ -13,11 +13,14 @@
  * - Blog : rien. Les cartes du Figma sont des exemples, les articles viendront du client.
  *
  * Ne supprime rien. L'ancien contenu de démo (LyonDrive) : npm run cleanup:legacy.
+ * Refuse de s'exécuter sur le dataset production (src/sanity/lib/dataset-guard.ts).
  */
+import { generateNKeysBetween } from 'fractional-indexing'
 import { getCliClient } from 'sanity/cli'
 
 import { faqQuestions, firstFaqAnswer, testimonialDoc } from '../src/sanity/seed/collections'
 import { pageSections, pageSeo } from '../src/sanity/seed/page'
+import { assertNotProduction } from '../src/sanity/lib/dataset-guard'
 
 const client = getCliClient({ apiVersion: '2026-09-01' })
 const force = process.argv.includes('--force')
@@ -25,6 +28,7 @@ const force = process.argv.includes('--force')
 const PAGE_ID = 'dockSchedulingPage'
 
 async function seed() {
+  assertNotProduction(client)
   const { projectId, dataset } = client.config()
   console.log(`Seed${force ? ' (--force)' : ''} → projet ${projectId}, dataset ${dataset}`)
 
@@ -53,16 +57,18 @@ async function seed() {
   else transaction.createIfNotExists(testimonialDoc)
 
   // --- FAQ -------------------------------------------------------------------------
+  // Ordre manuel (orderRank, clés fractionnaires) dans l'ordre du Figma.
+  const ranks = generateNKeysBetween(null, null, faqQuestions.length)
   for (const [index, question] of faqQuestions.entries()) {
     const id = `faq-${index + 1}`
-    const order = index + 1
+    const orderRank = ranks[index]
     const alreadyThere = existing.has(id) || existing.has(`drafts.${id}`)
     if (alreadyThere && !force) continue
     if (index === 0) {
-      transaction.createOrReplace({ _id: id, _type: 'faq', question, answer: firstFaqAnswer, order })
+      transaction.createOrReplace({ _id: id, _type: 'faq', question, answer: firstFaqAnswer, orderRank })
     } else {
       // Pas de réponse dans le Figma : brouillon, à compléter puis publier dans l'admin.
-      transaction.createOrReplace({ _id: `drafts.${id}`, _type: 'faq', question, order })
+      transaction.createOrReplace({ _id: `drafts.${id}`, _type: 'faq', question, orderRank })
     }
   }
 

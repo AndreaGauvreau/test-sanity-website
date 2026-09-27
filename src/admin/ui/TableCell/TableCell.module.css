@@ -1,0 +1,146 @@
+/* Figma « Table cell » 337:1191 : header 32 (Body Small muted), corps 44 ; pad 0 12, gap 8 ; trait bas border/subtle. */
+.table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  table-layout: fixed;
+}
+
+.cell {
+  height: 44px;
+  padding: 0 var(--k-space-12);
+  border-bottom: 1px solid var(--k-border-subtle);
+  text-align: start;
+  vertical-align: middle;
+  --k-icon-current: var(--k-icon-default);
+  transition: background-color var(--k-duration-fast) ease;
+}
+
+.header {
+  height: 32px;
+  color: var(--k-text-muted);
+  font: var(--k-text-body-small);
+  letter-spacing: var(--k-text-body-small-tracking);
+  white-space: nowrap;
+}
+
+.header[data-align='end'] .inner,
+.header[data-align='end'] .sortButton {
+  justify-content: flex-end;
+}
+
+.inner {
+  display: flex;
+  align-items: center;
+  gap: var(--k-space-8);
+  min-width: 0;
+}
+
+.headerLabel {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sortButton {
+  display: flex;
+  align-items: center;
+  gap: var(--k-space-8);
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  cursor: pointer;
+  border-radius: var(--k-radius-sm);
+  transition: color var(--k-duration-fast) ease;
+}
+
+.sortButton:hover {
+  color: var(--k-text-secondary);
+}
+
+.sort {
+  flex-shrink: 0;
+  transition: transform var(--k-duration-fast) var(--k-ease-in-out);
+}
+
+.sort[data-sort='ascending'] {
+  transform: rotate(180deg);
+}
+
+.sort[data-sort='none'] {
+  opacity: 0.5;
+}
+
+/* Survol et sélection portés par la ligne (Figma state=hover / selected). */
+.row[data-hover]:hover > .body {
+  background-color: var(--k-bg-subtle);
+}
+
+.row[data-selected] > .body,
+.row[data-selected]:hover > .body {
+  background-color: var(--k-bg-tint-info);
+}
+
+.label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: var(--k-text-body);
+  letter-spacing: var(--k-text-body-tracking);
+  color: var(--k-text-secondary);
+}
+
+.title .label {
+  color: var(--k-text-primary);
+}
+
+/* Vignette 28 du type title : radius/sm, bg/input-hover, icône 12. */
+.thumb {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  overflow: hidden;
+  border-radius: var(--k-radius-sm);
+  background-color: var(--k-bg-input-hover);
+}
+
+.thumbImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* model : gap 6, logo Claude en brand/claude. */
+.model .inner {
+  gap: var(--k-space-6);
+}
+
+.mark {
+  flex-shrink: 0;
+  --k-icon-current: var(--k-brand-claude);
+}
+
+/* checkbox : 40 px de large ; actions : aligné à droite. */
+.checkbox {
+  width: 40px;
+}
+
+.actions .inner {
+  justify-content: flex-end;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cell,
+  .sort,
+  .sortButton {
+    transition: none;
+  }
+}

@@ -185,3 +185,12 @@
     --scene-position: 100% 25%;
   }
 }
+
+/* --- Ancres des zones de l'éditeur IA (src/editor/zones.json) ----------------------------------
+   Une classe par élément modifiable, portée par l'élément marqué data-edit. Un CSS Module n'exporte
+   pas une classe sans déclaration : `order: 0` (valeur initiale, sans effet) la fait exister. */
+
+/* Zone « performance.eyebrow ». */
+.eyebrow {
+  order: 0;
+}

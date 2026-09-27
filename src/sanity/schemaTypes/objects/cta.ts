@@ -1,6 +1,8 @@
 import { LinkIcon } from '@sanity/icons/Link'
 import { defineField, defineType } from 'sanity'
 
+import { maxLength } from '../shared'
+
 // Bouton ou lien d'action (calques « cta » du Figma) : un libellé, une destination.
 // Sans destination, le site pointe vers `#` en attendant l'URL.
 export const cta = defineType({
@@ -14,7 +16,7 @@ export const cta = defineType({
       title: 'Libellé',
       type: 'string',
       description: 'En casse normale : les capitales viennent du style.',
-      validation: (rule) => rule.required(),
+      validation: (rule) => [rule.required(), maxLength(rule, 30)],
     }),
     defineField({
       name: 'href',

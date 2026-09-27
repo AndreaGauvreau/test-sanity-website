@@ -1,0 +1,10 @@
+/* Figma « Scrim » 336:825 : bg/scrim (noir 60 %), étiré à l'écran. */
+.scrim {
+  position: fixed;
+  inset: 0;
+  background-color: var(--k-bg-scrim);
+}
+
+.scrim[data-position='absolute'] {
+  position: absolute;
+}

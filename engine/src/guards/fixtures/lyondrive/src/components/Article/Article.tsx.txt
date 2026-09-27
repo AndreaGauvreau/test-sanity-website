@@ -1,0 +1,27 @@
+import { formatDate, type Post } from '@/lib/cms'
+import styles from './Article.module.css'
+
+export function Article({ post }: { post: Post }) {
+  return (
+    <article className={styles.article} data-edit-doc={post.id}>
+      <header>
+        <h1 className={styles.title} data-edit="article.title">
+          {post.title}
+        </h1>
+        <p className={styles.subtitle} data-edit="article.subtitle">
+          {post.subtitle}
+        </p>
+        <div className={styles.meta} data-edit="article.meta">
+          <span>Publié le {formatDate(post.createdAt)}</span>
+          <span>Mis à jour le {formatDate(post.updatedAt)}</span>
+        </div>
+      </header>
+      <img className={styles.image} src={post.image.url} alt={post.image.alt} width={1200} height={630} />
+      <div
+        className={styles.content}
+        data-edit="article.content"
+        dangerouslySetInnerHTML={{ __html: post.contentHtml }}
+      />
+    </article>
+  )
+}

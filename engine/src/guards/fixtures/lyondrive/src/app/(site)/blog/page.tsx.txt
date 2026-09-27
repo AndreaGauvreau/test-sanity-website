@@ -1,0 +1,16 @@
+import { PageTitle } from '@/components/PageTitle/PageTitle'
+import { PostGrid } from '@/components/PostGrid/PostGrid'
+import { getPosts } from '@/lib/cms'
+
+export const metadata = { title: 'Blog — LyonDrive' }
+
+export default async function BlogPage() {
+  const posts = await getPosts()
+
+  return (
+    <>
+      <PageTitle title="Blog" intro="Itinéraires, conseils de location et actualités de nos agences lyonnaises." />
+      <PostGrid posts={posts} />
+    </>
+  )
+}

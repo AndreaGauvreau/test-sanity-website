@@ -1,0 +1,67 @@
+/* Figma « Tabs » 332:479 : H gap 20, trait bas border/subtle, aligné en bas ; « Tab » 332:459 : pad-top 8, gap 8. */
+.tabs {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--k-space-20);
+  min-width: 0;
+  border-bottom: 1px solid var(--k-border-subtle);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.tab {
+  display: flex;
+  flex-shrink: 0;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--k-space-8);
+  padding: var(--k-space-8) 0 0 0;
+  border: 0;
+  background: none;
+  color: var(--k-text-tertiary);
+  font: var(--k-text-body);
+  letter-spacing: var(--k-text-body-tracking);
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color var(--k-duration-fast) ease;
+}
+
+.tab:hover:not(:disabled, [aria-disabled='true']),
+.tab[data-active] {
+  color: var(--k-text-primary);
+}
+
+.tab:disabled,
+.tab[aria-disabled='true'] {
+  color: var(--k-text-disabled);
+  cursor: not-allowed;
+}
+
+.tab:focus-visible {
+  outline-offset: 0;
+  border-radius: var(--k-radius-sm);
+}
+
+.label {
+  line-height: 16px;
+}
+
+/* Soulignement 2 px pleine largeur : transparent, text/primary quand actif. */
+.underline {
+  align-self: stretch;
+  height: 2px;
+  background-color: transparent;
+  transition: background-color var(--k-duration-fast) ease;
+}
+
+.tab[data-active] .underline {
+  background-color: var(--k-text-primary);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tab,
+  .underline {
+    transition: none;
+  }
+}

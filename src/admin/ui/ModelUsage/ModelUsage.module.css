@@ -1,0 +1,48 @@
+/* Figma « Model usage » 427:1565 : H gap 8 ; modèle (claude 12 + nom, gap 4) ; usage (gap 4) ; Icon color = claude. */
+.root {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--k-space-8);
+  min-width: 0;
+  white-space: nowrap;
+  --k-icon-current: var(--k-brand-claude);
+}
+
+.default {
+  font: var(--k-text-body-small);
+  letter-spacing: var(--k-text-body-small-tracking);
+}
+
+.small {
+  font: var(--k-text-caption);
+  letter-spacing: var(--k-text-caption-tracking);
+}
+
+.model,
+.parts {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--k-space-4);
+}
+
+.usage {
+  display: inline-flex;
+  min-width: 0;
+}
+
+.mark {
+  flex-shrink: 0;
+}
+
+.name,
+.cost {
+  color: var(--k-text-secondary);
+}
+
+.tokens {
+  color: var(--k-text-tertiary);
+}
+
+.sep {
+  color: var(--k-text-muted);
+}

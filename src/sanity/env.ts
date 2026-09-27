@@ -15,8 +15,9 @@ export const dataset = assertValue(
   'Variable manquante : NEXT_PUBLIC_SANITY_DATASET (voir .env.example)',
 )
 
-// Route où le Studio est monté dans l'app Next (équivalent du /admin de Payload).
-export const studioUrl = '/admin'
+// Route où le Studio Sanity est monté dans l'app Next : /studio, outil de Kuartz.
+// /admin est l'admin du client (src/admin), qui ne passe pas par le Studio.
+export const studioUrl = '/studio'
 
 function assertValue<T>(value: T | undefined, message: string): T {
   if (value === undefined) throw new Error(message)

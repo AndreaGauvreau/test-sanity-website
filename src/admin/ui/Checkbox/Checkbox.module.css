@@ -1,0 +1,64 @@
+/* Figma « Checkbox » 330:283 : H gap 8 ; box 16×16 radius/sm, bg/input + border/strong ; coché : interactive/primary sans contour. */
+.checkbox {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--k-space-8);
+  cursor: pointer;
+  user-select: none;
+}
+
+.disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* L'input natif couvre la case (cible du pointeur et du focus), invisible. */
+.input {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  opacity: 0;
+  cursor: inherit;
+}
+
+.box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  border: 1px solid var(--k-border-strong);
+  border-radius: var(--k-radius-sm);
+  background-color: var(--k-bg-input);
+  transition:
+    background-color var(--k-duration-fast) ease,
+    border-color var(--k-duration-fast) ease;
+}
+
+.on {
+  border-color: var(--k-interactive-primary);
+  background-color: var(--k-interactive-primary);
+  --k-icon-current: var(--k-text-on-accent);
+}
+
+.input:focus-visible + .box {
+  outline: 2px solid var(--k-border-focus);
+  outline-offset: 2px;
+}
+
+.label {
+  color: var(--k-text-secondary);
+  font: var(--k-text-body);
+  letter-spacing: var(--k-text-body-tracking);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .box {
+    transition: none;
+  }
+}

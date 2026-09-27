@@ -1,6 +1,8 @@
 import type { StegaBranded } from 'next-sanity'
 
 import { Button } from '@/components/ui/Button/Button'
+import { editAttrs } from '@/lib/editor/preview'
+import { HOME_DOCUMENT_ID } from '@/lib/site'
 import type { TourSection } from '@/sanity/types'
 
 import styles from './Tour.module.css'
@@ -13,14 +15,16 @@ export function Tour({ data }: { data: StegaBranded<TourSection> }) {
   const { title, lede, cta } = data
 
   return (
-    <section className={styles.tour} aria-labelledby="tour-title">
-      <h2 id="tour-title" className={styles.title}>
+    <section className={styles.tour} aria-labelledby="tour-title" {...editAttrs('tour', { doc: HOME_DOCUMENT_ID })}>
+      <h2 id="tour-title" className={styles.title} {...editAttrs('tour.title')}>
         {title}
       </h2>
-      <p className={styles.lede}>{lede}</p>
+      <p className={styles.lede} {...editAttrs('tour.lede')}>
+        {lede}
+      </p>
       {/* Champ requis, mais un brouillon peut en être dépourvu. */}
       {cta && (
-        <Button href={cta.href ?? '#'} tone="inverse" className={styles.cta}>
+        <Button href={cta.href ?? '#'} tone="inverse" className={styles.cta} edit={editAttrs('tour.cta')}>
           {cta.label}
         </Button>
       )}

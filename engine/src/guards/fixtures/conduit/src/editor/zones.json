@@ -1,0 +1,164 @@
+{
+  "controls": {
+    "textColor": {
+      "label": "Text color",
+      "property": "color",
+      "group": "color"
+    },
+    "background": {
+      "label": "Background",
+      "property": "background-color",
+      "group": "color"
+    },
+    "textStyle": {
+      "label": "Text style",
+      "property": "font",
+      "group": "text"
+    },
+    "align": {
+      "label": "Alignment",
+      "property": "text-align",
+      "options": {
+        "start": "Left",
+        "center": "Center",
+        "end": "Right"
+      }
+    },
+    "width": {
+      "label": "Width",
+      "property": "max-inline-size",
+      "options": {
+        "none": "Full",
+        "100%": "Parent width"
+      }
+    }
+  },
+  "zones": {
+    "hero": {
+      "label": "Section",
+      "section": "Hero",
+      "files": [
+        "src/components/sections/Hero/Hero.module.css",
+        "src/components/sections/Hero/Hero.tsx"
+      ],
+      "selectors": [
+        ".hero"
+      ],
+      "children": [
+        "hero.title",
+        "hero.lede"
+      ],
+      "controls": [
+        "background"
+      ],
+      "reach": "the home page"
+    },
+    "hero.title": {
+      "label": "Title",
+      "section": "Hero",
+      "files": [
+        "src/components/sections/Hero/Hero.module.css",
+        "src/components/sections/Hero/Hero.tsx"
+      ],
+      "selectors": [
+        ".title"
+      ],
+      "controls": [
+        "textColor",
+        "textStyle",
+        "align",
+        "width"
+      ],
+      "text": {
+        "source": "sanity",
+        "document": {
+          "type": "dockSchedulingPage",
+          "id": "dockSchedulingPage"
+        },
+        "fields": {
+          "hero.title": 90
+        }
+      }
+    },
+    "hero.lede": {
+      "label": "Lede",
+      "section": "Hero",
+      "files": [
+        "src/components/sections/Hero/Hero.module.css",
+        "src/components/sections/Hero/Hero.tsx"
+      ],
+      "selectors": [
+        ".lede"
+      ],
+      "hideable": true,
+      "controls": [
+        "textColor",
+        "textStyle",
+        "align",
+        "width"
+      ],
+      "text": {
+        "source": "sanity",
+        "document": {
+          "type": "dockSchedulingPage",
+          "id": "dockSchedulingPage"
+        },
+        "fields": {
+          "hero.lede": 220
+        }
+      }
+    },
+    "getStarted.title": {
+      "label": "Title",
+      "section": "Get started",
+      "files": [
+        "src/components/sections/GetStarted/GetStarted.module.css",
+        "src/components/sections/GetStarted/GetStarted.tsx"
+      ],
+      "selectors": [
+        ".title",
+        ".muted"
+      ],
+      "controls": [
+        "textColor",
+        "textStyle"
+      ],
+      "text": {
+        "source": "sanity",
+        "document": {
+          "type": "dockSchedulingPage",
+          "id": "dockSchedulingPage"
+        },
+        "fields": {
+          "getStarted.title": 90,
+          "getStarted.titleMuted": 90
+        }
+      }
+    },
+    "getStarted.text": {
+      "label": "Text",
+      "section": "Get started",
+      "files": [
+        "src/components/sections/GetStarted/GetStarted.module.css",
+        "src/components/sections/GetStarted/GetStarted.tsx"
+      ],
+      "selectors": [
+        ".text"
+      ],
+      "controls": [
+        "textColor",
+        "textStyle"
+      ],
+      "text": {
+        "source": "sanity",
+        "document": {
+          "type": "dockSchedulingPage",
+          "id": "dockSchedulingPage"
+        },
+        "fields": {
+          "getStarted.text": 260
+        }
+      }
+    }
+  }
+}

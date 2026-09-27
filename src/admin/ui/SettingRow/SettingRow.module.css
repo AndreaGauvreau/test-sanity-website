@@ -1,0 +1,29 @@
+/* Figma « Setting row » 330:341 : 560 × hug, H gap 24, pad 12 0, trait bas border/subtle 1px ; texte V gap 2. */
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--k-space-24);
+  width: 100%;
+  padding: var(--k-space-12) 0;
+  border-bottom: 1px solid var(--k-border-subtle);
+}
+
+.text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--k-space-2);
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.title {
+  color: var(--k-text-primary);
+  font: var(--k-text-body);
+  letter-spacing: var(--k-text-body-tracking);
+}
+
+.description {
+  color: var(--k-text-tertiary);
+  font: var(--k-text-body-small);
+  letter-spacing: var(--k-text-body-small-tracking);
+}

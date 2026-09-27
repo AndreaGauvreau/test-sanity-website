@@ -1,0 +1,48 @@
+import type { Metadata } from 'next'
+import { Footer } from '@/components/Footer/Footer'
+import { Header } from '@/components/Header/Header'
+import { EditorLauncher } from '@/editor/EditorLauncher'
+import { InspectorBridge } from '@/editor/bridge/InspectorBridge'
+import { canViewDraft, getEditorUser } from '@/editor/session'
+import { tokensCss } from '@/styles/tokens'
+import './globals.css'
+
+export const metadata: Metadata = { title: 'LyonDrive — Location de voiture à Lyon' }
+
+// live : le site public (branche main). draft : la preview du brouillon (branche draft), affichée dans l'éditeur.
+const isDraft = process.env.SITE_MODE === 'draft'
+
+const DRAFT_URL = process.env.DRAFT_URL ?? 'http://127.0.0.1:4012'
+const ADMIN_URL = process.env.ADMIN_URL ?? 'http://127.0.0.1:4010/admin'
+const LIVE_ORIGINS = (process.env.LIVE_ORIGINS ?? 'http://127.0.0.1:4011,http://localhost:4011').split(',')
+
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  if (isDraft && !(await canViewDraft())) {
+    return (
+      <html lang="fr">
+        <body style={{ padding: '3rem', fontFamily: 'system-ui, sans-serif' }}>
+          Preview privée du brouillon. Connectez-vous à l’admin, puis ouvrez l’éditeur depuis le site.
+        </body>
+      </html>
+    )
+  }
+
+  const user = isDraft ? null : await getEditorUser()
+
+  return (
+    <html lang="fr">
+      <head>
+        <style dangerouslySetInnerHTML={{ __html: tokensCss }} />
+      </head>
+      <body>
+        <Header />
+        <main>{children}</main>
+        <Footer />
+        {user && (
+          <EditorLauncher user={{ name: user.name ?? user.email, role: user.role }} draftUrl={DRAFT_URL} adminUrl={ADMIN_URL} />
+        )}
+        {isDraft && <InspectorBridge allowedOrigins={LIVE_ORIGINS} />}
+      </body>
+    </html>
+  )
+}

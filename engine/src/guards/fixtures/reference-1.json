@@ -1,0 +1,355 @@
+[
+  {
+    "id": "C01",
+    "zone": "footer",
+    "scope": [
+      "style"
+    ],
+    "hardcoded": [],
+    "file": "src/components/Footer/Footer.module.css",
+    "before": ".footer {\n  padding-block: var(--space-7);\n  border-top: 1px solid var(--color-night-soft);\n  background-color: var(--color-night);\n  color: var(--color-slate);\n}\n\n.inner {\n  display: flex;\n  flex-direction: column;\n  gap: var(--space-2);\n  font-family: var(--font-sans);\n  font-size: var(--text-xs);\n}\n\n.brand {\n  color: var(--color-ink);\n  font-family: var(--font-serif);\n  font-size: var(--text-lg);\n}\n\n@media (min-width: 48rem) {\n  .inner {\n    flex-direction: row;\n    align-items: baseline;\n    justify-content: space-between;\n  }\n}\n",
+    "after": ".footer {\n  padding-block: var(--space-7);\n  border-top: 1px solid var(--color-night-soft);\n  background-color: var(--color-night);\n  color: var(--color-ink);\n}\n\n.inner {\n  display: flex;\n  flex-direction: column;\n  gap: var(--space-3);\n  font-family: var(--font-sans);\n  font-size: var(--text-md);\n  line-height: 1.5;\n}\n\n.brand {\n  color: var(--color-white);\n  font-family: var(--font-serif);\n  font-size: var(--text-xl);\n  font-weight: var(--weight-semibold);\n}\n\n@media (min-width: 48rem) {\n  .inner {\n    flex-direction: row;\n    align-items: baseline;\n    justify-content: space-between;\n  }\n}\n"
+  },
+  {
+    "id": "C02",
+    "zone": "post.card",
+    "scope": [
+      "style"
+    ],
+    "hardcoded": [],
+    "file": "src/components/PostCard/PostCard.module.css",
+    "before": ".card {\n  display: flex;\n  flex-direction: column;\n  gap: var(--space-4);\n  padding: var(--space-0);\n  overflow: hidden;\n  border-radius: var(--radius-none);\n  background-color: transparent;\n  box-shadow: var(--shadow-none);\n}\n\n.image {\n  width: 100%;\n  aspect-ratio: 1200 / 630;\n  object-fit: cover;\n}\n\n.body {\n  display: flex;\n  flex-direction: column;\n  gap: var(--space-2);\n}\n\n.title {\n  color: var(--color-ink);\n  font-family: var(--font-serif);\n  font-size: var(--text-2xl);\n  font-weight: var(--weight-bold);\n  line-height: 1.2;\n}\n\n.subtitle {\n  color: var(--color-mist);\n  font-family: var(--font-sans);\n}\n\n.date {\n  color: var(--color-slate);\n  font-family: var(--font-sans);\n  font-size: var(--text-xs);\n}\n",
+    "after": ".card {\n  display: flex;\n  flex-direction: column;\n  gap: var(--space-5);\n  padding: var(--space-3) var(--space-3) var(--space-6);\n  overflow: hidden;\n  border: 1px solid var(--color-night-soft);\n  border-radius: var(--radius-lg);\n  background-color: var(--color-night-soft);\n  box-shadow: var(--shadow-sm);\n  text-decoration: none;\n  transition:\n    box-shadow 200ms ease,\n    transform 200ms ease;\n}\n\n.card:hover {\n  border-color: var(--color-slate);\n  box-shadow: var(--shadow-md);\n  transform: translateY(calc(var(--space-1) * -1));\n}\n\n.card:focus-visible {\n  outline: 1px solid var(--color-rose);\n  outline-offset: var(--space-1);\n  box-shadow: var(--shadow-glow);\n}\n\n.image {\n  width: 100%;\n  aspect-ratio: 1200 / 630;\n  object-fit: cover;\n}\n\n.body {\n  display: flex;\n  flex-direction: column;\n  gap: var(--space-2);\n}\n\n.title {\n  color: var(--color-ink);\n  font-family: var(--font-serif);\n  font-size: var(--text-2xl);\n  font-weight: var(--weight-bold);\n  line-height: 1.2;\n}\n\n.subtitle {\n  color: var(--color-mist);\n  font-family: var(--font-sans);\n}\n\n.date {\n  color: var(--color-slate);\n  font-family: var(--font-sans);\n  font-size: var(--text-xs);\n}\n"
+  },
+  {
+    "id": "C03",
+    "zone": "hero.cta",
+    "scope": [
+      "style"
+    ],
+    "hardcoded": [],
+    "file": "src/components/Hero/Hero.module.css",
+    "before": ".hero {\n  background-color: var(--color-night);\n  padding-block: var(--layout-section);\n  text-align: left;\n}\n\n.title {\n  max-width: 18ch;\n  color: var(--color-ink);\n  font-family: var(--font-serif);\n  font-size: var(--text-4xl);\n  font-weight: var(--weight-bold);\n  line-height: 1.05;\n}\n\n/* Mots mis en avant dans le titre (*…* dans l'admin). */\n.accent {\n  font-style: normal;\n}\n\n.subtitle {\n  max-width: var(--layout-measure);\n  margin-block: var(--space-6) var(--space-7);\n  color: var(--color-mist);\n  font-family: var(--font-sans);\n  font-size: var(--text-lg);\n}\n\n.cta {\n  display: inline-block;\n  padding-block: var(--space-3);\n  padding-inline: var(--space-6);\n  border-radius: var(--radius-full);\n  background-color: var(--color-rose);\n  box-shadow: var(--shadow-none);\n  color: var(--color-white);\n  font-family: var(--font-sans);\n  font-size: var(--text-sm);\n  font-weight: var(--weight-semibold);\n  transition: background-color 0.2s ease-out;\n}\n\n.cta:hover {\n  background-color: var(--color-rose-deep);\n}\n",
+    "after": ".hero {\n  background-color: var(--color-night);\n  padding-block: var(--layout-section);\n  text-align: left;\n}\n\n.title {\n  max-width: 18ch;\n  color: var(--color-ink);\n  font-family: var(--font-serif);\n  font-size: var(--text-4xl);\n  font-weight: var(--weight-bold);\n  line-height: 1.05;\n}\n\n/* Mots mis en avant dans le titre (*…* dans l'admin). */\n.accent {\n  font-style: normal;\n}\n\n.subtitle {\n  max-width: var(--layout-measure);\n  margin-block: var(--space-6) var(--space-7);\n  color: var(--color-mist);\n  font-family: var(--font-sans);\n  font-size: var(--text-lg);\n}\n\n.cta {\n  display: inline-block;\n  padding-block: var(--space-4);\n  padding-inline: var(--space-7);\n  border-radius: var(--radius-full);\n  background-color: var(--color-rose);\n  box-shadow: var(--shadow-glow);\n  color: var(--color-white);\n  font-family: var(--font-sans);\n  font-size: var(--text-md);\n  font-weight: var(--weight-bold);\n  transition: background-color 0.2s ease-out, box-shadow 0.2s ease-out;\n}\n\n.cta:hover,\n.cta:focus-visible {\n  background-color: var(--color-rose-deep);\n  box-shadow: var(--shadow-lg);\n}\n"
+  },
+  {
+    "id": "C04",
+    "zone": "hero.subtitle",
+    "scope": [
+      "style",
+      "text"
+    ],
+    "hardcoded": [],
+    "file": "src/components/Hero/Hero.module.css",
+    "before": ".hero {\n  background-color: var(--color-night);\n  padding-block: var(--layout-section);\n  text-align: left;\n}\n\n.title {\n  max-width: 18ch;\n  color: var(--color-ink);\n  font-family: var(--font-serif);\n  font-size: var(--text-4xl);\n  font-weight: var(--weight-bold);\n  line-height: 1.05;\n}\n\n/* Mots mis en avant dans le titre (*…* dans l'admin). */\n.accent {\n  font-style: normal;\n}\n\n.subtitle {\n  max-width: var(--layout-measure);\n  margin-block: var(--space-6) var(--space-7);\n  color: var(--color-mist);\n  font-family: var(--font-sans);\n  font-size: var(--text-lg);\n}\n\n.cta {\n  display: inline-block;\n  padding-block: var(--space-3);\n  padding-inline: var(--space-6);\n  border-radius: var(--radius-full);\n  background-color: var(--color-rose);\n  box-shadow: var(--shadow-none);\n  color: var(--color-white);\n  font-family: var(--font-sans);\n  font-size: var(--text-sm);\n  font-weight: var(--weight-semibold);\n  transition: background-color 0.2s ease-out;\n}\n\n.cta:hover {\n  background-color: var(--color-rose-deep);\n}\n",
+    "after": ".hero {\n  background-color: var(--color-night);\n  padding-block: var(--layout-section);\n  text-align: left;\n}\n\n.title {\n  max-width: 18ch;\n  color: var(--color-ink);\n  font-family: var(--font-serif);\n  font-size: var(--text-4xl);\n  font-weight: var(--weight-bold);\n  line-height: 1.05;\n}\n\n/* Mots mis en avant dans le titre (*…* dans l'admin). */\n.accent {\n  font-style: normal;\n}\n\n.subtitle {\n  max-width: var(--layout-measure);\n  margin-block: var(--space-6) var(--space-7);\n  color: var(--color-sand);\n  font-family: var(--font-sans);\n  font-size: var(--text-lg);\n}\n\n.cta {\n  display: inline-block;\n  padding-block: var(--space-3);\n  padding-inline: var(--space-6);\n  border-radius: var(--radius-full);\n  background-color: var(--color-rose);\n  box-shadow: var(--shadow-none);\n  color: var(--color-white);\n  font-family: var(--font-sans);\n  font-size: var(--text-sm);\n  font-weight: var(--weight-semibold);\n  transition: background-color 0.2s ease-out;\n}\n\n.cta:hover {\n  background-color: var(--color-rose-deep);\n}\n"
+  },
+  {
+    "id": "C06",
+    "zone": "features.card",
+    "scope": [
+      "style"
+    ],
+    "hardcoded": [],
+    "file": "src/components/Features/Features.module.css",
+    "before": ".features {\n  background-color: var(--color-night);\n  border-top: 1px solid var(--color-night-soft);\n  padding-block: var(--layout-section);\n}\n\n.title {\n  margin-bottom: var(--space-7);\n  color: var(--color-ink);\n  font-family: var(--font-serif);\n  font-size: var(--text-3xl);\n  font-weight: var(--weight-bold);\n  text-align: left;\n}\n\n.grid {\n  display: grid;\n  gap: var(--space-5);\n}\n\n.card {\n  padding: var(--space-6);\n  border-radius: var(--radius-md);\n  background-color: var(--color-night-soft);\n  box-shadow: var(--shadow-none);\n  color: var(--color-ink);\n}\n\n.cardTitle {\n  margin-bottom: var(--space-3);\n  font-size: var(--text-xl);\n}\n\n.cardText {\n  color: var(--color-mist);\n  font-family: var(--font-sans);\n  font-size: var(--text-md);\n}\n\n@media (min-width: 48rem) {\n  .grid {\n    grid-template-columns: repeat(3, 1fr);\n  }\n}\n",
+    "after": ".features {\n  background-color: var(--color-night);\n  border-top: 1px solid var(--color-night-soft);\n  padding-block: var(--layout-section);\n}\n\n.title {\n  margin-bottom: var(--space-7);\n  color: var(--color-ink);\n  font-family: var(--font-serif);\n  font-size: var(--text-3xl);\n  font-weight: var(--weight-bold);\n  text-align: left;\n}\n\n.grid {\n  display: grid;\n  gap: var(--space-5);\n}\n\n.card {\n  padding: var(--space-6);\n  border-radius: var(--radius-lg);\n  background-color: var(--color-white);\n  box-shadow: var(--shadow-none);\n  color: var(--color-night);\n}\n\n.cardTitle {\n  margin-bottom: var(--space-3);\n  font-size: var(--text-xl);\n}\n\n.cardText {\n  color: var(--color-slate);\n  font-family: var(--font-sans);\n  font-size: var(--text-md);\n}\n\n@media (min-width: 48rem) {\n  .grid {\n    grid-template-columns: repeat(3, 1fr);\n  }\n}\n"
+  },
+  {
+    "id": "C10",
+    "zone": "header.nav",
+    "scope": [
+      "style"
+    ],
+    "hardcoded": [],
+    "file": "src/components/Header/Header.module.css",
+    "before": ".header {\n  background-color: var(--color-night);\n  border-bottom: 1px solid var(--color-night-soft);\n  padding-block: var(--space-5);\n}\n\n.inner {\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  gap: var(--space-4);\n}\n\n.logo {\n  color: var(--color-rose);\n  font-family: var(--font-serif);\n  font-size: var(--text-xl);\n  font-weight: var(--weight-bold);\n}\n\n.nav {\n  display: flex;\n  gap: var(--space-5);\n  color: var(--color-ink);\n  font-family: var(--font-sans);\n  font-size: var(--text-sm);\n  font-weight: var(--weight-regular);\n}\n\n.nav a:hover {\n  color: var(--color-rose-light);\n}\n\n@media (min-width: 48rem) {\n  .nav {\n    gap: var(--space-6);\n  }\n}\n",
+    "after": ".header {\n  background-color: var(--color-night);\n  border-bottom: 1px solid var(--color-night-soft);\n  padding-block: var(--space-5);\n}\n\n.inner {\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  gap: var(--space-4);\n}\n\n.logo {\n  color: var(--color-rose);\n  font-family: var(--font-serif);\n  font-size: var(--text-xl);\n  font-weight: var(--weight-bold);\n}\n\n.nav {\n  display: flex;\n  gap: var(--space-5);\n  color: var(--color-ink);\n  font-family: var(--font-sans);\n  font-size: var(--text-sm);\n  font-weight: var(--weight-bold);\n}\n\n.nav a:hover {\n  color: var(--color-rose-light);\n}\n\n@media (min-width: 48rem) {\n  .nav {\n    gap: var(--space-6);\n  }\n}\n"
+  },
+  {
+    "id": "L02",
+    "zone": "hero.subtitle",
+    "scope": [
+      "style"
+    ],
+    "hardcoded": [],
+    "file": "src/components/Hero/Hero.module.css",
+    "before": ".hero {\n  background-color: var(--color-night);\n  padding-block: var(--layout-section);\n  text-align: left;\n}\n\n.title {\n  max-width: 18ch;\n  color: var(--color-ink);\n  font-family: var(--font-serif);\n  font-size: var(--text-4xl);\n  font-weight: var(--weight-bold);\n  line-height: 1.05;\n}\n\n/* Mots mis en avant dans le titre (*…* dans l'admin). */\n.accent {\n  font-style: normal;\n}\n\n.subtitle {\n  max-width: var(--layout-measure);\n  margin-block: var(--space-6) var(--space-7);\n  color: var(--color-mist);\n  font-family: var(--font-sans);\n  font-size: var(--text-lg);\n}\n\n.cta {\n  display: inline-block;\n  padding-block: var(--space-3);\n  padding-inline: var(--space-6);\n  border-radius: var(--radius-full);\n  background-color: var(--color-rose);\n  box-shadow: var(--shadow-none);\n  color: var(--color-white);\n  font-family: var(--font-sans);\n  font-size: var(--text-sm);\n  font-weight: var(--weight-semibold);\n  transition: background-color 0.2s ease-out;\n}\n\n.cta:hover {\n  background-color: var(--color-rose-deep);\n}\n",
+    "after": ".hero {\n  background-color: var(--color-night);\n  padding-block: var(--layout-section);\n  text-align: left;\n}\n\n.title {\n  max-width: 18ch;\n  color: var(--color-ink);\n  font-family: var(--font-serif);\n  font-size: var(--text-4xl);\n  font-weight: var(--weight-bold);\n  line-height: 1.05;\n}\n\n/* Mots mis en avant dans le titre (*…* dans l'admin). */\n.accent {\n  font-style: normal;\n}\n\n.subtitle {\n  max-width: var(--layout-measure);\n  margin-block: var(--space-6) var(--space-7);\n  color: var(--color-mist);\n  font-family: var(--font-sans);\n  font-size: var(--text-sm);\n}\n\n.cta {\n  display: inline-block;\n  padding-block: var(--space-3);\n  padding-inline: var(--space-6);\n  border-radius: var(--radius-full);\n  background-color: var(--color-rose);\n  box-shadow: var(--shadow-none);\n  color: var(--color-white);\n  font-family: var(--font-sans);\n  font-size: var(--text-sm);\n  font-weight: var(--weight-semibold);\n  transition: background-color 0.2s ease-out;\n}\n\n.cta:hover {\n  background-color: var(--color-rose-deep);\n}\n"
+  },
+  {
+    "id": "L05",
+    "zone": "hero",
+    "scope": [
+      "style"
+    ],
+    "hardcoded": [
+      {
+        "property": "font-family",
+        "value": "'Montserrat', sans-serif"
+      }
+    ],
+    "file": "src/components/Hero/Hero.module.css",
+    "before": ".hero {\n  background-color: var(--color-night);\n  padding-block: var(--layout-section);\n  text-align: left;\n}\n\n.title {\n  max-width: 18ch;\n  color: var(--color-ink);\n  font-family: var(--font-serif);\n  font-size: var(--text-4xl);\n  font-weight: var(--weight-bold);\n  line-height: 1.05;\n}\n\n/* Mots mis en avant dans le titre (*…* dans l'admin). */\n.accent {\n  font-style: normal;\n}\n\n.subtitle {\n  max-width: var(--layout-measure);\n  margin-block: var(--space-6) var(--space-7);\n  color: var(--color-mist);\n  font-family: var(--font-sans);\n  font-size: var(--text-lg);\n}\n\n.cta {\n  display: inline-block;\n  padding-block: var(--space-3);\n  padding-inline: var(--space-6);\n  border-radius: var(--radius-full);\n  background-color: var(--color-rose);\n  box-shadow: var(--shadow-none);\n  color: var(--color-white);\n  font-family: var(--font-sans);\n  font-size: var(--text-sm);\n  font-weight: var(--weight-semibold);\n  transition: background-color 0.2s ease-out;\n}\n\n.cta:hover {\n  background-color: var(--color-rose-deep);\n}\n",
+    "after": "@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap');\n\n.hero {\n  background-color: var(--color-night);\n  font-family: 'Montserrat', sans-serif;\n  padding-block: var(--layout-section);\n  text-align: left;\n}\n\n.title {\n  max-width: 18ch;\n  color: var(--color-ink);\n  font-family: inherit;\n  font-size: var(--text-4xl);\n  font-weight: var(--weight-bold);\n  line-height: 1.05;\n}\n\n/* Mots mis en avant dans le titre (*…* dans l'admin). */\n.accent {\n  font-style: normal;\n}\n\n.subtitle {\n  max-width: var(--layout-measure);\n  margin-block: var(--space-6) var(--space-7);\n  color: var(--color-mist);\n  font-family: inherit;\n  font-size: var(--text-lg);\n}\n\n.cta {\n  display: inline-block;\n  padding-block: var(--space-3);\n  padding-inline: var(--space-6);\n  border-radius: var(--radius-full);\n  background-color: var(--color-rose);\n  box-shadow: var(--shadow-none);\n  color: var(--color-white);\n  font-family: inherit;\n  font-size: var(--text-sm);\n  font-weight: var(--weight-semibold);\n  transition: background-color 0.2s ease-out;\n}\n\n.cta:hover {\n  background-color: var(--color-rose-deep);\n}\n"
+  },
+  {
+    "id": "L08",
+    "zone": "post.card.title",
+    "scope": [
+      "style"
+    ],
+    "hardcoded": [],
+    "file": "src/components/PostCard/PostCard.module.css",
+    "before": ".card {\n  display: flex;\n  flex-direction: column;\n  gap: var(--space-4);\n  padding: var(--space-0);\n  overflow: hidden;\n  border-radius: var(--radius-none);\n  background-color: transparent;\n  box-shadow: var(--shadow-none);\n}\n\n.image {\n  width: 100%;\n  aspect-ratio: 1200 / 630;\n  object-fit: cover;\n}\n\n.body {\n  display: flex;\n  flex-direction: column;\n  gap: var(--space-2);\n}\n\n.title {\n  color: var(--color-ink);\n  font-family: var(--font-serif);\n  font-size: var(--text-2xl);\n  font-weight: var(--weight-bold);\n  line-height: 1.2;\n}\n\n.subtitle {\n  color: var(--color-mist);\n  font-family: var(--font-sans);\n}\n\n.date {\n  color: var(--color-slate);\n  font-family: var(--font-sans);\n  font-size: var(--text-xs);\n}\n",
+    "after": ".card {\n  display: flex;\n  flex-direction: column;\n  gap: var(--space-4);\n  padding: var(--space-0);\n  overflow: hidden;\n  border-radius: var(--radius-none);\n  background-color: transparent;\n  box-shadow: var(--shadow-none);\n}\n\n.image {\n  width: 100%;\n  aspect-ratio: 1200 / 630;\n  object-fit: cover;\n}\n\n.body {\n  display: flex;\n  flex-direction: column;\n  gap: var(--space-2);\n}\n\n.title {\n  color: var(--color-rose);\n  font-family: var(--font-serif);\n  font-size: var(--text-2xl);\n  font-weight: var(--weight-bold);\n  line-height: 1.2;\n}\n\n.subtitle {\n  color: var(--color-mist);\n  font-family: var(--font-sans);\n}\n\n.date {\n  color: var(--color-slate);\n  font-family: var(--font-sans);\n  font-size: var(--text-xs);\n}\n"
+  },
+  {
+    "id": "L10",
+    "zone": "hero.cta",
+    "scope": [
+      "style"
+    ],
+    "hardcoded": [],
+    "file": "src/components/Hero/Hero.module.css",
+    "before": ".hero {\n  background-color: var(--color-night);\n  padding-block: var(--layout-section);\n  text-align: left;\n}\n\n.title {\n  max-width: 18ch;\n  color: var(--color-ink);\n  font-family: var(--font-serif);\n  font-size: var(--text-4xl);\n  font-weight: var(--weight-bold);\n  line-height: 1.05;\n}\n\n/* Mots mis en avant dans le titre (*…* dans l'admin). */\n.accent {\n  font-style: normal;\n}\n\n.subtitle {\n  max-width: var(--layout-measure);\n  margin-block: var(--space-6) var(--space-7);\n  color: var(--color-mist);\n  font-family: var(--font-sans);\n  font-size: var(--text-lg);\n}\n\n.cta {\n  display: inline-block;\n  padding-block: var(--space-3);\n  padding-inline: var(--space-6);\n  border-radius: var(--radius-full);\n  background-color: var(--color-rose);\n  box-shadow: var(--shadow-none);\n  color: var(--color-white);\n  font-family: var(--font-sans);\n  font-size: var(--text-sm);\n  font-weight: var(--weight-semibold);\n  transition: background-color 0.2s ease-out;\n}\n\n.cta:hover {\n  background-color: var(--color-rose-deep);\n}\n",
+    "after": ".hero {\n  background-color: var(--color-night);\n  padding-block: var(--layout-section);\n  text-align: left;\n}\n\n.title {\n  max-width: 18ch;\n  color: var(--color-ink);\n  font-family: var(--font-serif);\n  font-size: var(--text-4xl);\n  font-weight: var(--weight-bold);\n  line-height: 1.05;\n}\n\n/* Mots mis en avant dans le titre (*…* dans l'admin). */\n.accent {\n  font-style: normal;\n}\n\n.subtitle {\n  max-width: var(--layout-measure);\n  margin-block: var(--space-6) var(--space-7);\n  color: var(--color-mist);\n  font-family: var(--font-sans);\n  font-size: var(--text-lg);\n}\n\n.cta {\n  display: inline-block;\n  padding-block: var(--space-3);\n  padding-inline: var(--space-6);\n  border-radius: var(--radius-full);\n  background-color: var(--color-rose);\n  box-shadow: var(--shadow-none);\n  color: var(--color-white);\n  font-family: var(--font-sans);\n  font-size: var(--text-sm);\n  font-weight: var(--weight-bold);\n  transition: background-color 0.2s ease-out, box-shadow 0.2s ease-out;\n}\n\n.cta:hover,\n.cta:focus-visible {\n  background-color: var(--color-rose-deep);\n  box-shadow: var(--shadow-glow);\n}\n"
+  },
+  {
+    "id": "R01",
+    "zone": "header",
+    "scope": [
+      "style"
+    ],
+    "hardcoded": [],
+    "file": "src/components/Header/Header.module.css",
+    "before": ".header {\n  background-color: var(--color-night);\n  border-bottom: 1px solid var(--color-night-soft);\n  padding-block: var(--space-5);\n}\n\n.inner {\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  gap: var(--space-4);\n}\n\n.logo {\n  color: var(--color-rose);\n  font-family: var(--font-serif);\n  font-size: var(--text-xl);\n  font-weight: var(--weight-bold);\n}\n\n.nav {\n  display: flex;\n  gap: var(--space-5);\n  color: var(--color-ink);\n  font-family: var(--font-sans);\n  font-size: var(--text-sm);\n  font-weight: var(--weight-regular);\n}\n\n.nav a:hover {\n  color: var(--color-rose-light);\n}\n\n@media (min-width: 48rem) {\n  .nav {\n    gap: var(--space-6);\n  }\n}\n",
+    "after": ".header {\n  background-color: var(--color-night);\n  border-bottom: 1px solid var(--color-night-soft);\n  padding-block: var(--space-3);\n}\n\n.inner {\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  gap: var(--space-4);\n}\n\n.logo {\n  color: var(--color-rose);\n  font-family: var(--font-serif);\n  font-size: var(--text-xl);\n  font-weight: var(--weight-bold);\n}\n\n.nav {\n  display: flex;\n  gap: var(--space-5);\n  color: var(--color-ink);\n  font-family: var(--font-sans);\n  font-size: var(--text-sm);\n  font-weight: var(--weight-regular);\n}\n\n.nav a:hover {\n  color: var(--color-rose-light);\n}\n\n@media (min-width: 48rem) {\n  .header {\n    padding-block: var(--space-5);\n  }\n\n  .nav {\n    gap: var(--space-6);\n  }\n}\n"
+  },
+  {
+    "id": "R02",
+    "zone": "hero.cta",
+    "scope": [
+      "style"
+    ],
+    "hardcoded": [],
+    "file": "src/components/Hero/Hero.module.css",
+    "before": ".hero {\n  background-color: var(--color-night);\n  padding-block: var(--layout-section);\n  text-align: left;\n}\n\n.title {\n  max-width: 18ch;\n  color: var(--color-ink);\n  font-family: var(--font-serif);\n  font-size: var(--text-4xl);\n  font-weight: var(--weight-bold);\n  line-height: 1.05;\n}\n\n/* Mots mis en avant dans le titre (*…* dans l'admin). */\n.accent {\n  font-style: normal;\n}\n\n.subtitle {\n  max-width: var(--layout-measure);\n  margin-block: var(--space-6) var(--space-7);\n  color: var(--color-mist);\n  font-family: var(--font-sans);\n  font-size: var(--text-lg);\n}\n\n.cta {\n  display: inline-block;\n  padding-block: var(--space-3);\n  padding-inline: var(--space-6);\n  border-radius: var(--radius-full);\n  background-color: var(--color-rose);\n  box-shadow: var(--shadow-none);\n  color: var(--color-white);\n  font-family: var(--font-sans);\n  font-size: var(--text-sm);\n  font-weight: var(--weight-semibold);\n  transition: background-color 0.2s ease-out;\n}\n\n.cta:hover {\n  background-color: var(--color-rose-deep);\n}\n",
+    "after": ".hero {\n  background-color: var(--color-night);\n  padding-block: var(--layout-section);\n  text-align: left;\n}\n\n.title {\n  max-width: 18ch;\n  color: var(--color-ink);\n  font-family: var(--font-serif);\n  font-size: var(--text-4xl);\n  font-weight: var(--weight-bold);\n  line-height: 1.05;\n}\n\n/* Mots mis en avant dans le titre (*…* dans l'admin). */\n.accent {\n  font-style: normal;\n}\n\n.subtitle {\n  max-width: var(--layout-measure);\n  margin-block: var(--space-6) var(--space-7);\n  color: var(--color-mist);\n  font-family: var(--font-sans);\n  font-size: var(--text-lg);\n}\n\n.cta {\n  display: block;\n  text-align: center;\n  padding-block: var(--space-3);\n  padding-inline: var(--space-6);\n  border-radius: var(--radius-full);\n  background-color: var(--color-rose);\n  box-shadow: var(--shadow-none);\n  color: var(--color-white);\n  font-family: var(--font-sans);\n  font-size: var(--text-sm);\n  font-weight: var(--weight-semibold);\n  transition: background-color 0.2s ease-out;\n}\n\n.cta:hover {\n  background-color: var(--color-rose-deep);\n}\n\n@media (min-width: 48rem) {\n  .cta {\n    display: inline-block;\n  }\n}\n"
+  },
+  {
+    "id": "R03",
+    "zone": "hero.subtitle",
+    "scope": [
+      "style"
+    ],
+    "hardcoded": [],
+    "file": "src/components/Hero/Hero.module.css",
+    "before": ".hero {\n  background-color: var(--color-night);\n  padding-block: var(--layout-section);\n  text-align: left;\n}\n\n.title {\n  max-width: 18ch;\n  color: var(--color-ink);\n  font-family: var(--font-serif);\n  font-size: var(--text-4xl);\n  font-weight: var(--weight-bold);\n  line-height: 1.05;\n}\n\n/* Mots mis en avant dans le titre (*…* dans l'admin). */\n.accent {\n  font-style: normal;\n}\n\n.subtitle {\n  max-width: var(--layout-measure);\n  margin-block: var(--space-6) var(--space-7);\n  color: var(--color-mist);\n  font-family: var(--font-sans);\n  font-size: var(--text-lg);\n}\n\n.cta {\n  display: inline-block;\n  padding-block: var(--space-3);\n  padding-inline: var(--space-6);\n  border-radius: var(--radius-full);\n  background-color: var(--color-rose);\n  box-shadow: var(--shadow-none);\n  color: var(--color-white);\n  font-family: var(--font-sans);\n  font-size: var(--text-sm);\n  font-weight: var(--weight-semibold);\n  transition: background-color 0.2s ease-out;\n}\n\n.cta:hover {\n  background-color: var(--color-rose-deep);\n}\n",
+    "after": ".hero {\n  background-color: var(--color-night);\n  padding-block: var(--layout-section);\n  text-align: left;\n}\n\n.title {\n  max-width: 18ch;\n  color: var(--color-ink);\n  font-family: var(--font-serif);\n  font-size: var(--text-4xl);\n  font-weight: var(--weight-bold);\n  line-height: 1.05;\n}\n\n/* Mots mis en avant dans le titre (*…* dans l'admin). */\n.accent {\n  font-style: normal;\n}\n\n/* Masqué sur mobile, affiché à partir de la tablette. */\n.subtitle {\n  display: none;\n  max-width: var(--layout-measure);\n  margin-block: var(--space-6) var(--space-7);\n  color: var(--color-mist);\n  font-family: var(--font-sans);\n  font-size: var(--text-lg);\n}\n\n@media (min-width: 48rem) {\n  .subtitle {\n    display: block;\n  }\n}\n\n.cta {\n  display: inline-block;\n  padding-block: var(--space-3);\n  padding-inline: var(--space-6);\n  border-radius: var(--radius-full);\n  background-color: var(--color-rose);\n  box-shadow: var(--shadow-none);\n  color: var(--color-white);\n  font-family: var(--font-sans);\n  font-size: var(--text-sm);\n  font-weight: var(--weight-semibold);\n  transition: background-color 0.2s ease-out;\n}\n\n.cta:hover {\n  background-color: var(--color-rose-deep);\n}\n"
+  },
+  {
+    "id": "R04",
+    "zone": "features",
+    "scope": [
+      "style"
+    ],
+    "hardcoded": [],
+    "file": "src/components/Features/Features.module.css",
+    "before": ".features {\n  background-color: var(--color-night);\n  border-top: 1px solid var(--color-night-soft);\n  padding-block: var(--layout-section);\n}\n\n.title {\n  margin-bottom: var(--space-7);\n  color: var(--color-ink);\n  font-family: var(--font-serif);\n  font-size: var(--text-3xl);\n  font-weight: var(--weight-bold);\n  text-align: left;\n}\n\n.grid {\n  display: grid;\n  gap: var(--space-5);\n}\n\n.card {\n  padding: var(--space-6);\n  border-radius: var(--radius-md);\n  background-color: var(--color-night-soft);\n  box-shadow: var(--shadow-none);\n  color: var(--color-ink);\n}\n\n.cardTitle {\n  margin-bottom: var(--space-3);\n  font-size: var(--text-xl);\n}\n\n.cardText {\n  color: var(--color-mist);\n  font-family: var(--font-sans);\n  font-size: var(--text-md);\n}\n\n@media (min-width: 48rem) {\n  .grid {\n    grid-template-columns: repeat(3, 1fr);\n  }\n}\n",
+    "after": ".features {\n  background-color: var(--color-night);\n  border-top: 1px solid var(--color-night-soft);\n  padding-block: var(--layout-section);\n}\n\n.title {\n  margin-bottom: var(--space-7);\n  color: var(--color-ink);\n  font-family: var(--font-serif);\n  font-size: var(--text-3xl);\n  font-weight: var(--weight-bold);\n  text-align: left;\n}\n\n.grid {\n  display: grid;\n  gap: var(--space-5);\n}\n\n.card {\n  padding: var(--space-6);\n  border-radius: var(--radius-md);\n  background-color: var(--color-night-soft);\n  box-shadow: var(--shadow-none);\n  color: var(--color-ink);\n}\n\n.cardTitle {\n  margin-bottom: var(--space-3);\n  font-size: var(--text-xl);\n}\n\n.cardText {\n  color: var(--color-mist);\n  font-family: var(--font-sans);\n  font-size: var(--text-md);\n}\n\n@media (min-width: 64rem) {\n  .grid {\n    grid-template-columns: repeat(3, 1fr);\n  }\n}\n"
+  },
+  {
+    "id": "R05",
+    "zone": "blog.list",
+    "scope": [
+      "style"
+    ],
+    "hardcoded": [],
+    "file": "src/components/PostGrid/PostGrid.module.css",
+    "before": ".grid {\n  display: grid;\n  gap: var(--space-7);\n  padding-bottom: var(--layout-section);\n}\n\n@media (min-width: 48rem) {\n  .grid {\n    grid-template-columns: repeat(2, 1fr);\n  }\n}\n",
+    "after": ".grid {\n  display: grid;\n  gap: var(--space-5);\n  padding-bottom: var(--layout-section);\n}\n\n@media (min-width: 48rem) {\n  .grid {\n    grid-template-columns: repeat(2, 1fr);\n  }\n}\n\n@media (min-width: 64rem) {\n  .grid {\n    grid-template-columns: repeat(3, 1fr);\n  }\n}\n"
+  },
+  {
+    "id": "R06",
+    "zone": "page.intro",
+    "scope": [
+      "style",
+      "text"
+    ],
+    "hardcoded": [],
+    "file": "src/components/PageTitle/PageTitle.module.css",
+    "before": ".pageTitle {\n  padding-block: var(--layout-section) var(--space-7);\n}\n\n.title {\n  color: var(--color-ink);\n  font-family: var(--font-serif);\n  font-size: var(--text-3xl);\n  font-weight: var(--weight-bold);\n  text-align: left;\n}\n\n.intro {\n  max-width: var(--layout-measure);\n  margin-top: var(--space-4);\n  color: var(--color-mist);\n  font-family: var(--font-sans);\n  font-size: var(--text-lg);\n}\n",
+    "after": ".pageTitle {\n  padding-block: var(--layout-section) var(--space-7);\n}\n\n.title {\n  color: var(--color-ink);\n  font-family: var(--font-serif);\n  font-size: var(--text-3xl);\n  font-weight: var(--weight-bold);\n  text-align: left;\n}\n\n.intro {\n  max-width: var(--layout-measure);\n  margin-top: var(--space-4);\n  color: var(--color-mist);\n  font-family: var(--font-sans);\n  font-size: var(--text-lg);\n}\n\n@media (min-width: 64rem) {\n  .intro {\n    max-width: none;\n  }\n}\n"
+  },
+  {
+    "id": "R07",
+    "zone": "article.title",
+    "scope": [
+      "style"
+    ],
+    "hardcoded": [],
+    "file": "src/components/Article/Article.module.css",
+    "before": ".article {\n  max-width: calc(var(--layout-measure) + 2 * var(--layout-gutter));\n  margin-inline: auto;\n  padding: var(--layout-section) var(--layout-gutter);\n}\n\n.title {\n  color: var(--color-ink);\n  font-family: var(--font-serif);\n  font-size: var(--text-3xl);\n  font-weight: var(--weight-bold);\n  line-height: 1.1;\n}\n\n.subtitle {\n  margin-top: var(--space-4);\n  color: var(--color-mist);\n  font-family: var(--font-sans);\n  font-size: var(--text-lg);\n}\n\n.meta {\n  display: flex;\n  flex-wrap: wrap;\n  gap: var(--space-2) var(--space-5);\n  margin-block: var(--space-5) var(--space-7);\n  color: var(--color-slate);\n  font-family: var(--font-sans);\n  font-size: var(--text-xs);\n}\n\n.image {\n  width: 100%;\n  aspect-ratio: 1200 / 630;\n  object-fit: cover;\n}\n\n.content {\n  margin-top: var(--space-7);\n  color: var(--color-ink);\n  font-family: var(--font-serif);\n  font-size: var(--text-md);\n  line-height: 1.7;\n}\n\n.content :global(h2) {\n  margin-bottom: var(--space-4);\n  font-size: var(--text-2xl);\n}\n\n.content :global(p) {\n  margin-bottom: var(--space-5);\n}\n",
+    "after": ".article {\n  max-width: calc(var(--layout-measure) + 2 * var(--layout-gutter));\n  margin-inline: auto;\n  padding: var(--layout-section) var(--layout-gutter);\n}\n\n.title {\n  color: var(--color-ink);\n  font-family: var(--font-serif);\n  font-size: var(--text-2xl);\n  font-weight: var(--weight-bold);\n  line-height: 1.1;\n}\n\n@media (min-width: 48rem) {\n  .title {\n    font-size: var(--text-3xl);\n  }\n}\n\n.subtitle {\n  margin-top: var(--space-4);\n  color: var(--color-mist);\n  font-family: var(--font-sans);\n  font-size: var(--text-lg);\n}\n\n.meta {\n  display: flex;\n  flex-wrap: wrap;\n  gap: var(--space-2) var(--space-5);\n  margin-block: var(--space-5) var(--space-7);\n  color: var(--color-slate);\n  font-family: var(--font-sans);\n  font-size: var(--text-xs);\n}\n\n.image {\n  width: 100%;\n  aspect-ratio: 1200 / 630;\n  object-fit: cover;\n}\n\n.content {\n  margin-top: var(--space-7);\n  color: var(--color-ink);\n  font-family: var(--font-serif);\n  font-size: var(--text-md);\n  line-height: 1.7;\n}\n\n.content :global(h2) {\n  margin-bottom: var(--space-4);\n  font-size: var(--text-2xl);\n}\n\n.content :global(p) {\n  margin-bottom: var(--space-5);\n}\n"
+  },
+  {
+    "id": "R08",
+    "zone": "hero",
+    "scope": [
+      "style"
+    ],
+    "hardcoded": [],
+    "file": "src/components/Hero/Hero.module.css",
+    "before": ".hero {\n  background-color: var(--color-night);\n  padding-block: var(--layout-section);\n  text-align: left;\n}\n\n.title {\n  max-width: 18ch;\n  color: var(--color-ink);\n  font-family: var(--font-serif);\n  font-size: var(--text-4xl);\n  font-weight: var(--weight-bold);\n  line-height: 1.05;\n}\n\n/* Mots mis en avant dans le titre (*…* dans l'admin). */\n.accent {\n  font-style: normal;\n}\n\n.subtitle {\n  max-width: var(--layout-measure);\n  margin-block: var(--space-6) var(--space-7);\n  color: var(--color-mist);\n  font-family: var(--font-sans);\n  font-size: var(--text-lg);\n}\n\n.cta {\n  display: inline-block;\n  padding-block: var(--space-3);\n  padding-inline: var(--space-6);\n  border-radius: var(--radius-full);\n  background-color: var(--color-rose);\n  box-shadow: var(--shadow-none);\n  color: var(--color-white);\n  font-family: var(--font-sans);\n  font-size: var(--text-sm);\n  font-weight: var(--weight-semibold);\n  transition: background-color 0.2s ease-out;\n}\n\n.cta:hover {\n  background-color: var(--color-rose-deep);\n}\n",
+    "after": ".hero {\n  background-color: var(--color-night);\n  padding-block: var(--layout-section);\n  text-align: center;\n}\n\n/* Titre et sous-titre centrés comme blocs sur mobile et tablette. */\n.hero .title,\n.hero .subtitle {\n  margin-inline: auto;\n}\n\n@media (min-width: 64rem) {\n  .hero {\n    text-align: left;\n  }\n\n  .hero .title,\n  .hero .subtitle {\n    margin-inline: 0;\n  }\n}\n\n.title {\n  max-width: 18ch;\n  color: var(--color-ink);\n  font-family: var(--font-serif);\n  font-size: var(--text-4xl);\n  font-weight: var(--weight-bold);\n  line-height: 1.05;\n}\n\n/* Mots mis en avant dans le titre (*…* dans l'admin). */\n.accent {\n  font-style: normal;\n}\n\n.subtitle {\n  max-width: var(--layout-measure);\n  margin-block: var(--space-6) var(--space-7);\n  color: var(--color-mist);\n  font-family: var(--font-sans);\n  font-size: var(--text-lg);\n}\n\n.cta {\n  display: inline-block;\n  padding-block: var(--space-3);\n  padding-inline: var(--space-6);\n  border-radius: var(--radius-full);\n  background-color: var(--color-rose);\n  box-shadow: var(--shadow-none);\n  color: var(--color-white);\n  font-family: var(--font-sans);\n  font-size: var(--text-sm);\n  font-weight: var(--weight-semibold);\n  transition: background-color 0.2s ease-out;\n}\n\n.cta:hover {\n  background-color: var(--color-rose-deep);\n}\n"
+  },
+  {
+    "id": "R09",
+    "zone": "article.content",
+    "scope": [
+      "style"
+    ],
+    "hardcoded": [],
+    "file": "src/components/Article/Article.module.css",
+    "before": ".article {\n  max-width: calc(var(--layout-measure) + 2 * var(--layout-gutter));\n  margin-inline: auto;\n  padding: var(--layout-section) var(--layout-gutter);\n}\n\n.title {\n  color: var(--color-ink);\n  font-family: var(--font-serif);\n  font-size: var(--text-3xl);\n  font-weight: var(--weight-bold);\n  line-height: 1.1;\n}\n\n.subtitle {\n  margin-top: var(--space-4);\n  color: var(--color-mist);\n  font-family: var(--font-sans);\n  font-size: var(--text-lg);\n}\n\n.meta {\n  display: flex;\n  flex-wrap: wrap;\n  gap: var(--space-2) var(--space-5);\n  margin-block: var(--space-5) var(--space-7);\n  color: var(--color-slate);\n  font-family: var(--font-sans);\n  font-size: var(--text-xs);\n}\n\n.image {\n  width: 100%;\n  aspect-ratio: 1200 / 630;\n  object-fit: cover;\n}\n\n.content {\n  margin-top: var(--space-7);\n  color: var(--color-ink);\n  font-family: var(--font-serif);\n  font-size: var(--text-md);\n  line-height: 1.7;\n}\n\n.content :global(h2) {\n  margin-bottom: var(--space-4);\n  font-size: var(--text-2xl);\n}\n\n.content :global(p) {\n  margin-bottom: var(--space-5);\n}\n",
+    "after": ".article {\n  max-width: calc(var(--layout-measure) + 2 * var(--layout-gutter));\n  margin-inline: auto;\n  padding: var(--layout-section) var(--layout-gutter);\n}\n\n.title {\n  color: var(--color-ink);\n  font-family: var(--font-serif);\n  font-size: var(--text-3xl);\n  font-weight: var(--weight-bold);\n  line-height: 1.1;\n}\n\n.subtitle {\n  margin-top: var(--space-4);\n  color: var(--color-mist);\n  font-family: var(--font-sans);\n  font-size: var(--text-lg);\n}\n\n.meta {\n  display: flex;\n  flex-wrap: wrap;\n  gap: var(--space-2) var(--space-5);\n  margin-block: var(--space-5) var(--space-7);\n  color: var(--color-slate);\n  font-family: var(--font-sans);\n  font-size: var(--text-xs);\n}\n\n.image {\n  width: 100%;\n  aspect-ratio: 1200 / 630;\n  object-fit: cover;\n}\n\n.content {\n  margin-top: var(--space-7);\n  color: var(--color-ink);\n  font-family: var(--font-serif);\n  font-size: var(--text-md);\n  line-height: 1.7;\n}\n\n@media (min-width: 64rem) {\n  .content {\n    margin-inline: calc(-1 * var(--space-9));\n  }\n}\n\n.content :global(h2) {\n  margin-bottom: var(--space-4);\n  font-size: var(--text-2xl);\n}\n\n.content :global(p) {\n  margin-bottom: var(--space-5);\n}\n"
+  },
+  {
+    "id": "R10",
+    "zone": "article.meta",
+    "scope": [
+      "style"
+    ],
+    "hardcoded": [],
+    "file": "src/components/Article/Article.module.css",
+    "before": ".article {\n  max-width: calc(var(--layout-measure) + 2 * var(--layout-gutter));\n  margin-inline: auto;\n  padding: var(--layout-section) var(--layout-gutter);\n}\n\n.title {\n  color: var(--color-ink);\n  font-family: var(--font-serif);\n  font-size: var(--text-3xl);\n  font-weight: var(--weight-bold);\n  line-height: 1.1;\n}\n\n.subtitle {\n  margin-top: var(--space-4);\n  color: var(--color-mist);\n  font-family: var(--font-sans);\n  font-size: var(--text-lg);\n}\n\n.meta {\n  display: flex;\n  flex-wrap: wrap;\n  gap: var(--space-2) var(--space-5);\n  margin-block: var(--space-5) var(--space-7);\n  color: var(--color-slate);\n  font-family: var(--font-sans);\n  font-size: var(--text-xs);\n}\n\n.image {\n  width: 100%;\n  aspect-ratio: 1200 / 630;\n  object-fit: cover;\n}\n\n.content {\n  margin-top: var(--space-7);\n  color: var(--color-ink);\n  font-family: var(--font-serif);\n  font-size: var(--text-md);\n  line-height: 1.7;\n}\n\n.content :global(h2) {\n  margin-bottom: var(--space-4);\n  font-size: var(--text-2xl);\n}\n\n.content :global(p) {\n  margin-bottom: var(--space-5);\n}\n",
+    "after": ".article {\n  max-width: calc(var(--layout-measure) + 2 * var(--layout-gutter));\n  margin-inline: auto;\n  padding: var(--layout-section) var(--layout-gutter);\n}\n\n.title {\n  color: var(--color-ink);\n  font-family: var(--font-serif);\n  font-size: var(--text-3xl);\n  font-weight: var(--weight-bold);\n  line-height: 1.1;\n}\n\n.subtitle {\n  margin-top: var(--space-4);\n  color: var(--color-mist);\n  font-family: var(--font-sans);\n  font-size: var(--text-lg);\n}\n\n.meta {\n  display: flex;\n  flex-wrap: wrap;\n  gap: var(--space-2) var(--space-5);\n  margin-block: var(--space-5) var(--space-7);\n  color: var(--color-slate);\n  font-family: var(--font-sans);\n  font-size: var(--text-xs);\n}\n\n.meta > :last-child {\n  order: -1;\n}\n\n.image {\n  width: 100%;\n  aspect-ratio: 1200 / 630;\n  object-fit: cover;\n}\n\n.content {\n  margin-top: var(--space-7);\n  color: var(--color-ink);\n  font-family: var(--font-serif);\n  font-size: var(--text-md);\n  line-height: 1.7;\n}\n\n.content :global(h2) {\n  margin-bottom: var(--space-4);\n  font-size: var(--text-2xl);\n}\n\n.content :global(p) {\n  margin-bottom: var(--space-5);\n}\n"
+  },
+  {
+    "id": "S01",
+    "zone": "header.logo",
+    "scope": [
+      "style"
+    ],
+    "hardcoded": [],
+    "file": "src/components/Header/Header.module.css",
+    "before": ".header {\n  background-color: var(--color-night);\n  border-bottom: 1px solid var(--color-night-soft);\n  padding-block: var(--space-5);\n}\n\n.inner {\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  gap: var(--space-4);\n}\n\n.logo {\n  color: var(--color-rose);\n  font-family: var(--font-serif);\n  font-size: var(--text-xl);\n  font-weight: var(--weight-bold);\n}\n\n.nav {\n  display: flex;\n  gap: var(--space-5);\n  color: var(--color-ink);\n  font-family: var(--font-sans);\n  font-size: var(--text-sm);\n  font-weight: var(--weight-regular);\n}\n\n.nav a:hover {\n  color: var(--color-rose-light);\n}\n\n@media (min-width: 48rem) {\n  .nav {\n    gap: var(--space-6);\n  }\n}\n",
+    "after": ".header {\n  background-color: var(--color-night);\n  border-bottom: 1px solid var(--color-night-soft);\n  padding-block: var(--space-5);\n}\n\n.inner {\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  gap: var(--space-4);\n}\n\n.logo {\n  color: var(--color-rose);\n  font-family: var(--font-sans);\n  font-size: var(--text-xl);\n  font-weight: var(--weight-semibold);\n}\n\n.nav {\n  display: flex;\n  gap: var(--space-5);\n  color: var(--color-ink);\n  font-family: var(--font-sans);\n  font-size: var(--text-sm);\n  font-weight: var(--weight-regular);\n}\n\n.nav a:hover {\n  color: var(--color-rose-light);\n}\n\n@media (min-width: 48rem) {\n  .nav {\n    gap: var(--space-6);\n  }\n}\n"
+  },
+  {
+    "id": "S02",
+    "zone": "article.meta",
+    "scope": [
+      "style"
+    ],
+    "hardcoded": [],
+    "file": "src/components/Article/Article.module.css",
+    "before": ".article {\n  max-width: calc(var(--layout-measure) + 2 * var(--layout-gutter));\n  margin-inline: auto;\n  padding: var(--layout-section) var(--layout-gutter);\n}\n\n.title {\n  color: var(--color-ink);\n  font-family: var(--font-serif);\n  font-size: var(--text-3xl);\n  font-weight: var(--weight-bold);\n  line-height: 1.1;\n}\n\n.subtitle {\n  margin-top: var(--space-4);\n  color: var(--color-mist);\n  font-family: var(--font-sans);\n  font-size: var(--text-lg);\n}\n\n.meta {\n  display: flex;\n  flex-wrap: wrap;\n  gap: var(--space-2) var(--space-5);\n  margin-block: var(--space-5) var(--space-7);\n  color: var(--color-slate);\n  font-family: var(--font-sans);\n  font-size: var(--text-xs);\n}\n\n.image {\n  width: 100%;\n  aspect-ratio: 1200 / 630;\n  object-fit: cover;\n}\n\n.content {\n  margin-top: var(--space-7);\n  color: var(--color-ink);\n  font-family: var(--font-serif);\n  font-size: var(--text-md);\n  line-height: 1.7;\n}\n\n.content :global(h2) {\n  margin-bottom: var(--space-4);\n  font-size: var(--text-2xl);\n}\n\n.content :global(p) {\n  margin-bottom: var(--space-5);\n}\n",
+    "after": ".article {\n  max-width: calc(var(--layout-measure) + 2 * var(--layout-gutter));\n  margin-inline: auto;\n  padding: var(--layout-section) var(--layout-gutter);\n}\n\n.title {\n  color: var(--color-ink);\n  font-family: var(--font-serif);\n  font-size: var(--text-3xl);\n  font-weight: var(--weight-bold);\n  line-height: 1.1;\n}\n\n.subtitle {\n  margin-top: var(--space-4);\n  color: var(--color-mist);\n  font-family: var(--font-sans);\n  font-size: var(--text-lg);\n}\n\n.meta {\n  display: flex;\n  flex-wrap: wrap;\n  gap: var(--space-2) var(--space-5);\n  margin-block: var(--space-5) var(--space-7);\n  color: var(--color-mist);\n  font-family: var(--font-sans);\n  font-size: var(--text-sm);\n}\n\n.image {\n  width: 100%;\n  aspect-ratio: 1200 / 630;\n  object-fit: cover;\n}\n\n.content {\n  margin-top: var(--space-7);\n  color: var(--color-ink);\n  font-family: var(--font-serif);\n  font-size: var(--text-md);\n  line-height: 1.7;\n}\n\n.content :global(h2) {\n  margin-bottom: var(--space-4);\n  font-size: var(--text-2xl);\n}\n\n.content :global(p) {\n  margin-bottom: var(--space-5);\n}\n"
+  },
+  {
+    "id": "S03",
+    "zone": "footer",
+    "scope": [
+      "style"
+    ],
+    "hardcoded": [],
+    "file": "src/components/Footer/Footer.module.css",
+    "before": ".footer {\n  padding-block: var(--space-7);\n  border-top: 1px solid var(--color-night-soft);\n  background-color: var(--color-night);\n  color: var(--color-slate);\n}\n\n.inner {\n  display: flex;\n  flex-direction: column;\n  gap: var(--space-2);\n  font-family: var(--font-sans);\n  font-size: var(--text-xs);\n}\n\n.brand {\n  color: var(--color-ink);\n  font-family: var(--font-serif);\n  font-size: var(--text-lg);\n}\n\n@media (min-width: 48rem) {\n  .inner {\n    flex-direction: row;\n    align-items: baseline;\n    justify-content: space-between;\n  }\n}\n",
+    "after": ".footer {\n  padding-block: var(--space-8);\n  border-top: 1px solid var(--color-rose);\n  background-color: var(--color-night);\n  color: var(--color-mist);\n}\n\n.inner {\n  display: flex;\n  flex-direction: column;\n  gap: var(--space-3);\n  font-family: var(--font-sans);\n  font-size: var(--text-sm);\n}\n\n.brand {\n  color: var(--color-ink);\n  font-family: var(--font-serif);\n  font-size: var(--text-xl);\n  font-weight: var(--weight-semibold);\n}\n\n@media (min-width: 48rem) {\n  .inner {\n    flex-direction: row;\n    align-items: baseline;\n    justify-content: space-between;\n  }\n}\n"
+  },
+  {
+    "id": "S04",
+    "zone": "header",
+    "scope": [
+      "style"
+    ],
+    "hardcoded": [],
+    "file": "src/components/Header/Header.module.css",
+    "before": ".header {\n  background-color: var(--color-night);\n  border-bottom: 1px solid var(--color-night-soft);\n  padding-block: var(--space-5);\n}\n\n.inner {\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  gap: var(--space-4);\n}\n\n.logo {\n  color: var(--color-rose);\n  font-family: var(--font-serif);\n  font-size: var(--text-xl);\n  font-weight: var(--weight-bold);\n}\n\n.nav {\n  display: flex;\n  gap: var(--space-5);\n  color: var(--color-ink);\n  font-family: var(--font-sans);\n  font-size: var(--text-sm);\n  font-weight: var(--weight-regular);\n}\n\n.nav a:hover {\n  color: var(--color-rose-light);\n}\n\n@media (min-width: 48rem) {\n  .nav {\n    gap: var(--space-6);\n  }\n}\n",
+    "after": ".header {\n  background-color: var(--color-night);\n  border-top: 1px solid var(--color-rose-deep);\n  border-bottom: 1px solid var(--color-night-soft);\n  box-shadow: var(--shadow-md);\n  padding-block: var(--space-6);\n}\n\n@media (min-width: 64rem) {\n  .header {\n    padding-block: var(--space-7);\n  }\n}\n\n.inner {\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  gap: var(--space-4);\n}\n\n.logo {\n  color: var(--color-rose);\n  font-family: var(--font-serif);\n  font-size: var(--text-xl);\n  font-weight: var(--weight-bold);\n}\n\n.nav {\n  display: flex;\n  gap: var(--space-5);\n  color: var(--color-ink);\n  font-family: var(--font-sans);\n  font-size: var(--text-sm);\n  font-weight: var(--weight-regular);\n}\n\n.nav a:hover {\n  color: var(--color-rose-light);\n}\n\n@media (min-width: 48rem) {\n  .nav {\n    gap: var(--space-6);\n  }\n}\n"
+  },
+  {
+    "id": "S05",
+    "zone": "features.title",
+    "scope": [
+      "style"
+    ],
+    "hardcoded": [
+      {
+        "property": "font-size",
+        "value": "40px"
+      }
+    ],
+    "file": "src/components/Features/Features.module.css",
+    "before": ".features {\n  background-color: var(--color-night);\n  border-top: 1px solid var(--color-night-soft);\n  padding-block: var(--layout-section);\n}\n\n.title {\n  margin-bottom: var(--space-7);\n  color: var(--color-ink);\n  font-family: var(--font-serif);\n  font-size: var(--text-3xl);\n  font-weight: var(--weight-bold);\n  text-align: left;\n}\n\n.grid {\n  display: grid;\n  gap: var(--space-5);\n}\n\n.card {\n  padding: var(--space-6);\n  border-radius: var(--radius-md);\n  background-color: var(--color-night-soft);\n  box-shadow: var(--shadow-none);\n  color: var(--color-ink);\n}\n\n.cardTitle {\n  margin-bottom: var(--space-3);\n  font-size: var(--text-xl);\n}\n\n.cardText {\n  color: var(--color-mist);\n  font-family: var(--font-sans);\n  font-size: var(--text-md);\n}\n\n@media (min-width: 48rem) {\n  .grid {\n    grid-template-columns: repeat(3, 1fr);\n  }\n}\n",
+    "after": ".features {\n  background-color: var(--color-night);\n  border-top: 1px solid var(--color-night-soft);\n  padding-block: var(--layout-section);\n}\n\n.title {\n  margin-bottom: var(--space-7);\n  color: var(--color-ink);\n  font-family: var(--font-serif);\n  font-size: 40px;\n  font-weight: var(--weight-bold);\n  text-align: left;\n}\n\n.grid {\n  display: grid;\n  gap: var(--space-5);\n}\n\n.card {\n  padding: var(--space-6);\n  border-radius: var(--radius-md);\n  background-color: var(--color-night-soft);\n  box-shadow: var(--shadow-none);\n  color: var(--color-ink);\n}\n\n.cardTitle {\n  margin-bottom: var(--space-3);\n  font-size: var(--text-xl);\n}\n\n.cardText {\n  color: var(--color-mist);\n  font-family: var(--font-sans);\n  font-size: var(--text-md);\n}\n\n@media (min-width: 48rem) {\n  .grid {\n    grid-template-columns: repeat(3, 1fr);\n  }\n}\n"
+  },
+  {
+    "id": "S07",
+    "zone": "features",
+    "scope": [
+      "style"
+    ],
+    "hardcoded": [],
+    "file": "src/components/Features/Features.module.css",
+    "before": ".features {\n  background-color: var(--color-night);\n  border-top: 1px solid var(--color-night-soft);\n  padding-block: var(--layout-section);\n}\n\n.title {\n  margin-bottom: var(--space-7);\n  color: var(--color-ink);\n  font-family: var(--font-serif);\n  font-size: var(--text-3xl);\n  font-weight: var(--weight-bold);\n  text-align: left;\n}\n\n.grid {\n  display: grid;\n  gap: var(--space-5);\n}\n\n.card {\n  padding: var(--space-6);\n  border-radius: var(--radius-md);\n  background-color: var(--color-night-soft);\n  box-shadow: var(--shadow-none);\n  color: var(--color-ink);\n}\n\n.cardTitle {\n  margin-bottom: var(--space-3);\n  font-size: var(--text-xl);\n}\n\n.cardText {\n  color: var(--color-mist);\n  font-family: var(--font-sans);\n  font-size: var(--text-md);\n}\n\n@media (min-width: 48rem) {\n  .grid {\n    grid-template-columns: repeat(3, 1fr);\n  }\n}\n",
+    "after": ".features {\n  background-color: var(--color-night-soft);\n  border-top: 1px solid var(--color-night-soft);\n  padding-block: var(--layout-section);\n}\n\n.title {\n  margin-bottom: var(--space-7);\n  color: var(--color-ink);\n  font-family: var(--font-serif);\n  font-size: var(--text-3xl);\n  font-weight: var(--weight-bold);\n  text-align: left;\n}\n\n.grid {\n  display: grid;\n  gap: var(--space-5);\n}\n\n.card {\n  padding: var(--space-6);\n  border-radius: var(--radius-md);\n  background-color: var(--color-night-soft);\n  box-shadow: var(--shadow-none);\n  color: var(--color-ink);\n}\n\n.cardTitle {\n  margin-bottom: var(--space-3);\n  font-size: var(--text-xl);\n}\n\n.cardText {\n  color: var(--color-mist);\n  font-family: var(--font-sans);\n  font-size: var(--text-md);\n}\n\n@media (min-width: 48rem) {\n  .grid {\n    grid-template-columns: repeat(3, 1fr);\n  }\n}\n"
+  },
+  {
+    "id": "S08",
+    "zone": "post.card.title",
+    "scope": [
+      "style"
+    ],
+    "hardcoded": [],
+    "file": "src/components/PostCard/PostCard.module.css",
+    "before": ".card {\n  display: flex;\n  flex-direction: column;\n  gap: var(--space-4);\n  padding: var(--space-0);\n  overflow: hidden;\n  border-radius: var(--radius-none);\n  background-color: transparent;\n  box-shadow: var(--shadow-none);\n}\n\n.image {\n  width: 100%;\n  aspect-ratio: 1200 / 630;\n  object-fit: cover;\n}\n\n.body {\n  display: flex;\n  flex-direction: column;\n  gap: var(--space-2);\n}\n\n.title {\n  color: var(--color-ink);\n  font-family: var(--font-serif);\n  font-size: var(--text-2xl);\n  font-weight: var(--weight-bold);\n  line-height: 1.2;\n}\n\n.subtitle {\n  color: var(--color-mist);\n  font-family: var(--font-sans);\n}\n\n.date {\n  color: var(--color-slate);\n  font-family: var(--font-sans);\n  font-size: var(--text-xs);\n}\n",
+    "after": ".card {\n  display: flex;\n  flex-direction: column;\n  gap: var(--space-4);\n  padding: var(--space-0);\n  overflow: hidden;\n  border-radius: var(--radius-none);\n  background-color: transparent;\n  box-shadow: var(--shadow-none);\n}\n\n.image {\n  width: 100%;\n  aspect-ratio: 1200 / 630;\n  object-fit: cover;\n}\n\n.body {\n  display: flex;\n  flex-direction: column;\n  gap: var(--space-2);\n}\n\n.title {\n  color: var(--color-mist);\n  font-family: var(--font-serif);\n  font-size: var(--text-2xl);\n  font-weight: var(--weight-bold);\n  line-height: 1.2;\n}\n\n.subtitle {\n  color: var(--color-mist);\n  font-family: var(--font-sans);\n}\n\n.date {\n  color: var(--color-slate);\n  font-family: var(--font-sans);\n  font-size: var(--text-xs);\n}\n"
+  },
+  {
+    "id": "S09",
+    "zone": "page.title",
+    "scope": [
+      "style"
+    ],
+    "hardcoded": [],
+    "file": "src/components/PageTitle/PageTitle.module.css",
+    "before": ".pageTitle {\n  padding-block: var(--layout-section) var(--space-7);\n}\n\n.title {\n  color: var(--color-ink);\n  font-family: var(--font-serif);\n  font-size: var(--text-3xl);\n  font-weight: var(--weight-bold);\n  text-align: left;\n}\n\n.intro {\n  max-width: var(--layout-measure);\n  margin-top: var(--space-4);\n  color: var(--color-mist);\n  font-family: var(--font-sans);\n  font-size: var(--text-lg);\n}\n",
+    "after": ".pageTitle {\n  padding-block: var(--layout-section) var(--space-7);\n}\n\n.title {\n  color: var(--color-sand);\n  font-family: var(--font-serif);\n  font-size: var(--text-3xl);\n  font-weight: var(--weight-bold);\n  text-align: left;\n}\n\n.intro {\n  max-width: var(--layout-measure);\n  margin-top: var(--space-4);\n  color: var(--color-mist);\n  font-family: var(--font-sans);\n  font-size: var(--text-lg);\n}\n"
+  },
+  {
+    "id": "S10",
+    "zone": "hero.title",
+    "scope": [
+      "style"
+    ],
+    "hardcoded": [],
+    "file": "src/components/Hero/Hero.module.css",
+    "before": ".hero {\n  background-color: var(--color-night);\n  padding-block: var(--layout-section);\n  text-align: left;\n}\n\n.title {\n  max-width: 18ch;\n  color: var(--color-ink);\n  font-family: var(--font-serif);\n  font-size: var(--text-4xl);\n  font-weight: var(--weight-bold);\n  line-height: 1.05;\n}\n\n/* Mots mis en avant dans le titre (*…* dans l'admin). */\n.accent {\n  font-style: normal;\n}\n\n.subtitle {\n  max-width: var(--layout-measure);\n  margin-block: var(--space-6) var(--space-7);\n  color: var(--color-mist);\n  font-family: var(--font-sans);\n  font-size: var(--text-lg);\n}\n\n.cta {\n  display: inline-block;\n  padding-block: var(--space-3);\n  padding-inline: var(--space-6);\n  border-radius: var(--radius-full);\n  background-color: var(--color-rose);\n  box-shadow: var(--shadow-none);\n  color: var(--color-white);\n  font-family: var(--font-sans);\n  font-size: var(--text-sm);\n  font-weight: var(--weight-semibold);\n  transition: background-color 0.2s ease-out;\n}\n\n.cta:hover {\n  background-color: var(--color-rose-deep);\n}\n",
+    "after": ".hero {\n  background-color: var(--color-night);\n  padding-block: var(--layout-section);\n  text-align: left;\n}\n\n.title {\n  max-width: 18ch;\n  color: var(--color-ink);\n  font-family: var(--font-serif);\n  font-size: var(--text-4xl);\n  font-weight: var(--weight-bold);\n  line-height: 1.05;\n}\n\n/* Mots mis en avant dans le titre (*…* dans l'admin). */\n.accent {\n  color: var(--color-rose);\n  font-style: normal;\n}\n\n.subtitle {\n  max-width: var(--layout-measure);\n  margin-block: var(--space-6) var(--space-7);\n  color: var(--color-mist);\n  font-family: var(--font-sans);\n  font-size: var(--text-lg);\n}\n\n.cta {\n  display: inline-block;\n  padding-block: var(--space-3);\n  padding-inline: var(--space-6);\n  border-radius: var(--radius-full);\n  background-color: var(--color-rose);\n  box-shadow: var(--shadow-none);\n  color: var(--color-white);\n  font-family: var(--font-sans);\n  font-size: var(--text-sm);\n  font-weight: var(--weight-semibold);\n  transition: background-color 0.2s ease-out;\n}\n\n.cta:hover {\n  background-color: var(--color-rose-deep);\n}\n"
+  },
+  {
+    "id": "T06",
+    "zone": "footer",
+    "scope": [
+      "text"
+    ],
+    "hardcoded": [],
+    "file": "src/components/Footer/Footer.tsx",
+    "before": "import styles from './Footer.module.css'\n\nexport function Footer() {\n  return (\n    <footer className={styles.footer} data-edit=\"footer\">\n      <div className={`container ${styles.inner}`}>\n        <span className={styles.brand}>LyonDrive</span>\n        <span>Part-Dieu · Perrache · Saint-Exupéry</span>\n        <span>Location de voiture à Lyon</span>\n      </div>\n    </footer>\n  )\n}\n",
+    "after": "import styles from './Footer.module.css'\n\nexport function Footer() {\n  return (\n    <footer className={styles.footer} data-edit=\"footer\">\n      <div className={`container ${styles.inner}`}>\n        <span className={styles.brand}>LyonDrive</span>\n        <span>Part-Dieu · Perrache · Saint-Exupéry</span>\n        <span>Location de voiture à Lyon · 7h-21h 7j/7 · 04 72 00 00 00</span>\n      </div>\n    </footer>\n  )\n}\n"
+  },
+  {
+    "id": "T10",
+    "zone": "header.logo",
+    "scope": [
+      "text"
+    ],
+    "hardcoded": [],
+    "file": "src/components/Header/Header.tsx",
+    "before": "import Link from 'next/link'\nimport styles from './Header.module.css'\n\nexport function Header() {\n  return (\n    <header className={styles.header} data-edit=\"header\">\n      <div className={`container ${styles.inner}`}>\n        <Link href=\"/\" className={styles.logo} data-edit=\"header.logo\">\n          LyonDrive\n        </Link>\n        <nav className={styles.nav} data-edit=\"header.nav\" aria-label=\"Navigation principale\">\n          <Link href=\"/\">Accueil</Link>\n          <Link href=\"/blog\">Blog</Link>\n        </nav>\n      </div>\n    </header>\n  )\n}\n",
+    "after": "import Link from 'next/link'\nimport styles from './Header.module.css'\n\nexport function Header() {\n  return (\n    <header className={styles.header} data-edit=\"header\">\n      <div className={`container ${styles.inner}`}>\n        <Link href=\"/\" className={styles.logo} data-edit=\"header.logo\">\n          LyonDrive Location de voitures\n        </Link>\n        <nav className={styles.nav} data-edit=\"header.nav\" aria-label=\"Navigation principale\">\n          <Link href=\"/\">Accueil</Link>\n          <Link href=\"/blog\">Blog</Link>\n        </nav>\n      </div>\n    </header>\n  )\n}\n"
+  }
+]

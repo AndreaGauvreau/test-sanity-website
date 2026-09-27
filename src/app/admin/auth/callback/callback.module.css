@@ -1,0 +1,82 @@
+/* Page de retour de connexion : même carte que A1 (Figma 359:674). Tokens --k-* du kit, repli si le kit n'est pas chargé. */
+.page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  background: var(--k-bg-app, #000);
+  color: var(--k-text-primary, #fff);
+}
+
+.card {
+  width: 400px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--k-space-12, 12px);
+  padding: var(--k-space-32, 32px);
+  background: var(--k-bg-elevated, #181818);
+  border: 1px solid var(--k-border-default, #252525);
+  border-radius: var(--k-radius-lg, 12px);
+  box-shadow: var(--k-elevation-modal, none);
+  text-align: center;
+}
+
+.title {
+  margin: 0;
+  font: var(--k-text-heading-3, 600 20px/normal system-ui, sans-serif);
+  letter-spacing: var(--k-text-heading-3-tracking, 0);
+}
+
+.subtitle {
+  margin: 0;
+  font: var(--k-text-body-small, 500 12px/normal system-ui, sans-serif);
+  color: var(--k-text-tertiary, #999);
+}
+
+.error {
+  margin: 0;
+  font: var(--k-text-body-small, 500 12px/normal system-ui, sans-serif);
+  color: var(--k-text-secondary, #ccc);
+}
+
+.button {
+  width: 100%;
+  padding: var(--k-space-8, 8px) var(--k-space-20, 20px);
+  border: 1px solid var(--k-border-default, #252525);
+  border-radius: var(--k-radius-md, 8px);
+  background: var(--k-bg-input, #1f1f1f);
+  color: var(--k-text-primary, #fff);
+  font: var(--k-text-label, 500 13px/normal system-ui, sans-serif);
+  text-decoration: none;
+  transition: background-color 150ms ease-out;
+}
+
+.button:hover {
+  background: var(--k-bg-input-hover, #2a2a2a);
+}
+
+.button:focus-visible {
+  outline: 2px solid var(--k-interactive-primary, #3b82f6);
+  outline-offset: 2px;
+}
+
+.spinner {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid var(--k-border-default, #252525);
+  border-top-color: var(--k-text-primary, #fff);
+  animation: spin 800ms linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation: none;
+  }
+}

@@ -1,0 +1,64 @@
+/* Figma « Tag » 142:38 : hug, H gap 4, pad 2 6, radius/sm, Label Small (10 px, 600, 2 %) → 16 px de haut. */
+.tag {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: var(--k-space-4);
+  padding: var(--k-space-2) var(--k-space-6);
+  border-radius: var(--k-radius-sm);
+  font: var(--k-text-label-small);
+  letter-spacing: var(--k-text-label-small-tracking);
+  white-space: nowrap;
+  vertical-align: middle;
+  color: var(--tag-color);
+  background-color: var(--tag-bg);
+  --k-icon-current: var(--tag-icon);
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--k-radius-full);
+  background-color: currentColor;
+  flex-shrink: 0;
+}
+
+.label {
+  min-width: 0;
+}
+
+.neutral {
+  --tag-bg: var(--k-bg-tint-neutral);
+  --tag-color: var(--k-text-tertiary);
+  --tag-icon: var(--k-icon-default);
+}
+
+.error {
+  --tag-bg: var(--k-bg-tint-danger);
+  --tag-color: var(--k-interactive-danger);
+  --tag-icon: var(--k-icon-error);
+}
+
+.success {
+  --tag-bg: var(--k-bg-tint-success);
+  --tag-color: var(--k-interactive-success);
+  --tag-icon: var(--k-icon-success);
+}
+
+.warning {
+  --tag-bg: var(--k-bg-tint-warning);
+  --tag-color: var(--k-interactive-warning);
+  --tag-icon: var(--k-icon-warning);
+}
+
+.info {
+  --tag-bg: var(--k-bg-tint-info);
+  --tag-color: var(--k-text-link);
+  --tag-icon: var(--k-icon-primary);
+}
+
+.inverse {
+  --tag-bg: var(--k-bg-inverse);
+  --tag-color: var(--k-text-inverse);
+  --tag-icon: var(--k-text-inverse);
+}

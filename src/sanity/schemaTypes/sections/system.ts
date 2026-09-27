@@ -1,6 +1,8 @@
 import { CubeIcon } from '@sanity/icons/Cube'
 import { defineArrayMember, defineField, defineType } from 'sanity'
 
+import { maxLength } from '../shared'
+
 // Conduit System (Figma 269:232) : sur-titre, titre, chapô, bouton, puis trois modules
 // (titre, texte, lien « See more »). Le grand visuel reste dans le code.
 export const systemSection = defineType({
@@ -13,21 +15,21 @@ export const systemSection = defineType({
       title: 'Sur-titre',
       type: 'string',
       description: 'Le petit libellé orange devant le titre. Ex. « Conduit System ».',
-      validation: (rule) => rule.required(),
+      validation: (rule) => [rule.required(), maxLength(rule, 30)],
     }),
     defineField({
       name: 'title',
       title: 'Titre',
       type: 'string',
       description: 'Le titre de la section (h2).',
-      validation: (rule) => rule.required(),
+      validation: (rule) => [rule.required(), maxLength(rule, 60)],
     }),
     defineField({
       name: 'lede',
       title: 'Chapô',
       type: 'text',
       rows: 3,
-      validation: (rule) => rule.required(),
+      validation: (rule) => [rule.required(), maxLength(rule, 220)],
     }),
     defineField({
       name: 'cta',
@@ -52,7 +54,7 @@ export const systemSection = defineType({
               title: 'Titre',
               type: 'string',
               description: 'Ex. « Driver Check-in ».',
-              validation: (rule) => rule.required(),
+              validation: (rule) => [rule.required(), maxLength(rule, 30)],
             }),
             defineField({
               name: 'text',
@@ -60,7 +62,7 @@ export const systemSection = defineType({
               type: 'text',
               rows: 3,
               description: 'Une ou deux phrases courtes.',
-              validation: (rule) => rule.required(),
+              validation: (rule) => [rule.required(), maxLength(rule, 140)],
             }),
             defineField({
               name: 'link',

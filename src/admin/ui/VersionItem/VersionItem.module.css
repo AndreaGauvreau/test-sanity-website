@@ -1,0 +1,50 @@
+/* Figma « Version item » 337:1486 : H gap 8, pad 10 12, radius/md ; hover bg/subtle ; selected bg/input-hover. */
+.item {
+  display: flex;
+  align-items: center;
+  gap: var(--k-space-8);
+  width: 100%;
+  min-width: 0;
+  padding: var(--k-space-10) var(--k-space-12);
+  border: 0;
+  border-radius: var(--k-radius-md);
+  background-color: transparent;
+  color: var(--k-text-secondary);
+  text-align: start;
+  cursor: pointer;
+  transition:
+    background-color var(--k-duration-fast) ease,
+    color var(--k-duration-fast) ease;
+}
+
+.item:hover:not(:disabled) {
+  background-color: var(--k-bg-subtle);
+  color: var(--k-text-primary);
+}
+
+.item[data-selected],
+.item[data-selected]:hover {
+  background-color: var(--k-bg-input-hover);
+  color: var(--k-text-primary);
+}
+
+.item:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.label {
+  flex: 1 1 auto;
+  min-width: 0;
+  font: var(--k-text-body);
+  letter-spacing: var(--k-text-body-tracking);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .item {
+    transition: none;
+  }
+}

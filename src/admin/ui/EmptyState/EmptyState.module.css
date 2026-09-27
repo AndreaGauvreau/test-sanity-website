@@ -1,0 +1,41 @@
+/* Figma « Empty state » 323:432 : 360 × hug, V gap 12, pad 32 24, centré, icône default. */
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--k-space-12);
+  width: 360px;
+  max-width: 100%;
+  padding: var(--k-space-32) var(--k-space-24);
+  --k-icon-current: var(--k-icon-default);
+  text-align: center;
+}
+
+.iconWrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--k-radius-full);
+  background-color: var(--k-bg-subtle);
+  flex-shrink: 0;
+}
+
+.title {
+  color: var(--k-text-primary);
+  font: var(--k-text-heading-4);
+  letter-spacing: var(--k-text-heading-4-tracking);
+}
+
+.description {
+  width: 100%;
+  color: var(--k-text-tertiary);
+  font: var(--k-text-body-small);
+  letter-spacing: var(--k-text-body-small-tracking);
+}
+
+.action {
+  display: flex;
+  gap: var(--k-space-8);
+}

@@ -25,8 +25,13 @@ export const pageSections = {
   getStarted,
 }
 
+// SEO de la page (objet `seo`, C2). Le site ajoute « — Conduit » au meta title.
 export const pageSeo = {
-  seoTitle: 'Dock Scheduling Software for Capacity Control',
-  seoDescription:
-    'Let carriers and customers book dock appointments on your rules. Conduit Dock Scheduling cuts calls and emails and turns scheduling into capacity control.',
+  seo: {
+    _type: 'seo' as const,
+    metaTitle: 'Dock Scheduling Software for Capacity Control',
+    metaDescription:
+      'Let carriers and customers book dock appointments on your rules. Conduit Dock Scheduling cuts calls and emails and turns scheduling into capacity control.',
+    allowIndexing: true,
+  },
 }

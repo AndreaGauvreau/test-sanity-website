@@ -1,0 +1,13 @@
+import type { Post } from '@/lib/cms'
+import { PostCard } from '../PostCard/PostCard'
+import styles from './PostGrid.module.css'
+
+export function PostGrid({ posts }: { posts: Post[] }) {
+  return (
+    <div className={`container ${styles.grid}`} data-edit="blog.list">
+      {posts.map((post) => (
+        <PostCard key={post.id} post={post} />
+      ))}
+    </div>
+  )
+}

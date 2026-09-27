@@ -1,0 +1,35 @@
+/* Figma « Selection bar » 336:1218 : H gap 10, pad 4 6 4 10, radius/md, bg/subtle ; fluide (1 120 dans C5). */
+.bar {
+  display: flex;
+  align-items: center;
+  gap: var(--k-space-10);
+  min-width: 0;
+  padding: var(--k-space-4) var(--k-space-6) var(--k-space-4) var(--k-space-10);
+  border-radius: var(--k-radius-md);
+  background-color: var(--k-bg-subtle);
+  --k-icon-current: var(--k-icon-default);
+}
+
+.count {
+  flex-shrink: 0;
+  color: var(--k-text-primary);
+  font: var(--k-text-body);
+  letter-spacing: var(--k-text-body-tracking);
+  white-space: nowrap;
+}
+
+.lockNote {
+  display: inline-flex;
+  flex-shrink: 1;
+  align-items: center;
+  gap: var(--k-space-4);
+  min-width: 0;
+  color: var(--k-text-muted);
+  font: var(--k-text-body-small);
+  letter-spacing: var(--k-text-body-small-tracking);
+  white-space: nowrap;
+}
+
+.spacer {
+  flex: 1 1 auto;
+}

@@ -1,0 +1,56 @@
+/* Figma « Avatar » 332:340 : cercle radius/full ; blue interactive/primary, green interactive/success, neutral bg/input-hover. */
+.avatar {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: var(--k-radius-full);
+  overflow: hidden;
+  color: var(--k-text-on-accent);
+  user-select: none;
+}
+
+.size20 {
+  width: 20px;
+  height: 20px;
+  font: var(--k-text-label-small);
+  letter-spacing: var(--k-text-label-small-tracking);
+}
+
+.size28 {
+  width: 28px;
+  height: 28px;
+  font: var(--k-text-label);
+  letter-spacing: var(--k-text-label-tracking);
+}
+
+.size40 {
+  width: 40px;
+  height: 40px;
+  font: var(--k-text-label-large);
+  letter-spacing: var(--k-text-label-large-tracking);
+}
+
+.blue {
+  background-color: var(--k-interactive-primary);
+}
+
+.green {
+  background-color: var(--k-interactive-success);
+}
+
+.neutral {
+  background-color: var(--k-bg-input-hover);
+  color: var(--k-text-secondary);
+}
+
+.image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.initials {
+  line-height: 1;
+}

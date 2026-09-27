@@ -2,7 +2,7 @@ import { DocumentTextIcon } from '@sanity/icons/DocumentText'
 import { ImageIcon } from '@sanity/icons/Image'
 import { defineArrayMember, defineField, defineType } from 'sanity'
 
-import { altField, linkAnnotation } from './shared'
+import { altField, linkAnnotation, maxLength, orderRankField } from './shared'
 
 // Catégories des cartes « Learn and grow » du Figma. Liste fermée : les libellés restent
 // identiques d'un article à l'autre. Le libellé est stocké tel quel et affiché par le site.
@@ -21,7 +21,7 @@ export const post = defineType({
       name: 'title',
       title: 'Titre',
       type: 'string',
-      validation: (rule) => rule.required(),
+      validation: (rule) => [rule.required(), maxLength(rule, 90)],
     }),
     defineField({
       name: 'slug',
@@ -46,6 +46,14 @@ export const post = defineType({
       initialValue: () => new Date().toISOString(),
       validation: (rule) => rule.required(),
     }),
+    // Auteur : colonne Author du CMS (C3) et variable {{author}} du SEO et des scripts (C6, G6).
+    // Pas encore affiché par le site.
+    defineField({
+      name: 'author',
+      title: 'Auteur',
+      type: 'string',
+      validation: (rule) => maxLength(rule, 60),
+    }),
     defineField({
       name: 'image',
       title: 'Image',
@@ -62,10 +70,7 @@ export const post = defineType({
       type: 'text',
       rows: 3,
       description: 'Affiché en tête d’article, et repris comme description pour les moteurs de recherche.',
-      validation: (rule) => [
-        rule.required(),
-        rule.max(160).warning('Au-delà de 160 caractères, Google tronque la description.'),
-      ],
+      validation: (rule) => [rule.required(), maxLength(rule, 160)],
     }),
     defineField({
       name: 'content',
@@ -101,8 +106,10 @@ export const post = defineType({
         }),
       ],
     }),
+    orderRankField('post'),
   ],
   orderings: [
+    { title: 'Ordre manuel', name: 'orderRankAsc', by: [{ field: 'orderRank', direction: 'asc' }] },
     { title: 'Plus récents', name: 'publishedAtDesc', by: [{ field: 'publishedAt', direction: 'desc' }] },
   ],
   preview: {

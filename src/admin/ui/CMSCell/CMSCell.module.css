@@ -1,0 +1,129 @@
+/* Figma « CMS cell » 468:2013 et écran C3 : conteneur bg/elevated rayon 12 (pad bas 14) ; en-tête 40 px + trait
+   border/default ; lignes 44 px + trait border/subtle ; cellules : trait droit border/subtle, pad 0 12, gap 2. */
+.scroller {
+  overflow-x: auto;
+  padding-bottom: 14px;
+  border-radius: var(--k-radius-lg);
+  background-color: var(--k-bg-elevated);
+  overscroll-behavior-x: contain;
+}
+
+.grid {
+  display: flex;
+  flex-direction: column;
+  width: max-content;
+  min-width: 100%;
+}
+
+.row {
+  position: relative;
+  display: flex;
+  border-bottom: 1px solid var(--k-border-subtle);
+  transition: background-color var(--k-duration-fast) ease;
+}
+
+.row[data-header] {
+  border-bottom-color: var(--k-border-default);
+}
+
+.row[data-row]:hover,
+.row[data-row]:focus-within {
+  background-color: var(--k-bg-ghost-hover);
+}
+
+.cell {
+  position: relative;
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: var(--k-space-2);
+  height: 44px;
+  padding: 0 var(--k-space-12);
+  border-right: 1px solid var(--k-border-subtle);
+  --k-icon-current: var(--k-icon-default);
+}
+
+.row[data-header] > .cell {
+  height: 40px;
+}
+
+.label {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: var(--k-text-body);
+  letter-spacing: var(--k-text-body-tracking);
+  color: var(--k-text-secondary);
+}
+
+.header .label {
+  color: var(--k-text-tertiary);
+  font: var(--k-text-body-small);
+  letter-spacing: var(--k-text-body-small-tracking);
+}
+
+.title .label {
+  color: var(--k-text-primary);
+}
+
+.text,
+.title {
+  cursor: text;
+}
+
+/* Poignée : pad 0 10, gap 8, grip en Icon color disabled. */
+.handle {
+  gap: var(--k-space-8);
+  padding: 0 var(--k-space-10);
+}
+
+.grip {
+  flex-shrink: 0;
+  --k-icon-current: var(--k-text-disabled);
+  cursor: grab;
+}
+
+.thumb {
+  display: block;
+  width: 56px;
+  height: 28px;
+  overflow: hidden;
+  border-radius: 6px;
+  background-color: var(--k-bg-subtle);
+}
+
+.thumbImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* state=editing : fond bg/input, contour interactive/primary 1.5 intérieur, rayon 4. */
+.editing {
+  border-right-color: transparent;
+  border-radius: 4px;
+  background-color: var(--k-bg-input);
+  box-shadow: inset 0 0 0 1.5px var(--k-interactive-primary);
+}
+
+.input {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--k-text-primary);
+  caret-color: var(--k-interactive-primary);
+  font: var(--k-text-body);
+  letter-spacing: var(--k-text-body-tracking);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .row {
+    transition: none;
+  }
+}

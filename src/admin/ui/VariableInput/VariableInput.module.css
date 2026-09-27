@@ -1,0 +1,104 @@
+/*
+ * Figma « Variable input » 445:1918 : 360 × hug, V gap 6 ; input-box H gap 6, pad 8 6 8 10, radius/md,
+ * bg/input, border/default (38 px) ; content H gap 2 (puces + texte Body text/primary) ; insert = Icon button
+ * ghost xsmall (database) ; aide Caption text/muted.
+ */
+.field {
+  width: 100%;
+}
+
+.helper {
+  font: var(--k-text-caption);
+  letter-spacing: var(--k-text-caption-tracking);
+}
+
+.box {
+  display: flex;
+  align-items: center;
+  gap: var(--k-space-6);
+  width: 100%;
+  min-height: 38px;
+  padding: var(--k-space-8) var(--k-space-6) var(--k-space-8) var(--k-space-10);
+  border: 1px solid var(--k-border-default);
+  border-radius: var(--k-radius-md);
+  background-color: var(--k-bg-input);
+  cursor: text;
+  transition: border-color var(--k-duration-fast) ease;
+}
+
+.box:focus-within {
+  border-color: var(--k-border-focus);
+}
+
+.invalid,
+.invalid:focus-within {
+  border-color: var(--k-interactive-danger);
+}
+
+.disabled {
+  background-color: var(--k-bg-subtle);
+  cursor: not-allowed;
+}
+
+.content {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 17px;
+  color: var(--k-text-primary);
+  font: var(--k-text-body);
+  letter-spacing: var(--k-text-body-tracking);
+  line-height: 17px;
+  white-space: pre;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  caret-color: var(--k-text-primary);
+}
+
+.content::-webkit-scrollbar {
+  display: none;
+}
+
+.content:focus,
+.content:focus-visible {
+  outline: none;
+}
+
+.disabled .content {
+  color: var(--k-text-disabled);
+}
+
+.content:empty::before {
+  content: attr(data-placeholder);
+  color: var(--k-text-muted);
+  pointer-events: none;
+}
+
+/* Puce dans le texte : espacement de 2 px avec ses voisins (gap du calque « content »). */
+.chip {
+  margin: 0 2px 0 0;
+  vertical-align: top;
+  line-height: 15px;
+  cursor: default;
+}
+
+.chip:not(:first-child) {
+  margin-left: 2px;
+}
+
+.listTitle {
+  padding: var(--k-space-6) var(--k-space-12) 0;
+  color: var(--k-text-muted);
+  font: var(--k-text-caption);
+  letter-spacing: var(--k-text-caption-tracking);
+}
+
+.list {
+  min-width: 240px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .box {
+    transition: none;
+  }
+}

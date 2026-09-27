@@ -1,0 +1,78 @@
+/*
+ * Figma « Input » 327:352 — input-box : H gap 8, pad 8 10, radius/md, bg/input, border/default 1px → 34 px.
+ * focused : border/focus ; error : interactive/danger ; disabled : bg/subtle + text/disabled + icônes disabled.
+ */
+.box {
+  display: flex;
+  align-items: center;
+  gap: var(--k-space-8);
+  width: 100%;
+  min-height: var(--k-control-height);
+  padding: var(--k-space-8) var(--k-space-10);
+  border: 1px solid var(--k-border-default);
+  border-radius: var(--k-radius-md);
+  background-color: var(--k-bg-input);
+  --k-icon-current: var(--k-icon-default);
+  cursor: text;
+  transition: border-color var(--k-duration-fast) ease;
+}
+
+.box:focus-within {
+  border-color: var(--k-border-focus);
+}
+
+.invalid,
+.invalid:focus-within {
+  border-color: var(--k-interactive-danger);
+}
+
+.disabled {
+  background-color: var(--k-bg-subtle);
+  --k-icon-current: var(--k-text-disabled);
+  cursor: not-allowed;
+}
+
+.icon {
+  flex-shrink: 0;
+}
+
+.input {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 16px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--k-text-primary);
+  font: var(--k-text-body);
+  letter-spacing: var(--k-text-body-tracking);
+  text-overflow: ellipsis;
+}
+
+/* Le contour de la boîte tient lieu d'indicateur de focus (Figma : focused = border/focus). */
+.input:focus,
+.input:focus-visible {
+  outline: none;
+}
+
+.input:disabled {
+  color: var(--k-text-disabled);
+  cursor: not-allowed;
+  -webkit-text-fill-color: var(--k-text-disabled);
+}
+
+.input::placeholder {
+  color: var(--k-text-muted);
+}
+
+/* Champ de recherche natif : pas de croix ni de loupe du navigateur. */
+.input::-webkit-search-cancel-button,
+.input::-webkit-search-decoration {
+  appearance: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .box {
+    transition: none;
+  }
+}

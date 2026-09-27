@@ -1,0 +1,102 @@
+/*
+ * Figma « Icon button » 321:393. small : 28×28, radius/md, icône 16 ; xsmall : 20×20, radius/sm, icône 12.
+ * ghost : sans fond, icône default → hover bg/subtle + icône active, active bg/input-hover.
+ * secondary : bg/input + border/default, icône active → hover bg/input-hover, active + border/strong.
+ * primary : interactive/primary, icône on-accent. disabled : opacité 0.4.
+ */
+.button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border-radius: var(--k-radius-md);
+  overflow: hidden;
+  cursor: pointer;
+  transition:
+    background-color var(--k-duration-fast) ease,
+    border-color var(--k-duration-fast) ease,
+    transform var(--k-duration-fast) var(--k-ease-out);
+}
+
+.xsmall {
+  width: 20px;
+  height: 20px;
+  border-radius: var(--k-radius-sm);
+}
+
+.button:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+.button:focus-visible {
+  outline: 2px solid var(--k-border-focus);
+  outline-offset: 2px;
+}
+
+.button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ghost */
+.ghost {
+  --k-icon-current: var(--k-icon-default);
+  background-color: transparent;
+}
+
+.ghost:hover:not(:disabled) {
+  --k-icon-current: var(--k-icon-active);
+  background-color: var(--k-bg-subtle);
+}
+
+.ghost:active:not(:disabled),
+.ghost[data-pressed] {
+  --k-icon-current: var(--k-icon-active);
+  background-color: var(--k-bg-input-hover);
+}
+
+/* secondary */
+.secondary {
+  --k-icon-current: var(--k-icon-active);
+  background-color: var(--k-bg-input);
+  border: 1px solid var(--k-border-default);
+}
+
+.secondary:hover:not(:disabled) {
+  background-color: var(--k-bg-input-hover);
+}
+
+.secondary:active:not(:disabled),
+.secondary[data-pressed] {
+  background-color: var(--k-bg-input-hover);
+  border-color: var(--k-border-strong);
+}
+
+/* primary */
+.primary {
+  --k-icon-current: var(--k-text-on-accent);
+  background-color: var(--k-interactive-primary);
+}
+
+.primary:hover:not(:disabled) {
+  background-color: var(--k-interactive-primary-hover);
+}
+
+.primary:active:not(:disabled),
+.primary[data-pressed] {
+  background-color: var(--k-interactive-primary-pressed);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .button {
+    transition: none;
+  }
+
+  .button:active:not(:disabled) {
+    transform: none;
+  }
+}

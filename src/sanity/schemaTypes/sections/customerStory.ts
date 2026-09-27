@@ -2,6 +2,8 @@ import { CheckmarkIcon } from '@sanity/icons/Checkmark'
 import { TrendUpwardIcon } from '@sanity/icons/TrendUpward'
 import { defineArrayMember, defineField, defineType } from 'sanity'
 
+import { maxLength } from '../shared'
+
 // Étude de cas (Figma 269:305) : sur-titre, titre, lien vers l'étude, résumé, chiffres clés
 // et liste des résultats. L'illustration (encore un emplacement vide dans le Figma) reste
 // dans le code.
@@ -15,14 +17,14 @@ export const customerStorySection = defineType({
       title: 'Sur-titre',
       type: 'string',
       description: 'Le petit libellé orange au-dessus du titre. Ex. « Customer story ».',
-      validation: (rule) => rule.required(),
+      validation: (rule) => [rule.required(), maxLength(rule, 30)],
     }),
     defineField({
       name: 'title',
       title: 'Titre',
       type: 'string',
       description: 'Titre de la section (h2). Le retour à la ligne est automatique.',
-      validation: (rule) => rule.required(),
+      validation: (rule) => [rule.required(), maxLength(rule, 70)],
     }),
     defineField({
       name: 'cta',
@@ -36,7 +38,7 @@ export const customerStorySection = defineType({
       type: 'text',
       rows: 3,
       description: 'Deux ou trois lignes, affichées au-dessus de la liste des résultats.',
-      validation: (rule) => rule.required(),
+      validation: (rule) => [rule.required(), maxLength(rule, 180)],
     }),
     defineField({
       name: 'stats',
@@ -56,14 +58,14 @@ export const customerStorySection = defineType({
               title: 'Valeur',
               type: 'string',
               description: 'Le grand chiffre orange. Ex. « 80% ».',
-              validation: (rule) => rule.required(),
+              validation: (rule) => [rule.required(), maxLength(rule, 8)],
             }),
             defineField({
               name: 'label',
               title: 'Légende',
               type: 'string',
               description: 'Ce que mesure le chiffre. Ex. « Fewer scheduling emails ».',
-              validation: (rule) => rule.required(),
+              validation: (rule) => [rule.required(), maxLength(rule, 40)],
             }),
           ],
           preview: { select: { title: 'value', subtitle: 'label' } },
@@ -88,7 +90,7 @@ export const customerStorySection = defineType({
               title: 'Texte',
               type: 'string',
               description: 'Ex. « Automated scheduling with custom rules ».',
-              validation: (rule) => rule.required(),
+              validation: (rule) => [rule.required(), maxLength(rule, 60)],
             }),
           ],
           preview: { select: { title: 'label' } },

@@ -1,5 +1,7 @@
 import { defineField, defineType } from 'sanity'
 
+import { maxLength } from '../shared'
+
 // Articles (Figma 269:511) : sur-titre et titre « Learn and grow ». Les cartes ne sont pas
 // ici : ce sont les quatre articles les plus récents de la collection « Blog ».
 export const insightsSection = defineType({
@@ -13,13 +15,13 @@ export const insightsSection = defineType({
       title: 'Sur-titre',
       type: 'string',
       description: 'Petit libellé orange au-dessus du titre.',
-      validation: (rule) => rule.required(),
+      validation: (rule) => [rule.required(), maxLength(rule, 30)],
     }),
     defineField({
       name: 'title',
       title: 'Titre',
       type: 'string',
-      validation: (rule) => rule.required(),
+      validation: (rule) => [rule.required(), maxLength(rule, 50)],
     }),
   ],
   preview: {

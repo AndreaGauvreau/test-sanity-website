@@ -1,0 +1,26 @@
+import styles from './Features.module.css'
+
+type Props = {
+  title: string
+  items: { id?: string; title: string; text: string }[]
+}
+
+export function Features({ title, items }: Props) {
+  return (
+    <section className={styles.features} data-edit="features">
+      <div className="container">
+        <h2 className={styles.title} data-edit="features.title">
+          {title}
+        </h2>
+        <div className={styles.grid}>
+          {items.map((item) => (
+            <article key={item.id ?? item.title} className={styles.card} data-edit="features.card">
+              <h3 className={styles.cardTitle}>{item.title}</h3>
+              <p className={styles.cardText}>{item.text}</p>
+            </article>
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}

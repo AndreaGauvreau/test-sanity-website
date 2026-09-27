@@ -2,6 +2,9 @@ import type { Metadata } from 'next'
 
 export const siteName = 'Conduit'
 
+/** Document unique des textes de la page d'accueil (id fixe, page 'home' de src/admin.config.ts). */
+export const HOME_DOCUMENT_ID = 'dockSchedulingPage'
+
 // Destinations des CTA et des notes : dans Sanity, avec chaque bouton (`#` tant qu'elles
 // ne sont pas renseignées).
 

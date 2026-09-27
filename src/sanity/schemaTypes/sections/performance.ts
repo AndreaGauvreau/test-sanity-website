@@ -1,6 +1,8 @@
 import { TrendUpwardIcon } from '@sanity/icons/TrendUpward'
 import { defineArrayMember, defineField, defineType } from 'sanity'
 
+import { maxLength } from '../shared'
+
 // Pictogrammes dont le site a le dessin : l'atout garde le sien quand on réordonne la liste.
 const icons = [
   { title: 'Camembert (répartition)', value: 'chartPieSlice' },
@@ -20,14 +22,14 @@ export const performanceSection = defineType({
       title: 'Sur-titre',
       type: 'string',
       description: 'Petit libellé blanc précédé d’une pastille, au-dessus du titre. Ex. « Performance ».',
-      validation: (rule) => rule.required(),
+      validation: (rule) => [rule.required(), maxLength(rule, 30)],
     }),
     defineField({
       name: 'title',
       title: 'Titre',
       type: 'string',
       description: 'Titre de la section (h2), sur une ligne sur grand écran.',
-      validation: (rule) => rule.required(),
+      validation: (rule) => [rule.required(), maxLength(rule, 50)],
     }),
     defineField({
       name: 'benefits',
@@ -58,6 +60,7 @@ export const performanceSection = defineType({
                 'Deux lignes courtes : passer à la ligne (Entrée) là où le titre doit se couper, comme dans la maquette.',
               // Chaque retour à la ligne s'affiche tel quel : avertir au-delà de deux lignes.
               validation: (rule) => [
+              maxLength(rule, 60),
                 rule.required(),
                 rule
                   .custom<string>(
@@ -74,7 +77,7 @@ export const performanceSection = defineType({
               title: 'Texte',
               type: 'text',
               rows: 3,
-              validation: (rule) => rule.required(),
+              validation: (rule) => [rule.required(), maxLength(rule, 150)],
             }),
           ],
           preview: { select: { title: 'title', subtitle: 'text' } },

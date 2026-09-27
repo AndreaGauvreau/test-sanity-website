@@ -1,0 +1,13 @@
+import styles from './Footer.module.css'
+
+export function Footer() {
+  return (
+    <footer className={styles.footer} data-edit="footer">
+      <div className={`container ${styles.inner}`}>
+        <span className={styles.brand}>LyonDrive</span>
+        <span>Part-Dieu · Perrache · Saint-Exupéry</span>
+        <span>Location de voiture à Lyon</span>
+      </div>
+    </footer>
+  )
+}

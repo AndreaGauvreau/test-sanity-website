@@ -1,0 +1,48 @@
+/* Figma Input / Select / Textarea : stacked = V gap 6 ; inline = H gap 12, label-wrap 120 px avec pad-top 8. */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--k-space-6);
+  min-width: 0;
+}
+
+.inline {
+  flex-direction: row;
+  align-items: flex-start;
+  gap: var(--k-space-12);
+}
+
+.labelWrap {
+  display: flex;
+  min-width: 0;
+}
+
+.inline > .labelWrap {
+  flex: 0 0 120px;
+  width: 120px;
+  padding-top: var(--k-space-8);
+}
+
+.label {
+  color: var(--k-text-secondary);
+  font: var(--k-text-body-small);
+  letter-spacing: var(--k-text-body-small-tracking);
+}
+
+.control {
+  display: flex;
+  flex-direction: column;
+  gap: var(--k-space-6);
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.helper {
+  color: var(--k-text-muted);
+  font: var(--k-text-body-small);
+  letter-spacing: var(--k-text-body-small-tracking);
+}
+
+.error {
+  color: var(--k-interactive-danger);
+}

@@ -1,0 +1,45 @@
+/* Figma « Textarea » 327:436 — input-box 88 px (fixe), pad 8 10, radius/md, bg/input, border/default ; Body. */
+.textarea {
+  display: block;
+  width: 100%;
+  min-height: 88px;
+  height: 88px;
+  padding: var(--k-space-8) var(--k-space-10);
+  border: 1px solid var(--k-border-default);
+  border-radius: var(--k-radius-md);
+  background-color: var(--k-bg-input);
+  color: var(--k-text-primary);
+  font: var(--k-text-body);
+  letter-spacing: var(--k-text-body-tracking);
+  resize: vertical;
+  transition: border-color var(--k-duration-fast) ease;
+}
+
+.textarea:focus,
+.textarea:focus-visible {
+  outline: none;
+  border-color: var(--k-border-focus);
+}
+
+.invalid,
+.invalid:focus {
+  border-color: var(--k-interactive-danger);
+}
+
+.textarea:disabled {
+  background-color: var(--k-bg-subtle);
+  color: var(--k-text-disabled);
+  -webkit-text-fill-color: var(--k-text-disabled);
+  cursor: not-allowed;
+  resize: none;
+}
+
+.textarea::placeholder {
+  color: var(--k-text-muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .textarea {
+    transition: none;
+  }
+}

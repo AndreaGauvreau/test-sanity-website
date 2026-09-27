@@ -1,0 +1,51 @@
+/* Figma « Progress bar » 323:235 : 240×4, radius/full, bg/subtle ; remplissage interactive/primary (danger : interactive/danger). */
+.track {
+  position: relative;
+  width: 240px;
+  max-width: 100%;
+  height: 4px;
+  border-radius: var(--k-radius-full);
+  background-color: var(--k-bg-subtle);
+  overflow: hidden;
+}
+
+/* Remplissage pleine largeur décalé (transform seulement) : le bout arrondi suit la valeur. */
+.fill {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--k-radius-full);
+  background-color: var(--k-interactive-primary);
+  transform: translateX(calc(var(--progress) - 100%));
+  transition: transform var(--k-duration-base) var(--k-ease-in-out);
+}
+
+.danger .fill {
+  background-color: var(--k-interactive-danger);
+}
+
+.indeterminate .fill {
+  width: 40%;
+  transform: none;
+  animation: k-progress-sweep 1.2s var(--k-ease-in-out) infinite;
+}
+
+@keyframes k-progress-sweep {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(250%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fill {
+    transition: none;
+  }
+
+  .indeterminate .fill {
+    animation: none;
+    width: 100%;
+    opacity: 0.5;
+  }
+}

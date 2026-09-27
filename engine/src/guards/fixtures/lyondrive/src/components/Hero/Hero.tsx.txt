@@ -1,0 +1,27 @@
+import Link from 'next/link'
+import { withAccent } from '@/lib/accent'
+import styles from './Hero.module.css'
+
+type Props = {
+  title: string
+  subtitle: string
+  buttonLabel: string
+}
+
+export function Hero({ title, subtitle, buttonLabel }: Props) {
+  return (
+    <section className={styles.hero} data-edit="hero">
+      <div className="container">
+        <h1 className={styles.title} data-edit="hero.title">
+          {withAccent(title, styles.accent)}
+        </h1>
+        <p className={styles.subtitle} data-edit="hero.subtitle">
+          {subtitle}
+        </p>
+        <Link href="/blog" className={styles.cta} data-edit="hero.cta">
+          {buttonLabel}
+        </Link>
+      </div>
+    </section>
+  )
+}

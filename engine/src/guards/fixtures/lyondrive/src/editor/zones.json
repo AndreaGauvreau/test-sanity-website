@@ -1,0 +1,583 @@
+{
+  "controls": {
+    "color": {
+      "label": "Couleur du texte",
+      "property": "color",
+      "group": "color"
+    },
+    "background": {
+      "label": "Fond",
+      "property": "background-color",
+      "group": "color"
+    },
+    "fontFamily": {
+      "label": "Police",
+      "property": "font-family",
+      "group": "font"
+    },
+    "fontSize": {
+      "label": "Taille du texte",
+      "property": "font-size",
+      "group": "text"
+    },
+    "fontWeight": {
+      "label": "Graisse",
+      "property": "font-weight",
+      "group": "weight"
+    },
+    "radius": {
+      "label": "Arrondi",
+      "property": "border-radius",
+      "group": "radius"
+    },
+    "padding": {
+      "label": "Marge intérieure",
+      "property": "padding",
+      "group": "space"
+    },
+    "paddingBlock": {
+      "label": "Marge verticale",
+      "property": "padding-block",
+      "group": "space"
+    },
+    "paddingInline": {
+      "label": "Marge horizontale",
+      "property": "padding-inline",
+      "group": "space"
+    },
+    "gap": {
+      "label": "Espacement interne",
+      "property": "gap",
+      "group": "space"
+    },
+    "shadow": {
+      "label": "Ombre",
+      "property": "box-shadow",
+      "group": "shadow"
+    },
+    "align": {
+      "label": "Alignement",
+      "property": "text-align",
+      "options": {
+        "left": "Gauche",
+        "center": "Centre",
+        "right": "Droite"
+      }
+    }
+  },
+  "zones": {
+    "header": {
+      "label": "En-tête",
+      "section": "Header",
+      "files": [
+        "src/components/Header/Header.module.css",
+        "src/components/Header/Header.tsx"
+      ],
+      "selectors": [
+        ".header",
+        ".inner"
+      ],
+      "children": [
+        "header.logo",
+        "header.nav"
+      ],
+      "reach": "toutes les pages du site",
+      "controls": [
+        "background",
+        "paddingBlock"
+      ]
+    },
+    "header.logo": {
+      "label": "Logo",
+      "section": "Header",
+      "files": [
+        "src/components/Header/Header.module.css",
+        "src/components/Header/Header.tsx"
+      ],
+      "selectors": [
+        ".logo"
+      ],
+      "logotype": true,
+      "reach": "toutes les pages du site",
+      "controls": [
+        "color",
+        "fontFamily",
+        "fontSize",
+        "fontWeight"
+      ],
+      "text": {
+        "source": "code",
+        "files": [
+          "src/components/Header/Header.tsx"
+        ]
+      }
+    },
+    "header.nav": {
+      "label": "Menu",
+      "section": "Header",
+      "files": [
+        "src/components/Header/Header.module.css",
+        "src/components/Header/Header.tsx"
+      ],
+      "selectors": [
+        ".nav"
+      ],
+      "reach": "toutes les pages du site",
+      "controls": [
+        "color",
+        "fontSize",
+        "fontWeight",
+        "gap"
+      ],
+      "text": {
+        "source": "code",
+        "files": [
+          "src/components/Header/Header.tsx"
+        ]
+      }
+    },
+    "hero": {
+      "label": "Bandeau d'accueil",
+      "section": "Hero",
+      "files": [
+        "src/components/Hero/Hero.module.css",
+        "src/components/Hero/Hero.tsx"
+      ],
+      "selectors": [
+        ".hero"
+      ],
+      "children": [
+        "hero.title",
+        "hero.subtitle",
+        "hero.cta"
+      ],
+      "reach": "la page d'accueil",
+      "controls": [
+        "background",
+        "paddingBlock",
+        "align"
+      ]
+    },
+    "hero.title": {
+      "label": "Titre principal",
+      "section": "Hero",
+      "files": [
+        "src/components/Hero/Hero.module.css",
+        "src/components/Hero/Hero.tsx"
+      ],
+      "selectors": [
+        ".title",
+        ".accent"
+      ],
+      "reach": "la page d'accueil",
+      "controls": [
+        "color",
+        "fontFamily",
+        "fontSize",
+        "fontWeight",
+        "align"
+      ],
+      "text": {
+        "source": "sanity",
+        "document": {
+          "type": "home",
+          "id": "home"
+        },
+        "fields": {
+          "title": 90
+        }
+      }
+    },
+    "hero.subtitle": {
+      "label": "Sous-titre",
+      "section": "Hero",
+      "files": [
+        "src/components/Hero/Hero.module.css",
+        "src/components/Hero/Hero.tsx"
+      ],
+      "selectors": [
+        ".subtitle"
+      ],
+      "hideable": true,
+      "reach": "la page d'accueil",
+      "controls": [
+        "color",
+        "fontFamily",
+        "fontSize"
+      ],
+      "text": {
+        "source": "sanity",
+        "document": {
+          "type": "home",
+          "id": "home"
+        },
+        "fields": {
+          "subtitle": 220
+        }
+      }
+    },
+    "hero.cta": {
+      "label": "Bouton principal",
+      "section": "Hero",
+      "files": [
+        "src/components/Hero/Hero.module.css",
+        "src/components/Hero/Hero.tsx"
+      ],
+      "selectors": [
+        ".cta"
+      ],
+      "reach": "la page d'accueil",
+      "controls": [
+        "background",
+        "color",
+        "fontSize",
+        "fontWeight",
+        "radius",
+        "paddingBlock",
+        "paddingInline",
+        "shadow"
+      ],
+      "text": {
+        "source": "sanity",
+        "document": {
+          "type": "home",
+          "id": "home"
+        },
+        "fields": {
+          "buttonLabel": 40
+        }
+      }
+    },
+    "features": {
+      "label": "Section atouts",
+      "section": "Features",
+      "files": [
+        "src/components/Features/Features.module.css",
+        "src/components/Features/Features.tsx"
+      ],
+      "selectors": [
+        ".features",
+        ".grid"
+      ],
+      "children": [
+        "features.title",
+        "features.card"
+      ],
+      "reach": "la page d'accueil",
+      "controls": [
+        "background",
+        "paddingBlock"
+      ]
+    },
+    "features.title": {
+      "label": "Titre des atouts",
+      "section": "Features",
+      "files": [
+        "src/components/Features/Features.module.css",
+        "src/components/Features/Features.tsx"
+      ],
+      "selectors": [
+        ".title"
+      ],
+      "reach": "la page d'accueil",
+      "controls": [
+        "color",
+        "fontFamily",
+        "fontSize",
+        "fontWeight",
+        "align"
+      ],
+      "text": {
+        "source": "sanity",
+        "document": {
+          "type": "home",
+          "id": "home"
+        },
+        "fields": {
+          "featuresTitle": 70
+        }
+      }
+    },
+    "features.card": {
+      "label": "Carte atout",
+      "section": "Features",
+      "hint": "Le style s'applique à toutes les cartes atouts ; le texte, à la carte sélectionnée.",
+      "files": [
+        "src/components/Features/Features.module.css",
+        "src/components/Features/Features.tsx"
+      ],
+      "selectors": [
+        ".card",
+        ".cardTitle",
+        ".cardText"
+      ],
+      "reach": "les trois cartes atouts de la page d'accueil",
+      "controls": [
+        "background",
+        "color",
+        "radius",
+        "padding",
+        "shadow"
+      ],
+      "text": {
+        "source": "sanity",
+        "document": {
+          "type": "home",
+          "id": "home"
+        },
+        "fields": {
+          "features[_key==\"$key\"].title": 60,
+          "features[_key==\"$key\"].text": 200
+        }
+      }
+    },
+    "page.title": {
+      "label": "Titre de page",
+      "section": "Blog",
+      "files": [
+        "src/components/PageTitle/PageTitle.module.css",
+        "src/components/PageTitle/PageTitle.tsx"
+      ],
+      "selectors": [
+        ".title"
+      ],
+      "reach": "toutes les pages avec un titre de page (aujourd'hui, la page Blog)",
+      "controls": [
+        "color",
+        "fontFamily",
+        "fontSize",
+        "fontWeight",
+        "align"
+      ],
+      "text": {
+        "source": "code",
+        "files": [
+          "src/app/(site)/blog/page.tsx"
+        ]
+      }
+    },
+    "page.intro": {
+      "label": "Introduction de page",
+      "section": "Blog",
+      "files": [
+        "src/components/PageTitle/PageTitle.module.css",
+        "src/components/PageTitle/PageTitle.tsx"
+      ],
+      "selectors": [
+        ".intro"
+      ],
+      "hideable": true,
+      "reach": "toutes les pages avec un titre de page (aujourd'hui, la page Blog)",
+      "controls": [
+        "color",
+        "fontFamily",
+        "fontSize"
+      ],
+      "text": {
+        "source": "code",
+        "files": [
+          "src/app/(site)/blog/page.tsx"
+        ]
+      }
+    },
+    "blog.list": {
+      "label": "Liste des articles",
+      "section": "Blog",
+      "files": [
+        "src/components/PostGrid/PostGrid.module.css",
+        "src/components/PostGrid/PostGrid.tsx"
+      ],
+      "selectors": [
+        ".grid"
+      ],
+      "children": [
+        "post.card"
+      ],
+      "reach": "la page Blog",
+      "controls": [
+        "gap"
+      ]
+    },
+    "post.card": {
+      "label": "Carte article",
+      "section": "Blog",
+      "hint": "Le style s'applique à toutes les cartes articles du site ; le texte, à l'article de la carte.",
+      "files": [
+        "src/components/PostCard/PostCard.module.css",
+        "src/components/PostCard/PostCard.tsx"
+      ],
+      "selectors": [
+        ".card",
+        ".image",
+        ".body",
+        ".subtitle",
+        ".date"
+      ],
+      "children": [
+        "post.card.title"
+      ],
+      "reach": "toutes les cartes articles de la page Blog",
+      "controls": [
+        "background",
+        "radius",
+        "padding",
+        "shadow",
+        "gap"
+      ],
+      "text": {
+        "source": "sanity",
+        "document": {
+          "type": "post",
+          "from": "data-edit-doc"
+        },
+        "fields": {
+          "title": 90,
+          "subtitle": 160
+        }
+      }
+    },
+    "post.card.title": {
+      "label": "Titre de carte article",
+      "section": "Blog",
+      "files": [
+        "src/components/PostCard/PostCard.module.css",
+        "src/components/PostCard/PostCard.tsx"
+      ],
+      "selectors": [
+        ".title"
+      ],
+      "reach": "tous les titres de cartes articles de la page Blog",
+      "controls": [
+        "color",
+        "fontFamily",
+        "fontSize",
+        "fontWeight"
+      ],
+      "text": {
+        "source": "sanity",
+        "document": {
+          "type": "post",
+          "from": "data-edit-doc"
+        },
+        "fields": {
+          "title": 90
+        }
+      }
+    },
+    "article.title": {
+      "label": "Titre d'article",
+      "section": "Article",
+      "files": [
+        "src/components/Article/Article.module.css",
+        "src/components/Article/Article.tsx"
+      ],
+      "selectors": [
+        ".title"
+      ],
+      "reach": "tous les articles du blog",
+      "controls": [
+        "color",
+        "fontFamily",
+        "fontSize",
+        "fontWeight"
+      ],
+      "text": {
+        "source": "sanity",
+        "document": {
+          "type": "post",
+          "from": "data-edit-doc"
+        },
+        "fields": {
+          "title": 90
+        }
+      }
+    },
+    "article.subtitle": {
+      "label": "Chapô d'article",
+      "section": "Article",
+      "files": [
+        "src/components/Article/Article.module.css",
+        "src/components/Article/Article.tsx"
+      ],
+      "selectors": [
+        ".subtitle"
+      ],
+      "reach": "tous les articles du blog",
+      "controls": [
+        "color",
+        "fontFamily",
+        "fontSize"
+      ],
+      "text": {
+        "source": "sanity",
+        "document": {
+          "type": "post",
+          "from": "data-edit-doc"
+        },
+        "fields": {
+          "subtitle": 160
+        }
+      }
+    },
+    "article.meta": {
+      "label": "Dates de l'article",
+      "section": "Article",
+      "files": [
+        "src/components/Article/Article.module.css",
+        "src/components/Article/Article.tsx"
+      ],
+      "selectors": [
+        ".meta"
+      ],
+      "reach": "tous les articles du blog",
+      "controls": [
+        "color",
+        "fontSize",
+        "gap"
+      ]
+    },
+    "article.content": {
+      "label": "Corps de l'article",
+      "section": "Article",
+      "hint": "Le texte de l'article se modifie dans l'admin.",
+      "files": [
+        "src/components/Article/Article.module.css",
+        "src/components/Article/Article.tsx"
+      ],
+      "selectors": [
+        ".content"
+      ],
+      "reach": "tous les articles du blog",
+      "controls": [
+        "color",
+        "fontFamily",
+        "fontSize"
+      ]
+    },
+    "footer": {
+      "label": "Pied de page",
+      "section": "Footer",
+      "files": [
+        "src/components/Footer/Footer.module.css",
+        "src/components/Footer/Footer.tsx"
+      ],
+      "selectors": [
+        ".footer",
+        ".inner",
+        ".brand"
+      ],
+      "reach": "toutes les pages du site",
+      "controls": [
+        "background",
+        "color",
+        "paddingBlock"
+      ],
+      "text": {
+        "source": "code",
+        "files": [
+          "src/components/Footer/Footer.tsx"
+        ]
+      }
+    }
+  }
+}

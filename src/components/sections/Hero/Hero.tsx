@@ -1,6 +1,8 @@
 import { stegaClean, type StegaBranded } from 'next-sanity'
 
 import { Button } from '@/components/ui/Button/Button'
+import { editAttrs } from '@/lib/editor/preview'
+import { HOME_DOCUMENT_ID } from '@/lib/site'
 import type { HeroSection } from '@/sanity/types'
 
 import styles from './Hero.module.css'
@@ -13,16 +15,27 @@ export function Hero({ data }: { data: StegaBranded<HeroSection> }) {
   const { title, lede, primaryCta, secondaryCta, ratings } = data
 
   return (
-    <section className={styles.hero} aria-labelledby="hero-title">
-      <h1 id="hero-title" className={styles.title}>
+    <section className={styles.hero} aria-labelledby="hero-title" {...editAttrs('hero', { doc: HOME_DOCUMENT_ID })}>
+      <h1 id="hero-title" className={styles.title} {...editAttrs('hero.title')}>
         {title}
       </h1>
-      <p className={styles.lede}>{lede}</p>
+      <p className={styles.lede} {...editAttrs('hero.lede')}>
+        {lede}
+      </p>
       {(primaryCta || secondaryCta) && (
         <div className={styles.actions}>
-          {primaryCta && <Button href={primaryCta.href ?? '#'}>{primaryCta.label}</Button>}
+          {primaryCta && (
+            <Button href={primaryCta.href ?? '#'} className={styles.primaryCta} edit={editAttrs('hero.primaryCta')}>
+              {primaryCta.label}
+            </Button>
+          )}
           {secondaryCta && (
-            <Button href={secondaryCta.href ?? '#'} variant="secondary">
+            <Button
+              href={secondaryCta.href ?? '#'}
+              variant="secondary"
+              className={styles.secondaryCta}
+              edit={editAttrs('hero.secondaryCta')}
+            >
               {secondaryCta.label}
             </Button>
           )}
@@ -37,6 +50,7 @@ export function Hero({ data }: { data: StegaBranded<HeroSection> }) {
               <a
                 href={stegaClean(rating.href) ?? '#'}
                 className={`${styles.rating} ${styles[stegaClean(rating.platform)]}`}
+                {...editAttrs('hero.rating', { key: rating._key })}
               >
                 {rating.label}
               </a>
@@ -45,7 +59,7 @@ export function Hero({ data }: { data: StegaBranded<HeroSection> }) {
         </ul>
       )}
       {/* Fenêtre vide en attendant la capture du produit, qui viendra s'y loger. */}
-      <div className={styles.visual}>
+      <div className={styles.visual} {...editAttrs('hero.visual')}>
         <div className={styles.window} />
       </div>
     </section>

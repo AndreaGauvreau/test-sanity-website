@@ -1,0 +1,12 @@
+import { notFound } from 'next/navigation'
+import { Article } from '@/components/Article/Article'
+import { getPost } from '@/lib/cms'
+
+export default async function PostPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params
+  const post = await getPost(slug)
+
+  if (!post) notFound()
+
+  return <Article post={post} />
+}

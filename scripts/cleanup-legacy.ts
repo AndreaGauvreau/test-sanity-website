@@ -1,47 +1,22 @@
 /**
  * Supprime l'ancien contenu de démo (LyonDrive) : page d'accueil `home`, 6 articles en
- * français et leurs images. Suppression définitive.
+ * français et leurs images. Suppression définitive. Refuse le dataset production.
  *
  *   npm run cleanup:legacy
+ *
+ * Aussi fait par `scripts/migrate-admin.ts -- --demo` (même logique : scripts/lib/legacy.ts).
  */
 import { getCliClient } from 'sanity/cli'
 
+import { assertNotProduction } from '../src/sanity/lib/dataset-guard'
+import { removeLegacyDemo } from './lib/legacy'
+
 const client = getCliClient({ apiVersion: '2026-09-01' })
 
-const legacySlugs = [
-  'road-trips-depuis-lyon',
-  'choisir-sa-voiture',
-  'demenager-avec-un-utilitaire',
-  'crit-air-et-zfe',
-  'week-end-ski',
-  'aeroport-saint-exupery',
-]
-const legacyIds = ['home', ...legacySlugs.map((slug) => `post-${slug}`)]
-const legacyImages = ['itineraires.jpg', ...legacySlugs.map((slug) => `${slug}.jpg`)]
-
 async function cleanup() {
-  const { projectId, dataset } = client.config()
-  console.log(`Nettoyage LyonDrive → projet ${projectId}, dataset ${dataset}`)
-
-  // Supprimer un document absent ne fait rien : sans risque au deuxième lancement.
-  const transaction = client.transaction()
-  for (const id of legacyIds) transaction.delete(id).delete(`drafts.${id}`)
-  await transaction.commit()
-  console.log(`Documents supprimés : ${legacyIds.join(', ')}`)
-
-  // Les images ne sont plus référencées : on les retire de la médiathèque.
-  const assetIds = await client.fetch<string[]>(
-    `*[_type == "sanity.imageAsset" && originalFilename in $names]._id`,
-    { names: legacyImages },
-  )
-  for (const assetId of assetIds) {
-    try {
-      await client.delete(assetId)
-    } catch (error) {
-      console.warn(`  image ${assetId} gardée : encore utilisée ailleurs (${String(error)})`)
-    }
-  }
-  if (assetIds.length > 0) console.log(`Médiathèque : ${assetIds.length} images LyonDrive traitées.`)
+  const dataset = assertNotProduction(client)
+  console.log(`Nettoyage LyonDrive → dataset ${dataset}`)
+  await removeLegacyDemo(client)
 }
 
 cleanup().catch((error) => {

@@ -8,7 +8,11 @@
  */
 import { getCliClient } from 'sanity/cli'
 
+import { assertNotProduction } from '../src/sanity/lib/dataset-guard'
+
 const client = getCliClient({ apiVersion: '2026-09-01' })
+// Écrit dans Sanity : jamais sur le dataset production.
+assertNotProduction(client)
 
 const id = 'faq-1'
 const original = 'What do customers think about Conduit Dock Scheduling?'

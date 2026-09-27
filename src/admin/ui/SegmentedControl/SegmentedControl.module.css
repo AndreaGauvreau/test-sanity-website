@@ -1,0 +1,76 @@
+/* Figma « Segmented control » 332:522 : H gap 2, pad 2, radius/md, bg/input, border/default ;
+   « Segment » 332:507 : radius/sm, label pad 4 10 (Body Small), icône pad 4 6 (16). */
+.group {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: var(--k-space-2);
+  padding: var(--k-space-2);
+  border: 1px solid var(--k-border-default);
+  border-radius: var(--k-radius-md);
+  background-color: var(--k-bg-input);
+}
+
+.group[aria-disabled='true'] {
+  opacity: 0.4;
+}
+
+.segment {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--k-space-6);
+  padding: var(--k-space-4) var(--k-space-10);
+  border: 0;
+  border-radius: var(--k-radius-sm);
+  background-color: transparent;
+  color: var(--k-text-tertiary);
+  --k-icon-current: var(--k-icon-default);
+  font: var(--k-text-body-small);
+  letter-spacing: var(--k-text-body-small-tracking);
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color var(--k-duration-fast) ease,
+    color var(--k-duration-fast) ease;
+}
+
+.segment[data-type='icon'] {
+  padding: var(--k-space-4) var(--k-space-6);
+}
+
+.segment:hover:not(:disabled) {
+  background-color: var(--k-bg-subtle);
+  color: var(--k-text-primary);
+  --k-icon-current: var(--k-icon-active);
+}
+
+.segment[data-selected],
+.segment[data-selected]:hover:not(:disabled) {
+  background-color: var(--k-bg-input-hover);
+  color: var(--k-text-primary);
+  --k-icon-current: var(--k-icon-active);
+}
+
+.segment:disabled {
+  cursor: not-allowed;
+}
+
+.segment:disabled:not([data-selected]) {
+  color: var(--k-text-disabled);
+  --k-icon-current: var(--k-text-disabled);
+}
+
+.segment:focus-visible {
+  outline-offset: 0;
+}
+
+.label {
+  line-height: 15px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .segment {
+    transition: none;
+  }
+}

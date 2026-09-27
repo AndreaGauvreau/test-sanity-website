@@ -1,0 +1,242 @@
+/*
+ * Kuartz Admin — Design System · tokens CSS
+ * Source : Figma « Kuartz — Carte système » (wvr98llwHnMufQ88qUp4Ih), page « 🎨 Design System ».
+ * Généré le 2026-09-27 à partir des variables et styles locaux (voir tokens.json pour les valeurs brutes).
+ *
+ * RÈGLE DE NOMMAGE
+ *   --k-<chemin Figma>  : préfixe « k » + nom de la variable Figma, en minuscules, « / » et espaces → « - ».
+ *   Primitives  : --k-<groupe>-<nom>        neutral/700 → --k-neutral-700, alpha/white-8 → --k-alpha-white-8,
+ *                                           space/8 → --k-space-8 (px), radius/md → --k-radius-md (px)
+ *   Semantic    : --k-<groupe>-<nom>        bg/elevated → --k-bg-elevated, bg/tint/info → --k-bg-tint-info,
+ *                                           text/primary → --k-text-primary, code/tag → --k-code-tag
+ *   Icon color  : --k-icon-current (variable « current » de la collection « Icon color ») ; le mode Figma
+ *                 posé sur un calque parent devient l’attribut data-icon-color="<mode>" sur l’élément parent.
+ *   Texte       : --k-text-<style> (raccourci « font ») + --k-text-<style>-tracking (letter-spacing)
+ *                 « Label Large » → --k-text-label-large / --k-text-label-large-tracking
+ *   Effets      : --k-elevation-<nom>       Elevation/Popover → --k-elevation-popover (box-shadow)
+ *
+ * THÈMES : Dark par défaut (:root et [data-theme="dark"]), Light sous [data-theme="light"].
+ * Les Primitives sont masquées des sélecteurs dans Figma : les composants n’utilisent que les Semantic.
+ * Interligne « Auto » de Figma = line-height: normal (métriques de la police ; Inter ≈ 1,21 → 14 px ≈ 17 px).
+ */
+
+:root {
+  /* ── Primitives (collection « Primitives », mode Default) ── */
+  --k-neutral-0: #000000;
+  --k-neutral-50: #111111;
+  --k-neutral-100: #181818;
+  --k-neutral-150: #1f1f1f;
+  --k-neutral-200: #212121;
+  --k-neutral-250: #252525;
+  --k-neutral-300: #2b2b2b;
+  --k-neutral-400: #444444;
+  --k-neutral-500: #555555;
+  --k-neutral-600: #666666;
+  --k-neutral-700: #888888;
+  --k-neutral-800: #999999;
+  --k-neutral-900: #cccccc;
+  --k-neutral-1000: #ffffff;
+  --k-blue-400: #3387ee;
+  --k-blue-500: #0099ff;
+  --k-blue-600: #007acc;
+  --k-accent-yellow: #ffd700;
+  --k-accent-red: #ee4444;
+  --k-accent-green: #44cc66;
+  --k-red-400: #ff5858;
+  --k-red-600: #d42b2b;
+  --k-alpha-white-8: rgba(255, 255, 255, 0.08);
+  --k-alpha-white-12: rgba(255, 255, 255, 0.12);
+  --k-alpha-black-6: rgba(0, 0, 0, 0.06);
+  --k-alpha-black-10: rgba(0, 0, 0, 0.1);
+  --k-alpha-black-60: rgba(0, 0, 0, 0.6);
+  --k-alpha-blue-14: rgba(0, 153, 255, 0.14);
+  --k-alpha-green-14: rgba(68, 204, 102, 0.14);
+  --k-alpha-yellow-14: rgba(255, 215, 0, 0.14);
+  --k-alpha-red-14: rgba(238, 68, 68, 0.14);
+  --k-neutral-950: #dddddd;
+  --k-yellow-300: #ffcc66;
+  --k-purple-400: #bb88ff;
+  --k-claude-500: #d97757;
+  --k-alpha-purple-16: rgba(187, 136, 255, 0.16);
+  --k-space-2: 2px;
+  --k-space-4: 4px;
+  --k-space-8: 8px;
+  --k-space-12: 12px;
+  --k-space-16: 16px;
+  --k-space-20: 20px;
+  --k-space-24: 24px;
+  --k-space-32: 32px;
+  --k-space-40: 40px;
+  --k-space-48: 48px;
+  --k-space-64: 64px;
+  --k-radius-sm: 5px;
+  --k-radius-md: 8px;
+  --k-radius-lg: 12px;
+  --k-radius-xl: 18px;
+  --k-radius-full: 999px;
+  --k-space-6: 6px;
+  --k-space-10: 10px;
+
+  /* ── Styles de texte ── */
+  --k-text-heading-1: 700 32px/normal "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; /* Inter Bold */
+  --k-text-heading-1-tracking: 0;
+  --k-text-heading-2: 700 24px/normal "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; /* Inter Bold */
+  --k-text-heading-2-tracking: 0;
+  --k-text-heading-3: 600 20px/normal "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; /* Inter Semi Bold */
+  --k-text-heading-3-tracking: 0;
+  --k-text-heading-4: 600 16px/normal "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; /* Inter Semi Bold */
+  --k-text-heading-4-tracking: 0;
+  --k-text-body-large: 500 14px/normal "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; /* Inter Medium */
+  --k-text-body-large-tracking: 0;
+  --k-text-body: 500 13px/normal "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; /* Inter Medium */
+  --k-text-body-tracking: 0;
+  --k-text-body-small: 500 12px/normal "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; /* Inter Medium */
+  --k-text-body-small-tracking: 0;
+  --k-text-caption: 500 10px/normal "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; /* Inter Medium */
+  --k-text-caption-tracking: 0;
+  --k-text-label: 600 12px/normal "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; /* Inter Semi Bold */
+  --k-text-label-tracking: 0;
+  --k-text-label-large: 600 14px/normal "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; /* Inter Semi Bold */
+  --k-text-label-large-tracking: 0;
+  --k-text-label-small: 600 10px/normal "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; /* Inter Semi Bold */
+  --k-text-label-small-tracking: 0.02em;
+  --k-text-code: 400 12px/1.6 "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace; /* Geist Mono Regular */
+  --k-text-code-tracking: 0;
+
+  /* ── Effets ── */
+  --k-elevation-popover: 0px 8px 24px 0px rgba(0, 0, 0, 0.32), 0px 2px 6px 0px rgba(0, 0, 0, 0.24);
+  --k-elevation-modal: 0px 24px 64px 0px rgba(0, 0, 0, 0.5), 0px 4px 12px 0px rgba(0, 0, 0, 0.3);
+}
+
+/* ── Semantic — mode Dark (défaut) ── */
+:root,
+[data-theme="dark"] {
+  color-scheme: dark;
+  --k-bg-app: var(--k-neutral-0); /* #000000 */
+  --k-bg-primary: var(--k-neutral-50); /* #111111 */
+  --k-bg-elevated: var(--k-neutral-100); /* #181818 */
+  --k-bg-input: var(--k-neutral-150); /* #1f1f1f */
+  --k-bg-input-hover: var(--k-neutral-300); /* #2b2b2b */
+  --k-bg-subtle: var(--k-neutral-200); /* #212121 */
+  --k-bg-overlay: var(--k-neutral-100); /* #181818 */
+  --k-text-primary: var(--k-neutral-1000); /* #ffffff */
+  --k-text-secondary: var(--k-neutral-900); /* #cccccc */
+  --k-text-tertiary: var(--k-neutral-800); /* #999999 */
+  --k-text-muted: var(--k-neutral-600); /* #666666 */
+  --k-text-disabled: var(--k-neutral-500); /* #555555 */
+  --k-text-link: var(--k-blue-500); /* #0099ff */
+  --k-border-default: var(--k-neutral-250); /* #252525 */
+  --k-border-subtle: var(--k-neutral-200); /* #212121 */
+  --k-border-strong: var(--k-neutral-400); /* #444444 */
+  --k-border-focus: var(--k-blue-500); /* #0099ff */
+  --k-interactive-primary: var(--k-blue-500); /* #0099ff */
+  --k-interactive-primary-hover: var(--k-blue-400); /* #3387ee */
+  --k-interactive-primary-pressed: var(--k-blue-600); /* #007acc */
+  --k-interactive-danger: var(--k-accent-red); /* #ee4444 */
+  --k-interactive-success: var(--k-accent-green); /* #44cc66 */
+  --k-icon-default: var(--k-neutral-700); /* #888888 */
+  --k-icon-muted: var(--k-neutral-600); /* #666666 */
+  --k-icon-active: var(--k-neutral-1000); /* #ffffff */
+  --k-icon-error: var(--k-accent-red); /* #ee4444 */
+  --k-icon-success: var(--k-accent-green); /* #44cc66 */
+  --k-icon-primary: var(--k-blue-500); /* #0099ff */
+  --k-text-on-accent: var(--k-neutral-1000); /* #ffffff */
+  --k-text-inverse: var(--k-neutral-50); /* #111111 */
+  --k-bg-inverse: var(--k-neutral-1000); /* #ffffff */
+  --k-bg-scrim: var(--k-alpha-black-60); /* rgba(0, 0, 0, 0.6) */
+  --k-interactive-warning: var(--k-accent-yellow); /* #ffd700 */
+  --k-icon-warning: var(--k-accent-yellow); /* #ffd700 */
+  --k-interactive-danger-hover: var(--k-red-400); /* #ff5858 */
+  --k-interactive-danger-pressed: var(--k-red-600); /* #d42b2b */
+  --k-bg-tint-neutral: var(--k-alpha-white-8); /* rgba(255, 255, 255, 0.08) */
+  --k-bg-tint-info: var(--k-alpha-blue-14); /* rgba(0, 153, 255, 0.14) */
+  --k-bg-tint-success: var(--k-alpha-green-14); /* rgba(68, 204, 102, 0.14) */
+  --k-bg-tint-warning: var(--k-alpha-yellow-14); /* rgba(255, 215, 0, 0.14) */
+  --k-bg-tint-danger: var(--k-alpha-red-14); /* rgba(238, 68, 68, 0.14) */
+  --k-bg-ghost-hover: var(--k-alpha-white-8); /* rgba(255, 255, 255, 0.08) */
+  --k-bg-ghost-pressed: var(--k-alpha-white-12); /* rgba(255, 255, 255, 0.12) */
+  --k-bg-strong: var(--k-neutral-400); /* #444444 */
+  --k-border-edge: var(--k-neutral-0); /* #000000 */
+  --k-code-text: var(--k-neutral-950); /* #dddddd */
+  --k-code-tag: var(--k-yellow-300); /* #ffcc66 */
+  --k-code-brace: var(--k-accent-yellow); /* #ffd700 */
+  --k-code-value: var(--k-purple-400); /* #bb88ff */
+  --k-brand-claude: var(--k-claude-500); /* #d97757 */
+  --k-bg-tint-variable: var(--k-alpha-purple-16); /* rgba(187, 136, 255, 0.16) */
+  --k-text-variable: var(--k-purple-400); /* #bb88ff */
+
+  /* Icon color / current — mode « default » */
+  --k-icon-current: var(--k-icon-default);
+}
+
+/* ── Semantic — mode Light ── */
+[data-theme="light"] {
+  color-scheme: light;
+  --k-bg-app: var(--k-neutral-1000); /* #ffffff */
+  --k-bg-primary: var(--k-neutral-900); /* #cccccc */
+  --k-bg-elevated: var(--k-neutral-1000); /* #ffffff */
+  --k-bg-input: var(--k-neutral-900); /* #cccccc */
+  --k-bg-input-hover: var(--k-neutral-800); /* #999999 */
+  --k-bg-subtle: var(--k-neutral-900); /* #cccccc */
+  --k-bg-overlay: var(--k-neutral-1000); /* #ffffff */
+  --k-text-primary: var(--k-neutral-50); /* #111111 */
+  --k-text-secondary: var(--k-neutral-150); /* #1f1f1f */
+  --k-text-tertiary: var(--k-neutral-300); /* #2b2b2b */
+  --k-text-muted: var(--k-neutral-500); /* #555555 */
+  --k-text-disabled: var(--k-neutral-700); /* #888888 */
+  --k-text-link: var(--k-blue-500); /* #0099ff */
+  --k-border-default: var(--k-neutral-900); /* #cccccc */
+  --k-border-subtle: var(--k-neutral-800); /* #999999 */
+  --k-border-strong: var(--k-neutral-600); /* #666666 */
+  --k-border-focus: var(--k-blue-500); /* #0099ff */
+  --k-interactive-primary: var(--k-blue-500); /* #0099ff */
+  --k-interactive-primary-hover: var(--k-blue-400); /* #3387ee */
+  --k-interactive-primary-pressed: var(--k-blue-600); /* #007acc */
+  --k-interactive-danger: var(--k-accent-red); /* #ee4444 */
+  --k-interactive-success: var(--k-accent-green); /* #44cc66 */
+  --k-icon-default: var(--k-neutral-500); /* #555555 */
+  --k-icon-muted: var(--k-neutral-600); /* #666666 */
+  --k-icon-active: var(--k-neutral-50); /* #111111 */
+  --k-icon-error: var(--k-accent-red); /* #ee4444 */
+  --k-icon-success: var(--k-accent-green); /* #44cc66 */
+  --k-icon-primary: var(--k-blue-500); /* #0099ff */
+  --k-text-on-accent: var(--k-neutral-1000); /* #ffffff */
+  --k-text-inverse: var(--k-neutral-1000); /* #ffffff */
+  --k-bg-inverse: var(--k-neutral-50); /* #111111 */
+  --k-bg-scrim: var(--k-alpha-black-60); /* rgba(0, 0, 0, 0.6) */
+  --k-interactive-warning: var(--k-accent-yellow); /* #ffd700 */
+  --k-icon-warning: var(--k-accent-yellow); /* #ffd700 */
+  --k-interactive-danger-hover: var(--k-red-400); /* #ff5858 */
+  --k-interactive-danger-pressed: var(--k-red-600); /* #d42b2b */
+  --k-bg-tint-neutral: var(--k-alpha-black-6); /* rgba(0, 0, 0, 0.06) */
+  --k-bg-tint-info: var(--k-alpha-blue-14); /* rgba(0, 153, 255, 0.14) */
+  --k-bg-tint-success: var(--k-alpha-green-14); /* rgba(68, 204, 102, 0.14) */
+  --k-bg-tint-warning: var(--k-alpha-yellow-14); /* rgba(255, 215, 0, 0.14) */
+  --k-bg-tint-danger: var(--k-alpha-red-14); /* rgba(238, 68, 68, 0.14) */
+  --k-bg-ghost-hover: var(--k-alpha-black-6); /* rgba(0, 0, 0, 0.06) */
+  --k-bg-ghost-pressed: var(--k-alpha-black-10); /* rgba(0, 0, 0, 0.1) */
+  --k-bg-strong: var(--k-neutral-400); /* #444444 */
+  --k-border-edge: var(--k-neutral-0); /* #000000 */
+  --k-code-text: var(--k-neutral-950); /* #dddddd */
+  --k-code-tag: var(--k-yellow-300); /* #ffcc66 */
+  --k-code-brace: var(--k-accent-yellow); /* #ffd700 */
+  --k-code-value: var(--k-purple-400); /* #bb88ff */
+  --k-brand-claude: var(--k-claude-500); /* #d97757 */
+  --k-bg-tint-variable: var(--k-alpha-purple-16); /* rgba(187, 136, 255, 0.16) */
+  --k-text-variable: var(--k-purple-400); /* #bb88ff */
+
+  /* Icon color / current — mode « default » */
+  --k-icon-current: var(--k-icon-default);
+}
+
+/* ── Icon color : modes (à poser sur le parent, comme le mode Figma sur le calque parent) ── */
+[data-icon-color="default"] { --k-icon-current: var(--k-icon-default); }
+[data-icon-color="active"] { --k-icon-current: var(--k-icon-active); }
+[data-icon-color="on-accent"] { --k-icon-current: var(--k-text-on-accent); }
+[data-icon-color="disabled"] { --k-icon-current: var(--k-text-disabled); }
+[data-icon-color="danger"] { --k-icon-current: var(--k-icon-error); }
+[data-icon-color="primary"] { --k-icon-current: var(--k-icon-primary); }
+[data-icon-color="success"] { --k-icon-current: var(--k-icon-success); }
+[data-icon-color="warning"] { --k-icon-current: var(--k-icon-warning); }
+[data-icon-color="inverse"] { --k-icon-current: var(--k-text-inverse); }
+[data-icon-color="claude"] { --k-icon-current: var(--k-brand-claude); }

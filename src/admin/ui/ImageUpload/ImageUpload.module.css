@@ -1,0 +1,167 @@
+/*
+ * Figma « Image upload » 330:408 : 360 × hug (fluide ici), V gap 8.
+ * label-row : H gap 8, libellé Body Small text/secondary (fill) + hint Body Small text/muted.
+ * dropzone 190 px : V gap 8 centré, radius/md, bg/input, contour 1 px pointillé 4,4 border/strong.
+ */
+.upload {
+  display: flex;
+  flex-direction: column;
+  gap: var(--k-space-8);
+  width: 100%;
+  --k-icon-current: var(--k-icon-default);
+}
+
+.disabled {
+  opacity: 0.4;
+}
+
+.labelRow {
+  display: flex;
+  align-items: center;
+  gap: var(--k-space-8);
+}
+
+.label {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: var(--k-text-secondary);
+  font: var(--k-text-body-small);
+  letter-spacing: var(--k-text-body-small-tracking);
+}
+
+.hint {
+  flex-shrink: 0;
+  color: var(--k-text-muted);
+  font: var(--k-text-body-small);
+  letter-spacing: var(--k-text-body-small-tracking);
+}
+
+.zone {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--k-space-8);
+  width: 100%;
+  border-radius: var(--k-radius-md);
+  background-color: var(--k-bg-input);
+  overflow: hidden;
+  text-align: center;
+}
+
+/* Pointillés 4,4 : SVG en surimpression (border: dashed ne suit pas le motif Figma), couleur par token. */
+.drop {
+  --dash: var(--k-border-strong);
+  cursor: pointer;
+  transition: background-color var(--k-duration-fast) ease;
+}
+
+.dash {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.dashRect {
+  x: 0.5px;
+  y: 0.5px;
+  width: calc(100% - 1px);
+  height: calc(100% - 1px);
+  rx: 7.5px;
+  fill: none;
+  stroke: var(--dash);
+  stroke-width: 1px;
+  stroke-dasharray: 4 4;
+}
+
+.drop:hover:not(:disabled) {
+  background-color: var(--k-bg-input-hover);
+}
+
+.drop:focus-visible {
+  outline: 2px solid var(--k-border-focus);
+  outline-offset: 2px;
+}
+
+.drop:disabled {
+  cursor: not-allowed;
+}
+
+.dragover,
+.dragover:hover:not(:disabled) {
+  --dash: var(--k-border-focus);
+  background-color: var(--k-bg-tint-info);
+  --k-icon-current: var(--k-icon-primary);
+}
+
+.uploading {
+  border: 1px solid var(--k-border-default);
+}
+
+.filled {
+  background-color: var(--k-bg-subtle);
+}
+
+.progress {
+  width: 200px;
+}
+
+.image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.message {
+  color: var(--k-text-secondary);
+  font: var(--k-text-body-small);
+  letter-spacing: var(--k-text-body-small-tracking);
+}
+
+.messageActive {
+  color: var(--k-text-link);
+}
+
+.formats,
+.fileName {
+  color: var(--k-text-muted);
+  font: var(--k-text-caption);
+  letter-spacing: var(--k-text-caption-tracking);
+}
+
+/* Ligne fichier (état filled) : H gap 8 ; nom Body Small text/tertiary, Replace (secondary small), corbeille (ghost small). */
+.fileRow {
+  display: flex;
+  align-items: center;
+  gap: var(--k-space-8);
+}
+
+.file {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--k-text-tertiary);
+  font: var(--k-text-body-small);
+  letter-spacing: var(--k-text-body-small-tracking);
+}
+
+.error {
+  color: var(--k-interactive-danger);
+  font: var(--k-text-body-small);
+  letter-spacing: var(--k-text-body-small-tracking);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .drop {
+    transition: none;
+  }
+}

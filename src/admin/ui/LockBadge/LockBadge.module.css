@@ -1,0 +1,24 @@
+/* Figma « Lock badge » 453:1923 : 24 × 24, rayon 12, bg/scrim, cadenas 12 (Icon color default → active au survol). */
+.badge {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--k-radius-full);
+  background-color: var(--k-bg-scrim);
+  --k-icon-current: var(--k-icon-default);
+  cursor: default;
+}
+
+.badge:hover,
+.badge:focus-visible {
+  --k-icon-current: var(--k-icon-active);
+}
+
+.corner {
+  position: absolute;
+  top: var(--k-space-8);
+  right: var(--k-space-8);
+}

@@ -1,6 +1,10 @@
+import { aiUsage } from './aiUsage'
+import { articleSeoTemplate } from './articleSeoTemplate'
+import { blogPage } from './blogPage'
 import { dockSchedulingPage } from './dockSchedulingPage'
 import { faq } from './faq'
 import { cta } from './objects/cta'
+import { seo } from './objects/seo'
 import { post } from './post'
 import { customerStorySection } from './sections/customerStory'
 import { faqSection } from './sections/faq'
@@ -13,17 +17,23 @@ import { performanceSection } from './sections/performance'
 import { systemSection } from './sections/system'
 import { testimonialSection } from './sections/testimonial'
 import { tourSection } from './sections/tour'
+import { siteSettings } from './siteSettings'
 import { testimonial } from './testimonial'
 
-// La page Dock Scheduling (document unique, ses textes section par section), puis les
-// trois collections du site.
+// Réglages et pages (documents uniques), modèle SEO des pages article, les trois collections du
+// site, puis le journal de consommation IA (privé, écrit par le moteur, hors structure du Studio).
 export const schemaTypes = [
+  siteSettings,
   dockSchedulingPage,
+  blogPage,
+  articleSeoTemplate,
   post,
   testimonial,
   faq,
+  aiUsage,
   // Objets partagés et sections de la page
   cta,
+  seo,
   heroSection,
   featuresSection,
   systemSection,
@@ -37,5 +47,16 @@ export const schemaTypes = [
   getStartedSection,
 ]
 
-// Documents uniques : ni création depuis le menu « + », ni suppression, ni duplication.
-export const singletonTypes = new Set(['dockSchedulingPage'])
+// Documents uniques (id fixe) : ni création depuis le menu « + », ni suppression, ni duplication.
+export const SINGLETON_IDS = {
+  siteSettings: 'siteSettings',
+  dockSchedulingPage: 'dockSchedulingPage',
+  blogPage: 'blogPage',
+  // Pas de point dans l'id : un id avec un point est privé, le site ne pourrait pas le lire.
+  articleSeoTemplate: 'articleSeo-post',
+} as const
+
+export const singletonTypes = new Set<string>(Object.keys(SINGLETON_IDS))
+
+// Types qu'on ne crée jamais depuis le Studio (menu « + », modèles) : singletons et journal IA.
+export const hiddenCreationTypes = new Set<string>([...singletonTypes, 'aiUsage'])

@@ -28,13 +28,14 @@ export async function onContentChange(unsafeTags: unknown): Promise<void | 'refr
 }
 
 /**
- * Même rôle, branché sur l'admin embarqué (/admin) : une publication faite depuis
- * l'admin vide le cache des pages concernées même si aucun onglet du site n'est
- * ouvert. Pas de rafraîchissement ici : l'admin n'affiche pas ces données.
+ * Même rôle, branché sur le Studio embarqué (/studio, layout src/app/studio) : une
+ * publication faite depuis le Studio vide le cache des pages concernées même si aucun
+ * onglet du site n'est ouvert. Pas de rafraîchissement ici : le Studio n'affiche pas ces
+ * données. Les publications de l'admin (/admin, moteur IA) passent par POST /api/revalidate.
  *
- * Limite à connaître : une publication faite ailleurs (admin hébergé, API, seed)
- * sans aucun onglet ouvert ne vide rien. En production, c'est le rôle d'une
- * Sanity Function ou d'un webhook ; ici, bouton « Vider le cache » sur /bench.
+ * Limite à connaître : une publication faite ailleurs (Studio hébergé, API, scripts)
+ * sans aucun onglet ouvert ne vide rien, sauf appel à POST /api/revalidate (webhook,
+ * moteur de l'admin) ; sinon, bouton « Vider le cache » sur /bench.
  */
 export async function onPublishFromAdmin(unsafeTags: unknown): Promise<void> {
   const { tags } = parseTags(unsafeTags)

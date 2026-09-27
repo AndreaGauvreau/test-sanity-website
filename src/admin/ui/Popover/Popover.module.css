@@ -1,0 +1,23 @@
+.popover {
+  position: fixed;
+  z-index: var(--k-z-popover);
+  transform-origin: var(--k-popover-origin);
+  max-width: calc(100vw - 16px);
+}
+
+/* Surface standard (Menu, Select, FilterPopover) : Figma « Menu » — bg/elevated, border/default, radius/md, Elevation/Popover. */
+.surface {
+  background-color: var(--k-bg-elevated);
+  border: 1px solid var(--k-border-default);
+  border-radius: var(--k-radius-md);
+  box-shadow: var(--k-elevation-popover);
+  overflow: hidden;
+}
+
+.popover:focus-visible {
+  outline: none;
+}
+
+.inert {
+  pointer-events: none;
+}

@@ -1,0 +1,37 @@
+/* Figma « Detail row » 337:1498 : stacked V gap 2 ; inline H gap 12, libellé 120 px. */
+.row {
+  display: flex;
+  min-width: 0;
+  margin: 0;
+}
+
+.stacked {
+  flex-direction: column;
+  gap: var(--k-space-2);
+}
+
+.inline {
+  flex-direction: row;
+  align-items: flex-start;
+  gap: var(--k-space-12);
+}
+
+.label {
+  color: var(--k-text-primary);
+  font: var(--k-text-label);
+  letter-spacing: var(--k-text-label-tracking);
+}
+
+.inline .label {
+  flex: 0 0 120px;
+}
+
+.value {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  color: var(--k-text-tertiary);
+  font: var(--k-text-body);
+  letter-spacing: var(--k-text-body-tracking);
+  overflow-wrap: anywhere;
+}

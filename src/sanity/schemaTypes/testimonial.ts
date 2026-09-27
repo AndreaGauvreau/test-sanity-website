@@ -1,6 +1,8 @@
 import { BlockquoteIcon } from '@sanity/icons/Blockquote'
 import { defineField, defineType } from 'sanity'
 
+import { maxLength, orderRankField } from './shared'
+
 // Témoignage client : la citation sur photo d'entrepôt, sous la section « Customer story ».
 export const testimonial = defineType({
   name: 'testimonial',
@@ -14,24 +16,25 @@ export const testimonial = defineType({
       type: 'text',
       rows: 4,
       description: 'Sans guillemets : le site les ajoute.',
-      validation: (rule) => rule.required(),
+      validation: (rule) => [rule.required(), maxLength(rule, 320)],
     }),
     defineField({
       name: 'name',
       title: 'Nom',
       type: 'string',
-      validation: (rule) => rule.required(),
+      validation: (rule) => [rule.required(), maxLength(rule, 50)],
     }),
     defineField({
       name: 'role',
       title: 'Fonction',
       type: 'string',
+      validation: (rule) => maxLength(rule, 60),
     }),
     defineField({
       name: 'company',
       title: 'Entreprise',
       type: 'string',
-      validation: (rule) => rule.required(),
+      validation: (rule) => [rule.required(), maxLength(rule, 60)],
     }),
     defineField({
       name: 'caseStudyUrl',
@@ -42,7 +45,9 @@ export const testimonial = defineType({
         'champ Bouton) : la destination saisie dans ce bouton passe avant. Les deux vides : # en attendant le lien.',
       validation: (rule) => rule.uri({ scheme: ['http', 'https'], allowRelative: true }),
     }),
+    orderRankField('testimonial'),
   ],
+  orderings: [{ title: 'Ordre manuel', name: 'orderRankAsc', by: [{ field: 'orderRank', direction: 'asc' }] }],
   preview: {
     select: { title: 'name', subtitle: 'company' },
   },

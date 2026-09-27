@@ -1,0 +1,61 @@
+/* Figma « Toast » 323:412 : hug × 45, H gap 10, pad 8 8 8 12, radius/md, bg/elevated, border/strong, Elevation/Popover. */
+.toast {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--k-space-10);
+  max-width: min(560px, calc(100vw - 32px));
+  padding: var(--k-space-8) var(--k-space-8) var(--k-space-8) var(--k-space-12);
+  border: 1px solid var(--k-border-strong);
+  border-radius: var(--k-radius-md);
+  background-color: var(--k-bg-elevated);
+  box-shadow: var(--k-elevation-popover);
+  --k-icon-current: var(--k-icon-default);
+  pointer-events: auto;
+}
+
+.success {
+  --k-icon-current: var(--k-icon-success);
+}
+
+.error {
+  --k-icon-current: var(--k-icon-error);
+}
+
+.icon {
+  flex-shrink: 0;
+}
+
+.message {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: var(--k-text-primary);
+  font: var(--k-text-body);
+  letter-spacing: var(--k-text-body-tracking);
+}
+
+/* Les boutons internes gardent leur propre couleur d'icône (ghost = default). */
+.toast :global(button),
+.toast :global(a) {
+  flex-shrink: 0;
+}
+
+/* ── Région : bas au centre, pile ── */
+.region {
+  position: fixed;
+  left: 50%;
+  bottom: var(--k-space-24);
+  z-index: var(--k-z-toast);
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--k-space-8);
+  width: max-content;
+  max-width: calc(100vw - 32px);
+  pointer-events: none;
+}
+
+.item {
+  display: flex;
+  justify-content: center;
+}

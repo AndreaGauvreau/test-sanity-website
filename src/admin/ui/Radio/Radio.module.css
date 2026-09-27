@@ -1,0 +1,104 @@
+/* Figma « Radio » 330:305 : H gap 8 ; cercle 16 radius/full, bg/input + border/strong ; sélectionné : interactive/primary + point 6 text/on-accent. */
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--k-space-8);
+}
+
+.groupLabel {
+  color: var(--k-text-secondary);
+  font: var(--k-text-body-small);
+  letter-spacing: var(--k-text-body-small-tracking);
+}
+
+.items {
+  display: flex;
+  flex-direction: column;
+  gap: var(--k-space-12);
+}
+
+.horizontal .items {
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: var(--k-space-16);
+}
+
+.radio {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--k-space-8);
+  cursor: pointer;
+  user-select: none;
+}
+
+.disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.input {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  opacity: 0;
+  cursor: inherit;
+}
+
+.circle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  border: 1px solid var(--k-border-strong);
+  border-radius: var(--k-radius-full);
+  background-color: var(--k-bg-input);
+  transition:
+    background-color var(--k-duration-fast) ease,
+    border-color var(--k-duration-fast) ease;
+}
+
+.on {
+  border-color: var(--k-interactive-primary);
+  background-color: var(--k-interactive-primary);
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--k-radius-full);
+  background-color: var(--k-text-on-accent);
+  opacity: 0;
+  transform: scale(0.5);
+  transition:
+    opacity var(--k-duration-fast) var(--k-ease-out),
+    transform var(--k-duration-fast) var(--k-ease-out);
+}
+
+.on .dot {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.input:focus-visible + .circle {
+  outline: 2px solid var(--k-border-focus);
+  outline-offset: 2px;
+}
+
+.label {
+  color: var(--k-text-secondary);
+  font: var(--k-text-body);
+  letter-spacing: var(--k-text-body-tracking);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .circle,
+  .dot {
+    transition: none;
+  }
+}

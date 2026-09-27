@@ -1,0 +1,21 @@
+SKIP TO CONTENT
+
+Buyer's guide
+
+Carrier portals: a checklist
+
+Before you send carriers a booking link, check these eight points. A good portal gets used; a bad one sends everyone back to the phone.
+
+22 Sep 2026 · 1 min read
+
+A carrier portal only saves time if carriers actually use it. Most of the failures we see are not technical: the link is hard to find, the form asks for data nobody has at booking time, or the confirmation never arrives.
+
+The checklist
+
+Can a dispatcher book without creating an account? Does the form ask only for what the dock needs — PO or load number, trailer type, expected pallet count? Are the open slots shown in the carrier’s time zone? Does every booking send a confirmation with the gate address and check-in instructions?
+
+Then look at changes. A carrier running late should be able to move an appointment in two clicks, within your rules, without calling anyone. If rescheduling means a phone call, your portal will be bypassed the first time a truck hits traffic.
+
+Finally, measure adoption. Track the share of appointments booked through the portal each week and follow up with the carriers who still call. The goal is not zero calls; it is calls only for the exceptions.
+
+HTML généré par le serveur à <heure>

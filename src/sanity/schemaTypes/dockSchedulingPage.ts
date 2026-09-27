@@ -32,28 +32,8 @@ export const dockSchedulingPage = defineType({
     ...sections.map(([name, type, title]) =>
       defineField({ name, title, type, group: name, options: { collapsible: false } }),
     ),
-    defineField({
-      name: 'seoTitle',
-      title: 'Titre pour les moteurs de recherche',
-      type: 'string',
-      group: 'seo',
-      description: 'Onglet du navigateur et résultat Google. « — Conduit » est ajouté au partage.',
-      validation: (rule) => [
-        rule.required(),
-        rule.max(60).warning('Au-delà de 60 caractères, Google tronque le titre.'),
-      ],
-    }),
-    defineField({
-      name: 'seoDescription',
-      title: 'Description pour les moteurs de recherche',
-      type: 'text',
-      rows: 3,
-      group: 'seo',
-      validation: (rule) => [
-        rule.required(),
-        rule.max(160).warning('Au-delà de 160 caractères, Google tronque la description.'),
-      ],
-    }),
+    // SEO (C2) : migré de seoTitle / seoDescription par scripts/migrate-admin.ts.
+    defineField({ name: 'seo', title: 'SEO', type: 'seo', group: 'seo' }),
   ],
   preview: {
     prepare: () => ({ title: 'Page Dock Scheduling', subtitle: '/' }),

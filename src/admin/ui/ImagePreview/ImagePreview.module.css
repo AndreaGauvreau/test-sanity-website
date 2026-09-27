@@ -1,0 +1,37 @@
+/* Figma « Image preview » 410:1609 : 375×197, frame radius/lg bg/input clip ; edge border/edge 0.91 px intérieur ; Remove badge à (w − 9, −9). */
+.preview {
+  position: relative;
+  flex-shrink: 0;
+  max-width: 100%;
+}
+
+.frame {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--k-radius-lg);
+  background-color: var(--k-bg-input);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.edge {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--k-radius-lg);
+  box-shadow: inset 0 0 0 0.91px var(--k-border-edge);
+  pointer-events: none;
+}
+
+.empty {
+  color: var(--k-text-tertiary);
+  font: var(--k-text-body-small);
+  letter-spacing: var(--k-text-body-small-tracking);
+}

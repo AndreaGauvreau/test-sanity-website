@@ -2,6 +2,8 @@ import Image from 'next/image'
 import { stegaClean, type StegaBranded } from 'next-sanity'
 
 import { Eyebrow } from '@/components/ui/Eyebrow/Eyebrow'
+import { editAttrs } from '@/lib/editor/preview'
+import { HOME_DOCUMENT_ID } from '@/lib/site'
 import type { PerformanceSection } from '@/sanity/types'
 
 import styles from './Performance.module.css'
@@ -14,7 +16,11 @@ export function Performance({ data }: { data: StegaBranded<PerformanceSection> }
   const { eyebrow, title, benefits } = data
 
   return (
-    <section className={styles.performance} aria-labelledby="performance-title">
+    <section
+      className={styles.performance}
+      aria-labelledby="performance-title"
+      {...editAttrs('performance', { doc: HOME_DOCUMENT_ID })}
+    >
       {/* Photo décorative : le titre et les atouts portent le sens. Sa boîte (la scène) est
           réglée dans le CSS ; recadrée en « cover », elle est plus large que l'écran tant que
           la scène est plus haute que la proportion du Figma : 1082 px (608 de haut) sur
@@ -26,8 +32,10 @@ export function Performance({ data }: { data: StegaBranded<PerformanceSection> }
         className={styles.photo}
       />
       <hgroup className={styles.heading}>
-        <Eyebrow tone="inverse">{eyebrow}</Eyebrow>
-        <h2 id="performance-title" className={styles.title}>
+        <Eyebrow tone="inverse" className={styles.eyebrow} edit={editAttrs('performance.eyebrow')}>
+          {eyebrow}
+        </Eyebrow>
+        <h2 id="performance-title" className={styles.title} {...editAttrs('performance.title')}>
           {title}
         </h2>
       </hgroup>
@@ -36,9 +44,17 @@ export function Performance({ data }: { data: StegaBranded<PerformanceSection> }
         <ul className={styles.benefits} role="list">
           {benefits.map((benefit) => (
             // stegaClean : la valeur choisit le pictogramme, elle ne s'affiche pas.
-            <li key={benefit._key} className={`${styles.benefit} ${styles[stegaClean(benefit.icon)]}`}>
-              <h3 className={styles.benefitTitle}>{benefit.title}</h3>
-              <p className={styles.benefitText}>{benefit.text}</p>
+            <li
+              key={benefit._key}
+              className={`${styles.benefit} ${styles[stegaClean(benefit.icon)]}`}
+              {...editAttrs('performance.benefit', { key: benefit._key })}
+            >
+              <h3 className={styles.benefitTitle} {...editAttrs('performance.benefit.title', { key: benefit._key })}>
+                {benefit.title}
+              </h3>
+              <p className={styles.benefitText} {...editAttrs('performance.benefit.text', { key: benefit._key })}>
+                {benefit.text}
+              </p>
             </li>
           ))}
         </ul>

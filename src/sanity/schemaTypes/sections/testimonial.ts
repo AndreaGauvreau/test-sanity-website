@@ -1,5 +1,7 @@
 import { defineField, defineType } from 'sanity'
 
+import { maxLength } from '../shared'
+
 // Témoignage (Figma 269:333) : citation sur photo d'entrepôt, puis le bouton vers l'étude de
 // cas. La citation, son auteur et le lien par défaut viennent de la collection Témoignages
 // (champ `item`, à garder : la requête de la page le déréférence). Ici, le bouton (type `cta`,
@@ -31,7 +33,7 @@ export const testimonialSection = defineType({
       type: 'string',
       description:
         'Invisible à l’écran : annonce la section aux lecteurs d’écran et aux moteurs de recherche (titre h2).',
-      validation: (rule) => rule.required(),
+      validation: (rule) => [rule.required(), maxLength(rule, 60)],
     }),
   ],
 })

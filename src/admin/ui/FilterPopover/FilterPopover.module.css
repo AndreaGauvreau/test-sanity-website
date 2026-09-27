@@ -1,0 +1,52 @@
+/* Figma « Filter popover » 336:1030 : 420 px, V gap 10, pad 12 (surface Menu : bg/elevated, border/default, radius/md). */
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--k-space-10);
+  width: 420px;
+  padding: var(--k-space-12);
+  --k-icon-current: var(--k-icon-default);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: var(--k-space-8);
+}
+
+.title {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: var(--k-text-primary);
+  font: var(--k-text-label);
+  letter-spacing: var(--k-text-label-tracking);
+}
+
+.empty {
+  margin: 0;
+  color: var(--k-text-muted);
+  font: var(--k-text-body-small);
+  letter-spacing: var(--k-text-body-small-tracking);
+}
+
+/* Condition : H gap 6 ; Select 120 / 80 / 150 + ✕. */
+.condition {
+  display: flex;
+  align-items: center;
+  gap: var(--k-space-6);
+}
+
+.field {
+  flex: 0 0 120px;
+  width: 120px;
+}
+
+.operator {
+  flex: 0 0 80px;
+  width: 80px;
+}
+
+.value {
+  flex: 1 1 150px;
+  min-width: 0;
+}

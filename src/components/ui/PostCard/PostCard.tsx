@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { stegaClean, type StegaBranded } from 'next-sanity'
 
 import { SanityImage } from '@/components/SanityImage'
+import { editAttrs } from '@/lib/editor/preview'
 import { formatDate, formatReadingTime } from '@/lib/format'
 import type { POSTS_QUERY_RESULT } from '@/sanity/types'
 
@@ -23,18 +24,25 @@ export function PostCard({ post, heading: Heading, sizes, loading }: Props) {
   // stegaClean : la date sert d'attribut et de calcul, pas seulement de texte affiché.
   const publishedAt = stegaClean(post.publishedAt)
 
+  // Éditeur IA (zones post.card*) : le document de la carte est l'article, sur /blog et en Home › Insights.
+  const doc = { doc: post._id }
+
   return (
-    <article className={styles.card}>
+    <article className={styles.card} {...editAttrs('post.card', doc)}>
       {/* Image recadrée par le CDN au format de la maquette (380 × 358), servie en 2x. */}
       <SanityImage image={post.image} width={760} height={716} sizes={sizes} loading={loading} />
       {/* Obligatoire dans l'admin, mais absente des articles créés avant ce champ. */}
-      {post.category && <p className={styles.category}>{post.category}</p>}
-      <Heading className={styles.title}>
+      {post.category && (
+        <p className={styles.category} {...editAttrs('post.card.category', doc)}>
+          {post.category}
+        </p>
+      )}
+      <Heading className={styles.title} {...editAttrs('post.card.title', doc)}>
         <Link href={`/blog/${stegaClean(post.slug)}`} className={styles.link}>
           {post.title}
         </Link>
       </Heading>
-      <p className={styles.meta}>
+      <p className={styles.meta} {...editAttrs('post.card.meta', doc)}>
         <time dateTime={publishedAt}>{formatDate(publishedAt)}</time> · {formatReadingTime(post.readingTime)}
       </p>
     </article>

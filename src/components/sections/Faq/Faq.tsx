@@ -3,6 +3,8 @@ import { stegaClean, toPlainText, type StegaBranded } from 'next-sanity'
 import { PortableTextBody } from '@/components/PortableTextBody'
 import { Button } from '@/components/ui/Button/Button'
 import { Eyebrow } from '@/components/ui/Eyebrow/Eyebrow'
+import { editAttrs } from '@/lib/editor/preview'
+import { HOME_DOCUMENT_ID } from '@/lib/site'
 import type { FAQS_QUERY_RESULT, FaqSection } from '@/sanity/types'
 
 import styles from './Faq.module.css'
@@ -23,10 +25,12 @@ export function Faq({ data, items }: Props) {
   const jsonLd = faqPageJsonLd(stegaClean(items))
 
   return (
-    <section className={styles.faq} aria-labelledby="faq-title">
+    <section className={styles.faq} aria-labelledby="faq-title" {...editAttrs('faq', { doc: HOME_DOCUMENT_ID })}>
       <hgroup className={styles.heading}>
-        <Eyebrow>{eyebrow}</Eyebrow>
-        <h2 id="faq-title" className={styles.title}>
+        <Eyebrow className={styles.eyebrow} edit={editAttrs('faq.eyebrow')}>
+          {eyebrow}
+        </Eyebrow>
+        <h2 id="faq-title" className={styles.title} {...editAttrs('faq.title')}>
           {title}
         </h2>
       </hgroup>
@@ -34,13 +38,21 @@ export function Faq({ data, items }: Props) {
         // role="list" : Safari retire la sémantique de liste quand list-style vaut none.
         <ul className={styles.questions} role="list">
           {items.map((item, index) => (
-            <li key={item._id}>
-              <details name="faq" open={index === 0} className={styles.item}>
-                <summary className={styles.question}>{item.question}</summary>
+            // Question et réponse : document « faq » de la collection (data-edit-doc), pas la page.
+            <li key={item._id} {...editAttrs(null, { doc: item._id })}>
+              <details
+                name="faq"
+                open={index === 0}
+                className={styles.item}
+                {...editAttrs('faq.item', { doc: item._id })}
+              >
+                <summary className={styles.question} {...editAttrs('faq.item.question', { doc: item._id })}>
+                  {item.question}
+                </summary>
                 {/* Pas de panneau vide pour une question encore sans réponse : même règle que
                     les données structurées plus bas. */}
                 {answerText(stegaClean(item.answer)) !== '' && (
-                  <div className={styles.answer}>
+                  <div className={styles.answer} {...editAttrs('faq.item.answer', { doc: item._id })}>
                     <PortableTextBody value={item.answer} />
                   </div>
                 )}
@@ -49,10 +61,17 @@ export function Faq({ data, items }: Props) {
           ))}
         </ul>
       )}
-      <aside className={styles.support}>
-        <p className={styles.supportText}>{supportText}</p>
+      <aside className={styles.support} {...editAttrs('faq.support', { doc: HOME_DOCUMENT_ID })}>
+        <p className={styles.supportText} {...editAttrs('faq.support.text')}>
+          {supportText}
+        </p>
         {supportCta && (
-          <Button href={supportCta.href ?? '#'} tone="inverse">
+          <Button
+            href={supportCta.href ?? '#'}
+            tone="inverse"
+            className={styles.supportCta}
+            edit={editAttrs('faq.support.cta')}
+          >
             {supportCta.label}
           </Button>
         )}

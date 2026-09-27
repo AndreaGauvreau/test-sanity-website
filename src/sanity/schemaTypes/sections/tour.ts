@@ -1,5 +1,7 @@
 import { defineField, defineType } from 'sanity'
 
+import { maxLength } from '../shared'
+
 // Visite guidée (Figma 269:420) : carte bleue avec titre, phrase d'accroche et bouton.
 // Le graphisme de lignes blanches, à droite, est décoratif : il reste dans le code.
 export const tourSection = defineType({
@@ -12,7 +14,7 @@ export const tourSection = defineType({
       title: 'Titre',
       type: 'string',
       description: 'Une ligne courte. Ex. « Tour Dock Scheduling ».',
-      validation: (rule) => rule.required(),
+      validation: (rule) => [rule.required(), maxLength(rule, 40)],
     }),
     defineField({
       name: 'lede',
@@ -20,7 +22,7 @@ export const tourSection = defineType({
       type: 'text',
       rows: 2,
       description: 'Une phrase sous le titre, qui dit ce que la visite montre.',
-      validation: (rule) => rule.required(),
+      validation: (rule) => [rule.required(), maxLength(rule, 120)],
     }),
     defineField({
       name: 'cta',

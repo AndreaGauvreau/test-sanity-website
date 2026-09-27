@@ -143,10 +143,59 @@ export type HeroSection = {
   }>;
 };
 
+export type SanityImageAssetReference = {
+  _ref: string;
+  _type: "reference";
+  _weak?: boolean;
+  [internalGroqTypeReferenceTo]?: "sanity.imageAsset";
+};
+
+export type Seo = {
+  _type: "seo";
+  metaTitle?: string;
+  metaDescription?: string;
+  ogImage?: {
+    asset?: SanityImageAssetReference;
+    media?: unknown;
+    hotspot?: SanityImageHotspot;
+    crop?: SanityImageCrop;
+    _type: "image";
+  };
+  allowIndexing?: boolean;
+};
+
 export type Cta = {
   _type: "cta";
   label: string;
   href?: string;
+};
+
+export type AiUsage = {
+  _id: string;
+  _type: "aiUsage";
+  _createdAt: string;
+  _updatedAt: string;
+  _rev: string;
+  feature: "editor" | "ask";
+  requestId: string;
+  status: string;
+  page?: string;
+  user: {
+    id: string;
+    name: string;
+    role: "kuartz" | "client" | "editor";
+  };
+  createdAt: string;
+  model: string;
+  inputTokens: number;
+  outputTokens: number;
+  cacheReadTokens: number;
+  cacheWriteTokens: number;
+  costUsd: number;
+  costKind: "billed" | "estimated";
+  access: "api-key" | "subscription" | "none";
+  durationMs: number;
+  turns?: number;
 };
 
 export type Faq = {
@@ -174,7 +223,7 @@ export type Faq = {
     _type: "block";
     _key: string;
   }>;
-  order: number;
+  orderRank?: string;
 };
 
 export type Testimonial = {
@@ -188,13 +237,7 @@ export type Testimonial = {
   role?: string;
   company: string;
   caseStudyUrl?: string;
-};
-
-export type SanityImageAssetReference = {
-  _ref: string;
-  _type: "reference";
-  _weak?: boolean;
-  [internalGroqTypeReferenceTo]?: "sanity.imageAsset";
+  orderRank?: string;
 };
 
 export type Post = {
@@ -207,6 +250,7 @@ export type Post = {
   slug: Slug;
   category: "Operations" | "Buyer's guide" | "Analysis";
   publishedAt: string;
+  author?: string;
   image: {
     asset: SanityImageAssetReference;
     media?: unknown;
@@ -246,6 +290,7 @@ export type Post = {
         _key: string;
       }
   >;
+  orderRank?: string;
 };
 
 export type SanityImageCrop = {
@@ -270,6 +315,39 @@ export type Slug = {
   source?: string;
 };
 
+export type ArticleSeoTemplate = {
+  _id: string;
+  _type: "articleSeoTemplate";
+  _createdAt: string;
+  _updatedAt: string;
+  _rev: string;
+  collection: string;
+  metaTitle?: string;
+  metaDescription?: string;
+  ogImageField?: "cover";
+  ogImage?: {
+    asset?: SanityImageAssetReference;
+    media?: unknown;
+    hotspot?: SanityImageHotspot;
+    crop?: SanityImageCrop;
+    _type: "image";
+  };
+  allowIndexing?: boolean;
+};
+
+export type BlogPage = {
+  _id: string;
+  _type: "blogPage";
+  _createdAt: string;
+  _updatedAt: string;
+  _rev: string;
+  content?: {
+    title?: string;
+    emptyText?: string;
+  };
+  seo?: Seo;
+};
+
 export type DockSchedulingPage = {
   _id: string;
   _type: "dockSchedulingPage";
@@ -287,8 +365,49 @@ export type DockSchedulingPage = {
   faq?: FaqSection;
   insights?: InsightsSection;
   getStarted?: GetStartedSection;
-  seoTitle: string;
-  seoDescription: string;
+  seo?: Seo;
+};
+
+export type SiteSettings = {
+  _id: string;
+  _type: "siteSettings";
+  _createdAt: string;
+  _updatedAt: string;
+  _rev: string;
+  title: string;
+  description?: string;
+  faviconLight?: {
+    asset?: SanityImageAssetReference;
+    media?: unknown;
+    hotspot?: SanityImageHotspot;
+    crop?: SanityImageCrop;
+    _type: "image";
+  };
+  faviconDark?: {
+    asset?: SanityImageAssetReference;
+    media?: unknown;
+    hotspot?: SanityImageHotspot;
+    crop?: SanityImageCrop;
+    _type: "image";
+  };
+  socialImage?: {
+    asset?: SanityImageAssetReference;
+    media?: unknown;
+    hotspot?: SanityImageHotspot;
+    crop?: SanityImageCrop;
+    _type: "image";
+  };
+  allowIndexing?: boolean;
+  scripts?: Array<{
+    name: string;
+    placement: "headEnd" | "bodyStart" | "bodyEnd";
+    page: "all" | "home" | "blog" | "blog/slug";
+    run: "once" | "everyPageVisit";
+    code: string;
+    enabled?: boolean;
+    _type: "siteScript";
+    _key: string;
+  }>;
 };
 
 export type MediaFolderReference = {
@@ -427,15 +546,20 @@ export type AllSanitySchemaTypes =
   | SystemSection
   | FeaturesSection
   | HeroSection
+  | SanityImageAssetReference
+  | Seo
   | Cta
+  | AiUsage
   | Faq
   | Testimonial
-  | SanityImageAssetReference
   | Post
   | SanityImageCrop
   | SanityImageHotspot
   | Slug
+  | ArticleSeoTemplate
+  | BlogPage
   | DockSchedulingPage
+  | SiteSettings
   | MediaFolderReference
   | MediaFolder
   | MediaTag
@@ -450,7 +574,7 @@ export type AllSanitySchemaTypes =
 
 // Source: src/sanity/lib/queries.ts
 // Variable: PAGE_QUERY
-// Query: *[_type == "dockSchedulingPage" && _id == "dockSchedulingPage"][0]{  ...,  testimonial{    ...,    "item": coalesce(item->, *[_type == "testimonial"] | order(_createdAt desc)[0]){      _id,      quote,      name,      role,      company,      caseStudyUrl    }  }}
+// Query: *[_type == "dockSchedulingPage" && _id == "dockSchedulingPage"][0]{  ...,  testimonial{    ...,    "item": coalesce(item->, *[_type == "testimonial"] | order(coalesce(orderRank, "~") asc, _createdAt desc)[0]){      _id,      quote,      name,      role,      company,      caseStudyUrl    }  }}
 export type PAGE_QUERY_RESULT = {
   _id: "dockSchedulingPage";
   _type: "dockSchedulingPage";
@@ -480,13 +604,12 @@ export type PAGE_QUERY_RESULT = {
   faq?: FaqSection;
   insights?: InsightsSection;
   getStarted?: GetStartedSection;
-  seoTitle: string;
-  seoDescription: string;
+  seo?: Seo;
 } | null;
 
 // Source: src/sanity/lib/queries.ts
 // Variable: FAQS_QUERY
-// Query: *[_type == "faq" && defined(answer)] | order(order asc){  _id,  question,  answer}
+// Query: *[_type == "faq" && defined(answer)] | order(coalesce(orderRank, "~") asc, order asc){  _id,  question,  answer}
 export type FAQS_QUERY_RESULT = Array<{
   _id: string;
   question: string;
@@ -512,7 +635,7 @@ export type FAQS_QUERY_RESULT = Array<{
 
 // Source: src/sanity/lib/queries.ts
 // Variable: LATEST_POSTS_QUERY
-// Query: *[_type == "post" && defined(slug.current)] | order(publishedAt desc)[0...4]{  _id,  title,  "slug": slug.current,  category,  publishedAt,  "readingTime": round(length(pt::text(content)) / 5 / 180),  image{    alt,    crop,    hotspot,    asset->{ _id, metadata{ lqip, dimensions{ width, height } } }  }}
+// Query: *[_type == "post" && defined(slug.current)] | order(publishedAt desc)[0...4]{  _id,  title,  "slug": slug.current,  category,  publishedAt,  "readingTime": round(length(pt::text(content)) / 5 / 180),  image{    "alt": coalesce(alt, asset->altText),    crop,    hotspot,    asset->{ _id, metadata{ lqip, dimensions{ width, height } } }  }}
 export type LATEST_POSTS_QUERY_RESULT = Array<{
   _id: string;
   title: string;
@@ -539,7 +662,7 @@ export type LATEST_POSTS_QUERY_RESULT = Array<{
 
 // Source: src/sanity/lib/queries.ts
 // Variable: POSTS_QUERY
-// Query: *[_type == "post" && defined(slug.current)] | order(publishedAt desc){  _id,  title,  "slug": slug.current,  category,  publishedAt,  "readingTime": round(length(pt::text(content)) / 5 / 180),  image{    alt,    crop,    hotspot,    asset->{ _id, metadata{ lqip, dimensions{ width, height } } }  }}
+// Query: *[_type == "post" && defined(slug.current)] | order(publishedAt desc){  _id,  title,  "slug": slug.current,  category,  publishedAt,  "readingTime": round(length(pt::text(content)) / 5 / 180),  image{    "alt": coalesce(alt, asset->altText),    crop,    hotspot,    asset->{ _id, metadata{ lqip, dimensions{ width, height } } }  }}
 export type POSTS_QUERY_RESULT = Array<{
   _id: string;
   title: string;
@@ -566,7 +689,7 @@ export type POSTS_QUERY_RESULT = Array<{
 
 // Source: src/sanity/lib/queries.ts
 // Variable: POST_QUERY
-// Query: *[_type == "post" && slug.current == $slug][0]{  _id,  title,  "slug": slug.current,  category,  publishedAt,  excerpt,  "readingTime": round(length(pt::text(content)) / 5 / 180),  image{    alt,    crop,    hotspot,    asset->{ _id, metadata{ lqip, dimensions{ width, height } } }  },  content[]{    ...,    _type == "image" => {      ...,      asset->{ _id, metadata{ lqip, dimensions{ width, height } } }    }  }}
+// Query: *[_type == "post" && slug.current == $slug][0]{  _id,  title,  "slug": slug.current,  category,  publishedAt,  excerpt,  author,  "readingTime": round(length(pt::text(content)) / 5 / 180),  image{    "alt": coalesce(alt, asset->altText),    crop,    hotspot,    asset->{ _id, metadata{ lqip, dimensions{ width, height } } }  },  content[]{    ...,    _type == "image" => {      ...,      "alt": coalesce(alt, asset->altText),      asset->{ _id, metadata{ lqip, dimensions{ width, height } } }    }  }}
 export type POST_QUERY_RESULT = {
   _id: string;
   title: string;
@@ -574,6 +697,7 @@ export type POST_QUERY_RESULT = {
   category: "Analysis" | "Buyer's guide" | "Operations";
   publishedAt: string;
   excerpt: string;
+  author: string | null;
   readingTime: number;
   image: {
     alt: string | null;
@@ -623,7 +747,7 @@ export type POST_QUERY_RESULT = {
         media?: unknown;
         hotspot?: SanityImageHotspot;
         crop?: SanityImageCrop;
-        alt?: string;
+        alt: string | null;
         caption?: string;
         _type: "image";
         _key: string;
@@ -650,16 +774,74 @@ export type BENCH_QUERY_RESULT = Array<{
   imageSize: number;
 }>;
 
+// Source: src/sanity/lib/queries.ts
+// Variable: SITE_SETTINGS_QUERY
+// Query: *[_type == "siteSettings" && _id == "siteSettings"][0]{  title,  description,  allowIndexing,  "faviconLight": faviconLight.asset->url,  "faviconDark": faviconDark.asset->url,  socialImage,  "scripts": scripts[enabled != false]{ _key, name, placement, page, run, code }}
+export type SITE_SETTINGS_QUERY_RESULT = {
+  title: string;
+  description: string | null;
+  allowIndexing: boolean | null;
+  faviconLight: string | null;
+  faviconDark: string | null;
+  socialImage: {
+    asset?: SanityImageAssetReference;
+    media?: unknown;
+    hotspot?: SanityImageHotspot;
+    crop?: SanityImageCrop;
+    _type: "image";
+  } | null;
+  scripts: Array<{
+    _key: string;
+    name: string;
+    placement: "bodyEnd" | "bodyStart" | "headEnd";
+    page: "all" | "blog" | "blog/slug" | "home";
+    run: "everyPageVisit" | "once";
+    code: string;
+  }> | null;
+} | null;
+
+// Source: src/sanity/lib/queries.ts
+// Variable: BLOG_PAGE_QUERY
+// Query: *[_type == "blogPage" && _id == "blogPage"][0]{  _id,  content,  seo}
+export type BLOG_PAGE_QUERY_RESULT = {
+  _id: "blogPage";
+  content: {
+    title?: string;
+    emptyText?: string;
+  } | null;
+  seo: Seo | null;
+} | null;
+
+// Source: src/sanity/lib/queries.ts
+// Variable: ARTICLE_SEO_QUERY
+// Query: *[_type == "articleSeoTemplate" && _id == $id][0]{  metaTitle,  metaDescription,  ogImageField,  ogImage,  allowIndexing}
+export type ARTICLE_SEO_QUERY_RESULT = {
+  metaTitle: string | null;
+  metaDescription: string | null;
+  ogImageField: "cover" | null;
+  ogImage: {
+    asset?: SanityImageAssetReference;
+    media?: unknown;
+    hotspot?: SanityImageHotspot;
+    crop?: SanityImageCrop;
+    _type: "image";
+  } | null;
+  allowIndexing: boolean | null;
+} | null;
+
 // Query TypeMap
 declare global {
   interface SanityQueries {
-    '*[_type == "dockSchedulingPage" && _id == "dockSchedulingPage"][0]{\n  ...,\n  testimonial{\n    ...,\n    "item": coalesce(item->, *[_type == "testimonial"] | order(_createdAt desc)[0]){\n      _id,\n      quote,\n      name,\n      role,\n      company,\n      caseStudyUrl\n    }\n  }\n}': PAGE_QUERY_RESULT;
-    '*[_type == "faq" && defined(answer)] | order(order asc){\n  _id,\n  question,\n  answer\n}': FAQS_QUERY_RESULT;
-    '*[_type == "post" && defined(slug.current)] | order(publishedAt desc)[0...4]{\n  _id,\n  title,\n  "slug": slug.current,\n  category,\n  publishedAt,\n  "readingTime": round(length(pt::text(content)) / 5 / 180),\n  image{\n    alt,\n    crop,\n    hotspot,\n    asset->{ _id, metadata{ lqip, dimensions{ width, height } } }\n  }\n}': LATEST_POSTS_QUERY_RESULT;
-    '*[_type == "post" && defined(slug.current)] | order(publishedAt desc){\n  _id,\n  title,\n  "slug": slug.current,\n  category,\n  publishedAt,\n  "readingTime": round(length(pt::text(content)) / 5 / 180),\n  image{\n    alt,\n    crop,\n    hotspot,\n    asset->{ _id, metadata{ lqip, dimensions{ width, height } } }\n  }\n}': POSTS_QUERY_RESULT;
-    '*[_type == "post" && slug.current == $slug][0]{\n  _id,\n  title,\n  "slug": slug.current,\n  category,\n  publishedAt,\n  excerpt,\n  "readingTime": round(length(pt::text(content)) / 5 / 180),\n  image{\n    alt,\n    crop,\n    hotspot,\n    asset->{ _id, metadata{ lqip, dimensions{ width, height } } }\n  },\n  content[]{\n    ...,\n    _type == "image" => {\n      ...,\n      asset->{ _id, metadata{ lqip, dimensions{ width, height } } }\n    }\n  }\n}': POST_QUERY_RESULT;
+    '*[_type == "dockSchedulingPage" && _id == "dockSchedulingPage"][0]{\n  ...,\n  testimonial{\n    ...,\n    "item": coalesce(item->, *[_type == "testimonial"] | order(coalesce(orderRank, "~") asc, _createdAt desc)[0]){\n      _id,\n      quote,\n      name,\n      role,\n      company,\n      caseStudyUrl\n    }\n  }\n}': PAGE_QUERY_RESULT;
+    '*[_type == "faq" && defined(answer)] | order(coalesce(orderRank, "~") asc, order asc){\n  _id,\n  question,\n  answer\n}': FAQS_QUERY_RESULT;
+    '*[_type == "post" && defined(slug.current)] | order(publishedAt desc)[0...4]{\n  _id,\n  title,\n  "slug": slug.current,\n  category,\n  publishedAt,\n  "readingTime": round(length(pt::text(content)) / 5 / 180),\n  image{\n    "alt": coalesce(alt, asset->altText),\n    crop,\n    hotspot,\n    asset->{ _id, metadata{ lqip, dimensions{ width, height } } }\n  }\n}': LATEST_POSTS_QUERY_RESULT;
+    '*[_type == "post" && defined(slug.current)] | order(publishedAt desc){\n  _id,\n  title,\n  "slug": slug.current,\n  category,\n  publishedAt,\n  "readingTime": round(length(pt::text(content)) / 5 / 180),\n  image{\n    "alt": coalesce(alt, asset->altText),\n    crop,\n    hotspot,\n    asset->{ _id, metadata{ lqip, dimensions{ width, height } } }\n  }\n}': POSTS_QUERY_RESULT;
+    '*[_type == "post" && slug.current == $slug][0]{\n  _id,\n  title,\n  "slug": slug.current,\n  category,\n  publishedAt,\n  excerpt,\n  author,\n  "readingTime": round(length(pt::text(content)) / 5 / 180),\n  image{\n    "alt": coalesce(alt, asset->altText),\n    crop,\n    hotspot,\n    asset->{ _id, metadata{ lqip, dimensions{ width, height } } }\n  },\n  content[]{\n    ...,\n    _type == "image" => {\n      ...,\n      "alt": coalesce(alt, asset->altText),\n      asset->{ _id, metadata{ lqip, dimensions{ width, height } } }\n    }\n  }\n}': POST_QUERY_RESULT;
     '*[_type == "post" && defined(slug.current)]{\n  "slug": slug.current\n}': POST_SLUGS_QUERY_RESULT;
     '*[_type == "post" && defined(slug.current)] | order(publishedAt desc){\n  _id,\n  title,\n  category,\n  "slug": slug.current,\n  "imageUrl": image.asset->url,\n  "imageSize": image.asset->size\n}': BENCH_QUERY_RESULT;
+    '*[_type == "siteSettings" && _id == "siteSettings"][0]{\n  title,\n  description,\n  allowIndexing,\n  "faviconLight": faviconLight.asset->url,\n  "faviconDark": faviconDark.asset->url,\n  socialImage,\n  "scripts": scripts[enabled != false]{ _key, name, placement, page, run, code }\n}': SITE_SETTINGS_QUERY_RESULT;
+    '*[_type == "blogPage" && _id == "blogPage"][0]{\n  _id,\n  content,\n  seo\n}': BLOG_PAGE_QUERY_RESULT;
+    '*[_type == "articleSeoTemplate" && _id == $id][0]{\n  metaTitle,\n  metaDescription,\n  ogImageField,\n  ogImage,\n  allowIndexing\n}': ARTICLE_SEO_QUERY_RESULT;
   }
 }
 // Lets @sanity/client releases that predate the global registry read it too

@@ -1,0 +1,41 @@
+/* Figma « Stat card » 338:1177 : V gap 8, pad 16, radius/lg, bg/elevated, contour border/default 1 (inside). */
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--k-space-8);
+  min-width: 0;
+  padding: var(--k-space-16);
+  border: 1px solid var(--k-border-default);
+  border-radius: var(--k-radius-lg);
+  background-color: var(--k-bg-elevated);
+  --k-icon-current: var(--k-icon-default);
+}
+
+.labelRow {
+  display: flex;
+  align-items: center;
+  gap: var(--k-space-6);
+  min-width: 0;
+}
+
+.label {
+  color: var(--k-text-tertiary);
+  font: var(--k-text-body-small);
+  letter-spacing: var(--k-text-body-small-tracking);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.value {
+  color: var(--k-text-primary);
+  font: var(--k-text-heading-2);
+  letter-spacing: var(--k-text-heading-2-tracking);
+  font-variant-numeric: tabular-nums;
+}
+
+.hint {
+  color: var(--k-text-muted);
+  font: var(--k-text-body-small);
+  letter-spacing: var(--k-text-body-small-tracking);
+}

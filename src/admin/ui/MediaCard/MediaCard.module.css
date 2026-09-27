@@ -1,0 +1,156 @@
+/* Figma « Media card » 337:1453 : 184 px, V gap 6 ; vignette 124, radius/md, bg/subtle ; méta H gap 6 (Caption). */
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--k-space-6);
+  width: 184px;
+  min-width: 0;
+  --k-icon-current: var(--k-icon-default);
+}
+
+.thumbnail {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 124px;
+  overflow: hidden;
+  border-radius: var(--k-radius-md);
+  background-color: var(--k-bg-subtle);
+}
+
+/* Contour intérieur (Figma inside) dessiné au-dessus de l'image. */
+.thumbnail::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 0 transparent;
+  pointer-events: none;
+  transition: box-shadow var(--k-duration-fast) ease;
+}
+
+.card:hover .thumbnail::after,
+.card:focus-within .thumbnail::after {
+  box-shadow: inset 0 0 0 1px var(--k-border-strong);
+}
+
+.card[data-selected] .thumbnail::after {
+  box-shadow: inset 0 0 0 2px var(--k-border-focus);
+}
+
+.image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.typeIcon {
+  position: relative;
+}
+
+/* Zone cliquable = toute la vignette. */
+.open {
+  position: absolute;
+  inset: 0;
+  padding: 0;
+  border: 0;
+  border-radius: inherit;
+  background: none;
+  cursor: pointer;
+}
+
+.open:focus-visible {
+  outline-offset: -2px;
+}
+
+/* Case : x 8, y 8 ; visible au survol, au focus, et cochée. */
+.checkbox {
+  position: absolute;
+  top: var(--k-space-8);
+  left: var(--k-space-8);
+  display: flex;
+  opacity: 0;
+  transition: opacity var(--k-duration-fast) ease;
+}
+
+.card:hover .checkbox,
+.card:focus-within .checkbox,
+.card[data-selected] .checkbox {
+  opacity: 1;
+}
+
+/* Tag de type : x 8, y 100. */
+.typeTag {
+  position: absolute;
+  left: var(--k-space-8);
+  bottom: var(--k-space-8);
+  pointer-events: none;
+}
+
+.badge {
+  position: absolute;
+  top: var(--k-space-8);
+  right: var(--k-space-8);
+  display: flex;
+}
+
+.name {
+  color: var(--k-text-primary);
+  font: var(--k-text-body-small);
+  letter-spacing: var(--k-text-body-small-tracking);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.meta {
+  display: flex;
+  align-items: center;
+  gap: var(--k-space-6);
+  min-width: 0;
+  font: var(--k-text-caption);
+  letter-spacing: var(--k-text-caption-tracking);
+}
+
+.size {
+  color: var(--k-text-muted);
+  white-space: nowrap;
+}
+
+/* Usage : locate 10 + libellé, gap 3, text/tertiary. */
+.usage {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  min-width: 0;
+  color: var(--k-text-tertiary);
+  white-space: nowrap;
+}
+
+.usageButton {
+  padding: 0;
+  border: 0;
+  border-radius: var(--k-radius-sm);
+  background: none;
+  font: inherit;
+  letter-spacing: inherit;
+  cursor: pointer;
+  transition: color var(--k-duration-fast) ease;
+}
+
+.usageButton:hover,
+.usageButton[aria-expanded='true'] {
+  color: var(--k-text-primary);
+  --k-icon-current: var(--k-icon-active);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .thumbnail::after,
+  .checkbox,
+  .usageButton {
+    transition: none;
+  }
+}

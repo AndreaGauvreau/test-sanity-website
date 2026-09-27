@@ -1,0 +1,67 @@
+/*
+ * Figma « Select » 327:520 — input-box : H gap 8, pad 8 10, radius/md, bg/input, border/default → 34 px ;
+ * valeur Body (text/primary, placeholder text/muted), chevron 16. open : border/focus + chevron-up ;
+ * disabled : bg/subtle, text/disabled, icônes disabled.
+ */
+.trigger {
+  display: flex;
+  align-items: center;
+  gap: var(--k-space-8);
+  width: 100%;
+  min-height: var(--k-control-height);
+  padding: var(--k-space-8) var(--k-space-10);
+  border: 1px solid var(--k-border-default);
+  border-radius: var(--k-radius-md);
+  background-color: var(--k-bg-input);
+  color: var(--k-text-primary);
+  --k-icon-current: var(--k-icon-default);
+  font: var(--k-text-body);
+  letter-spacing: var(--k-text-body-tracking);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color var(--k-duration-fast) ease;
+}
+
+.trigger:focus-visible,
+.trigger[aria-expanded='true'] {
+  outline: none;
+  border-color: var(--k-border-focus);
+}
+
+.invalid {
+  border-color: var(--k-interactive-danger);
+}
+
+.trigger:disabled {
+  background-color: var(--k-bg-subtle);
+  color: var(--k-text-disabled);
+  --k-icon-current: var(--k-text-disabled);
+  cursor: not-allowed;
+}
+
+.icon,
+.chevron {
+  flex-shrink: 0;
+}
+
+.value {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.placeholder {
+  color: var(--k-text-muted);
+}
+
+.trigger:disabled .placeholder {
+  color: var(--k-text-disabled);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .trigger {
+    transition: none;
+  }
+}

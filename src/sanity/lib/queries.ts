@@ -4,12 +4,13 @@ import { defineQuery } from 'next-sanity'
 // exact de chaque résultat (src/sanity/types.ts).
 
 // Page Dock Scheduling (/) : tous ses textes, section par section. Le témoignage affiché
-// est déréférencé ; sans choix dans l'admin, c'est le plus récent de la collection.
+// est déréférencé ; sans choix dans l'admin, c'est le premier de la collection dans l'ordre
+// manuel (orderRank), puis le plus récent (dataset pas encore migré).
 export const PAGE_QUERY = defineQuery(`*[_type == "dockSchedulingPage" && _id == "dockSchedulingPage"][0]{
   ...,
   testimonial{
     ...,
-    "item": coalesce(item->, *[_type == "testimonial"] | order(_createdAt desc)[0]){
+    "item": coalesce(item->, *[_type == "testimonial"] | order(coalesce(orderRank, "~") asc, _createdAt desc)[0]){
       _id,
       quote,
       name,
@@ -20,9 +21,11 @@ export const PAGE_QUERY = defineQuery(`*[_type == "dockSchedulingPage" && _id ==
   }
 }`)
 
-// Questions de la FAQ, dans l'ordre choisi. Une question sans réponse (brouillon en cours)
-// n'est pas affichée, même dans l'aperçu.
-export const FAQS_QUERY = defineQuery(`*[_type == "faq" && defined(answer)] | order(order asc){
+// Questions de la FAQ, dans l'ordre manuel (orderRank, glissé dans l'admin). Une question sans
+// réponse (brouillon en cours) n'est pas affichée, même dans l'aperçu. Repli : l'ancien champ
+// `order` (entier), pour un dataset pas encore migré (scripts/migrate-admin.ts) ; « ~ » range
+// après toutes les clés une question sans orderRank.
+export const FAQS_QUERY = defineQuery(`*[_type == "faq" && defined(answer)] | order(coalesce(orderRank, "~") asc, order asc){
   _id,
   question,
   answer
@@ -37,7 +40,7 @@ export const LATEST_POSTS_QUERY = defineQuery(`*[_type == "post" && defined(slug
   publishedAt,
   "readingTime": round(length(pt::text(content)) / 5 / 180),
   image{
-    alt,
+    "alt": coalesce(alt, asset->altText),
     crop,
     hotspot,
     asset->{ _id, metadata{ lqip, dimensions{ width, height } } }
@@ -54,7 +57,7 @@ export const POSTS_QUERY = defineQuery(`*[_type == "post" && defined(slug.curren
   publishedAt,
   "readingTime": round(length(pt::text(content)) / 5 / 180),
   image{
-    alt,
+    "alt": coalesce(alt, asset->altText),
     crop,
     hotspot,
     asset->{ _id, metadata{ lqip, dimensions{ width, height } } }
@@ -68,9 +71,10 @@ export const POST_QUERY = defineQuery(`*[_type == "post" && slug.current == $slu
   category,
   publishedAt,
   excerpt,
+  author,
   "readingTime": round(length(pt::text(content)) / 5 / 180),
   image{
-    alt,
+    "alt": coalesce(alt, asset->altText),
     crop,
     hotspot,
     asset->{ _id, metadata{ lqip, dimensions{ width, height } } }
@@ -79,6 +83,7 @@ export const POST_QUERY = defineQuery(`*[_type == "post" && slug.current == $slu
     ...,
     _type == "image" => {
       ...,
+      "alt": coalesce(alt, asset->altText),
       asset->{ _id, metadata{ lqip, dimensions{ width, height } } }
     }
   }
@@ -97,4 +102,31 @@ export const BENCH_QUERY = defineQuery(`*[_type == "post" && defined(slug.curren
   "slug": slug.current,
   "imageUrl": image.asset->url,
   "imageSize": image.asset->size
+}`)
+
+// Réglages du site (B2, B3) : document unique « siteSettings ». Scripts actifs seulement.
+export const SITE_SETTINGS_QUERY = defineQuery(`*[_type == "siteSettings" && _id == "siteSettings"][0]{
+  title,
+  description,
+  allowIndexing,
+  "faviconLight": faviconLight.asset->url,
+  "faviconDark": faviconDark.asset->url,
+  socialImage,
+  "scripts": scripts[enabled != false]{ _key, name, placement, page, run, code }
+}`)
+
+// Page /blog : textes et SEO (document unique « blogPage »).
+export const BLOG_PAGE_QUERY = defineQuery(`*[_type == "blogPage" && _id == "blogPage"][0]{
+  _id,
+  content,
+  seo
+}`)
+
+// Modèle SEO des pages article d'une collection (C6), id fixe (« articleSeo-post »).
+export const ARTICLE_SEO_QUERY = defineQuery(`*[_type == "articleSeoTemplate" && _id == $id][0]{
+  metaTitle,
+  metaDescription,
+  ogImageField,
+  ogImage,
+  allowIndexing
 }`)

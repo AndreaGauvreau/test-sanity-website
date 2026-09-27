@@ -1,0 +1,2120 @@
+{
+  "controls": {
+    "color": {
+      "label": "Text color",
+      "property": "color",
+      "group": "color"
+    },
+    "background": {
+      "label": "Background",
+      "property": "background-color",
+      "group": "color"
+    },
+    "textStyle": {
+      "label": "Text style",
+      "property": "font",
+      "group": "text"
+    },
+    "align": {
+      "label": "Alignment",
+      "property": "text-align",
+      "options": {
+        "left": "Left",
+        "center": "Center",
+        "right": "Right"
+      }
+    },
+    "gap": {
+      "label": "Spacing between items",
+      "property": "gap",
+      "group": "space"
+    },
+    "padding": {
+      "label": "Inner spacing",
+      "property": "padding",
+      "group": "space"
+    },
+    "sectionSpacing": {
+      "label": "Section spacing",
+      "property": "padding-block",
+      "options": {
+        "var(--section-space)": "Regular",
+        "var(--section-space-lg)": "Large"
+      }
+    }
+  },
+  "zones": {
+    "hero": {
+      "label": "Section",
+      "section": "Hero",
+      "files": [
+        "src/components/sections/Hero/Hero.module.css",
+        "src/components/sections/Hero/Hero.tsx"
+      ],
+      "selectors": [
+        ".hero",
+        ".actions",
+        ".ratings"
+      ],
+      "controls": [
+        "background",
+        "sectionSpacing"
+      ],
+      "children": [
+        "hero.title",
+        "hero.lede",
+        "hero.primaryCta",
+        "hero.secondaryCta",
+        "hero.rating",
+        "hero.visual"
+      ],
+      "reach": "the home page"
+    },
+    "hero.title": {
+      "label": "Title",
+      "section": "Hero",
+      "files": [
+        "src/components/sections/Hero/Hero.module.css",
+        "src/components/sections/Hero/Hero.tsx"
+      ],
+      "selectors": [
+        ".title"
+      ],
+      "controls": [
+        "color",
+        "textStyle",
+        "align"
+      ],
+      "text": {
+        "source": "sanity",
+        "document": {
+          "type": "dockSchedulingPage",
+          "id": "dockSchedulingPage"
+        },
+        "fields": {
+          "hero.title": 70
+        }
+      },
+      "reach": "the home page"
+    },
+    "hero.lede": {
+      "label": "Subtitle",
+      "section": "Hero",
+      "files": [
+        "src/components/sections/Hero/Hero.module.css",
+        "src/components/sections/Hero/Hero.tsx"
+      ],
+      "selectors": [
+        ".lede"
+      ],
+      "controls": [
+        "color",
+        "textStyle",
+        "align"
+      ],
+      "text": {
+        "source": "sanity",
+        "document": {
+          "type": "dockSchedulingPage",
+          "id": "dockSchedulingPage"
+        },
+        "fields": {
+          "hero.lede": 320
+        }
+      },
+      "hideable": true,
+      "reach": "the home page"
+    },
+    "hero.primaryCta": {
+      "label": "Button 1",
+      "section": "Hero",
+      "files": [
+        "src/components/sections/Hero/Hero.module.css",
+        "src/components/sections/Hero/Hero.tsx"
+      ],
+      "selectors": [
+        ".primaryCta"
+      ],
+      "controls": [
+        "color",
+        "textStyle"
+      ],
+      "text": {
+        "source": "sanity",
+        "document": {
+          "type": "dockSchedulingPage",
+          "id": "dockSchedulingPage"
+        },
+        "fields": {
+          "hero.primaryCta.label": 30
+        }
+      },
+      "reach": "the home page"
+    },
+    "hero.secondaryCta": {
+      "label": "Button 2",
+      "section": "Hero",
+      "files": [
+        "src/components/sections/Hero/Hero.module.css",
+        "src/components/sections/Hero/Hero.tsx"
+      ],
+      "selectors": [
+        ".secondaryCta"
+      ],
+      "controls": [
+        "color",
+        "textStyle"
+      ],
+      "text": {
+        "source": "sanity",
+        "document": {
+          "type": "dockSchedulingPage",
+          "id": "dockSchedulingPage"
+        },
+        "fields": {
+          "hero.secondaryCta.label": 30
+        }
+      },
+      "reach": "the home page"
+    },
+    "hero.rating": {
+      "label": "Rating",
+      "section": "Hero",
+      "files": [
+        "src/components/sections/Hero/Hero.module.css",
+        "src/components/sections/Hero/Hero.tsx"
+      ],
+      "selectors": [
+        ".rating",
+        ".g2",
+        ".capterra"
+      ],
+      "controls": [
+        "color",
+        "textStyle"
+      ],
+      "hint": "The style applies to all ratings; the text, to the one you selected.",
+      "text": {
+        "source": "sanity",
+        "document": {
+          "type": "dockSchedulingPage",
+          "id": "dockSchedulingPage"
+        },
+        "fields": {
+          "hero.ratings[_key==\"$key\"].label": 30,
+          "hero.ratings[_key==\"$key\"].platform": 20
+        },
+        "closed": [
+          "hero.ratings[_key==\"$key\"].platform"
+        ]
+      },
+      "hideable": true,
+      "reach": "the home page"
+    },
+    "hero.visual": {
+      "label": "Visual",
+      "section": "Hero",
+      "files": [
+        "src/components/sections/Hero/Hero.module.css",
+        "src/components/sections/Hero/Hero.tsx"
+      ],
+      "selectors": [
+        ".visual",
+        ".window"
+      ],
+      "controls": [
+        "background"
+      ],
+      "hideable": true,
+      "reach": "the home page"
+    },
+    "features": {
+      "label": "Section",
+      "section": "Features",
+      "files": [
+        "src/components/sections/Features/Features.module.css",
+        "src/components/sections/Features/Features.tsx"
+      ],
+      "selectors": [
+        ".features",
+        ".list"
+      ],
+      "controls": [
+        "background",
+        "sectionSpacing",
+        "gap"
+      ],
+      "children": [
+        "features.card"
+      ],
+      "reach": "the home page"
+    },
+    "features.card": {
+      "label": "Card",
+      "section": "Features",
+      "files": [
+        "src/components/sections/Features/Features.module.css",
+        "src/components/sections/Features/Features.tsx"
+      ],
+      "selectors": [
+        ".card"
+      ],
+      "controls": [
+        "background",
+        "padding",
+        "gap"
+      ],
+      "hint": "The style applies to all three cards; the text, to the one you selected.",
+      "text": {
+        "source": "sanity",
+        "document": {
+          "type": "dockSchedulingPage",
+          "id": "dockSchedulingPage"
+        },
+        "fields": {
+          "features.items[_key==\"$key\"].title": 50,
+          "features.items[_key==\"$key\"].text": 320
+        }
+      },
+      "children": [
+        "features.card.title",
+        "features.card.text"
+      ],
+      "reach": "the three feature cards of the home page"
+    },
+    "features.card.title": {
+      "label": "Card title",
+      "section": "Features",
+      "files": [
+        "src/components/sections/Features/Features.module.css",
+        "src/components/sections/Features/Features.tsx"
+      ],
+      "selectors": [
+        ".cardTitle"
+      ],
+      "controls": [
+        "color",
+        "textStyle",
+        "align"
+      ],
+      "hint": "The style applies to all three card titles; the text, to the one you selected.",
+      "text": {
+        "source": "sanity",
+        "document": {
+          "type": "dockSchedulingPage",
+          "id": "dockSchedulingPage"
+        },
+        "fields": {
+          "features.items[_key==\"$key\"].title": 50
+        }
+      },
+      "reach": "the three feature cards of the home page"
+    },
+    "features.card.text": {
+      "label": "Card text",
+      "section": "Features",
+      "files": [
+        "src/components/sections/Features/Features.module.css",
+        "src/components/sections/Features/Features.tsx"
+      ],
+      "selectors": [
+        ".text"
+      ],
+      "controls": [
+        "color",
+        "textStyle",
+        "align"
+      ],
+      "hint": "The style applies to all three card texts; the text, to the one you selected.",
+      "text": {
+        "source": "sanity",
+        "document": {
+          "type": "dockSchedulingPage",
+          "id": "dockSchedulingPage"
+        },
+        "fields": {
+          "features.items[_key==\"$key\"].text": 320
+        }
+      },
+      "reach": "the three feature cards of the home page"
+    },
+    "system": {
+      "label": "Section",
+      "section": "Conduit System",
+      "files": [
+        "src/components/sections/ConduitSystem/ConduitSystem.module.css",
+        "src/components/sections/ConduitSystem/ConduitSystem.tsx"
+      ],
+      "selectors": [
+        ".system",
+        ".heading",
+        ".modules"
+      ],
+      "controls": [
+        "background",
+        "sectionSpacing"
+      ],
+      "children": [
+        "system.eyebrow",
+        "system.title",
+        "system.lede",
+        "system.cta",
+        "system.visual",
+        "system.module"
+      ],
+      "reach": "the home page"
+    },
+    "system.eyebrow": {
+      "label": "Eyebrow",
+      "section": "Conduit System",
+      "files": [
+        "src/components/sections/ConduitSystem/ConduitSystem.module.css",
+        "src/components/sections/ConduitSystem/ConduitSystem.tsx"
+      ],
+      "selectors": [
+        ".eyebrow"
+      ],
+      "controls": [
+        "color",
+        "textStyle"
+      ],
+      "text": {
+        "source": "sanity",
+        "document": {
+          "type": "dockSchedulingPage",
+          "id": "dockSchedulingPage"
+        },
+        "fields": {
+          "system.eyebrow": 30
+        }
+      },
+      "hideable": true,
+      "reach": "the home page"
+    },
+    "system.title": {
+      "label": "Title",
+      "section": "Conduit System",
+      "files": [
+        "src/components/sections/ConduitSystem/ConduitSystem.module.css",
+        "src/components/sections/ConduitSystem/ConduitSystem.tsx"
+      ],
+      "selectors": [
+        ".title"
+      ],
+      "controls": [
+        "color",
+        "textStyle",
+        "align"
+      ],
+      "text": {
+        "source": "sanity",
+        "document": {
+          "type": "dockSchedulingPage",
+          "id": "dockSchedulingPage"
+        },
+        "fields": {
+          "system.title": 60
+        }
+      },
+      "reach": "the home page"
+    },
+    "system.lede": {
+      "label": "Subtitle",
+      "section": "Conduit System",
+      "files": [
+        "src/components/sections/ConduitSystem/ConduitSystem.module.css",
+        "src/components/sections/ConduitSystem/ConduitSystem.tsx"
+      ],
+      "selectors": [
+        ".lede"
+      ],
+      "controls": [
+        "color",
+        "textStyle",
+        "align"
+      ],
+      "text": {
+        "source": "sanity",
+        "document": {
+          "type": "dockSchedulingPage",
+          "id": "dockSchedulingPage"
+        },
+        "fields": {
+          "system.lede": 220
+        }
+      },
+      "hideable": true,
+      "reach": "the home page"
+    },
+    "system.cta": {
+      "label": "Button",
+      "section": "Conduit System",
+      "files": [
+        "src/components/sections/ConduitSystem/ConduitSystem.module.css",
+        "src/components/sections/ConduitSystem/ConduitSystem.tsx"
+      ],
+      "selectors": [
+        ".cta"
+      ],
+      "controls": [
+        "color",
+        "textStyle"
+      ],
+      "text": {
+        "source": "sanity",
+        "document": {
+          "type": "dockSchedulingPage",
+          "id": "dockSchedulingPage"
+        },
+        "fields": {
+          "system.cta.label": 30
+        }
+      },
+      "reach": "the home page"
+    },
+    "system.visual": {
+      "label": "Visual",
+      "section": "Conduit System",
+      "files": [
+        "src/components/sections/ConduitSystem/ConduitSystem.module.css",
+        "src/components/sections/ConduitSystem/ConduitSystem.tsx"
+      ],
+      "selectors": [
+        ".visual"
+      ],
+      "controls": [
+        "background"
+      ],
+      "hideable": true,
+      "reach": "the home page"
+    },
+    "system.module": {
+      "label": "Module",
+      "section": "Conduit System",
+      "files": [
+        "src/components/sections/ConduitSystem/ConduitSystem.module.css",
+        "src/components/sections/ConduitSystem/ConduitSystem.tsx"
+      ],
+      "selectors": [
+        ".module"
+      ],
+      "controls": [
+        "background",
+        "padding",
+        "gap"
+      ],
+      "hint": "The style applies to all three modules; the text, to the one you selected.",
+      "text": {
+        "source": "sanity",
+        "document": {
+          "type": "dockSchedulingPage",
+          "id": "dockSchedulingPage"
+        },
+        "fields": {
+          "system.modules[_key==\"$key\"].title": 30,
+          "system.modules[_key==\"$key\"].text": 140,
+          "system.modules[_key==\"$key\"].link.label": 30
+        }
+      },
+      "children": [
+        "system.module.title",
+        "system.module.text",
+        "system.module.link"
+      ],
+      "reach": "the three modules of the home page"
+    },
+    "system.module.title": {
+      "label": "Module title",
+      "section": "Conduit System",
+      "files": [
+        "src/components/sections/ConduitSystem/ConduitSystem.module.css",
+        "src/components/sections/ConduitSystem/ConduitSystem.tsx"
+      ],
+      "selectors": [
+        ".moduleTitle"
+      ],
+      "controls": [
+        "color",
+        "textStyle",
+        "align"
+      ],
+      "hint": "The style applies to all three module titles; the text, to the one you selected.",
+      "text": {
+        "source": "sanity",
+        "document": {
+          "type": "dockSchedulingPage",
+          "id": "dockSchedulingPage"
+        },
+        "fields": {
+          "system.modules[_key==\"$key\"].title": 30
+        }
+      },
+      "reach": "the three modules of the home page"
+    },
+    "system.module.text": {
+      "label": "Module text",
+      "section": "Conduit System",
+      "files": [
+        "src/components/sections/ConduitSystem/ConduitSystem.module.css",
+        "src/components/sections/ConduitSystem/ConduitSystem.tsx"
+      ],
+      "selectors": [
+        ".moduleText"
+      ],
+      "controls": [
+        "color",
+        "textStyle",
+        "align"
+      ],
+      "hint": "The style applies to all three module texts; the text, to the one you selected.",
+      "text": {
+        "source": "sanity",
+        "document": {
+          "type": "dockSchedulingPage",
+          "id": "dockSchedulingPage"
+        },
+        "fields": {
+          "system.modules[_key==\"$key\"].text": 140
+        }
+      },
+      "reach": "the three modules of the home page"
+    },
+    "system.module.link": {
+      "label": "Module link",
+      "section": "Conduit System",
+      "files": [
+        "src/components/sections/ConduitSystem/ConduitSystem.module.css",
+        "src/components/sections/ConduitSystem/ConduitSystem.tsx"
+      ],
+      "selectors": [
+        ".more"
+      ],
+      "controls": [
+        "color",
+        "textStyle"
+      ],
+      "hint": "The style applies to all three module links; the text, to the one you selected.",
+      "text": {
+        "source": "sanity",
+        "document": {
+          "type": "dockSchedulingPage",
+          "id": "dockSchedulingPage"
+        },
+        "fields": {
+          "system.modules[_key==\"$key\"].link.label": 30
+        }
+      },
+      "reach": "the three modules of the home page"
+    },
+    "performance": {
+      "label": "Section",
+      "section": "Performance",
+      "files": [
+        "src/components/sections/Performance/Performance.module.css",
+        "src/components/sections/Performance/Performance.tsx"
+      ],
+      "selectors": [
+        ".performance",
+        ".heading",
+        ".benefits",
+        ".photo"
+      ],
+      "controls": [
+        "sectionSpacing"
+      ],
+      "children": [
+        "performance.eyebrow",
+        "performance.title",
+        "performance.benefit"
+      ],
+      "reach": "the home page"
+    },
+    "performance.eyebrow": {
+      "label": "Eyebrow",
+      "section": "Performance",
+      "files": [
+        "src/components/sections/Performance/Performance.module.css",
+        "src/components/sections/Performance/Performance.tsx"
+      ],
+      "selectors": [
+        ".eyebrow"
+      ],
+      "controls": [
+        "color",
+        "textStyle"
+      ],
+      "text": {
+        "source": "sanity",
+        "document": {
+          "type": "dockSchedulingPage",
+          "id": "dockSchedulingPage"
+        },
+        "fields": {
+          "performance.eyebrow": 30
+        }
+      },
+      "hideable": true,
+      "reach": "the home page"
+    },
+    "performance.title": {
+      "label": "Title",
+      "section": "Performance",
+      "files": [
+        "src/components/sections/Performance/Performance.module.css",
+        "src/components/sections/Performance/Performance.tsx"
+      ],
+      "selectors": [
+        ".title"
+      ],
+      "controls": [
+        "color",
+        "textStyle",
+        "align"
+      ],
+      "text": {
+        "source": "sanity",
+        "document": {
+          "type": "dockSchedulingPage",
+          "id": "dockSchedulingPage"
+        },
+        "fields": {
+          "performance.title": 50
+        }
+      },
+      "reach": "the home page"
+    },
+    "performance.benefit": {
+      "label": "Benefit",
+      "section": "Performance",
+      "files": [
+        "src/components/sections/Performance/Performance.module.css",
+        "src/components/sections/Performance/Performance.tsx"
+      ],
+      "selectors": [
+        ".benefit",
+        ".chartPieSlice",
+        ".speedometer",
+        ".calendarDots"
+      ],
+      "controls": [
+        "gap"
+      ],
+      "hint": "The style applies to all three benefits; the text, to the one you selected.",
+      "text": {
+        "source": "sanity",
+        "document": {
+          "type": "dockSchedulingPage",
+          "id": "dockSchedulingPage"
+        },
+        "fields": {
+          "performance.benefits[_key==\"$key\"].title": 60,
+          "performance.benefits[_key==\"$key\"].text": 150,
+          "performance.benefits[_key==\"$key\"].icon": 20
+        },
+        "lines": {
+          "performance.benefits[_key==\"$key\"].title": 2
+        },
+        "closed": [
+          "performance.benefits[_key==\"$key\"].icon"
+        ]
+      },
+      "children": [
+        "performance.benefit.title",
+        "performance.benefit.text"
+      ],
+      "reach": "the three benefits of the home page"
+    },
+    "performance.benefit.title": {
+      "label": "Benefit title",
+      "section": "Performance",
+      "files": [
+        "src/components/sections/Performance/Performance.module.css",
+        "src/components/sections/Performance/Performance.tsx"
+      ],
+      "selectors": [
+        ".benefitTitle"
+      ],
+      "controls": [
+        "color",
+        "textStyle",
+        "align"
+      ],
+      "hint": "The style applies to all three benefit titles; the text, to the one you selected. Line breaks are kept (two lines at most).",
+      "text": {
+        "source": "sanity",
+        "document": {
+          "type": "dockSchedulingPage",
+          "id": "dockSchedulingPage"
+        },
+        "fields": {
+          "performance.benefits[_key==\"$key\"].title": 60
+        },
+        "lines": {
+          "performance.benefits[_key==\"$key\"].title": 2
+        }
+      },
+      "reach": "the three benefits of the home page"
+    },
+    "performance.benefit.text": {
+      "label": "Benefit text",
+      "section": "Performance",
+      "files": [
+        "src/components/sections/Performance/Performance.module.css",
+        "src/components/sections/Performance/Performance.tsx"
+      ],
+      "selectors": [
+        ".benefitText"
+      ],
+      "controls": [
+        "color",
+        "textStyle",
+        "align"
+      ],
+      "hint": "The style applies to all three benefit texts; the text, to the one you selected.",
+      "text": {
+        "source": "sanity",
+        "document": {
+          "type": "dockSchedulingPage",
+          "id": "dockSchedulingPage"
+        },
+        "fields": {
+          "performance.benefits[_key==\"$key\"].text": 150
+        }
+      },
+      "reach": "the three benefits of the home page"
+    },
+    "customerStory": {
+      "label": "Section",
+      "section": "Customer story",
+      "files": [
+        "src/components/sections/CustomerStory/CustomerStory.module.css",
+        "src/components/sections/CustomerStory/CustomerStory.tsx"
+      ],
+      "selectors": [
+        ".customerStory",
+        ".heading",
+        ".stats",
+        ".results"
+      ],
+      "controls": [
+        "background",
+        "sectionSpacing"
+      ],
+      "children": [
+        "customerStory.eyebrow",
+        "customerStory.title",
+        "customerStory.cta",
+        "customerStory.illustration",
+        "customerStory.summary",
+        "customerStory.stat",
+        "customerStory.result"
+      ],
+      "reach": "the home page"
+    },
+    "customerStory.eyebrow": {
+      "label": "Eyebrow",
+      "section": "Customer story",
+      "files": [
+        "src/components/sections/CustomerStory/CustomerStory.module.css",
+        "src/components/sections/CustomerStory/CustomerStory.tsx"
+      ],
+      "selectors": [
+        ".eyebrow"
+      ],
+      "controls": [
+        "color",
+        "textStyle"
+      ],
+      "text": {
+        "source": "sanity",
+        "document": {
+          "type": "dockSchedulingPage",
+          "id": "dockSchedulingPage"
+        },
+        "fields": {
+          "customerStory.eyebrow": 30
+        }
+      },
+      "hideable": true,
+      "reach": "the home page"
+    },
+    "customerStory.title": {
+      "label": "Title",
+      "section": "Customer story",
+      "files": [
+        "src/components/sections/CustomerStory/CustomerStory.module.css",
+        "src/components/sections/CustomerStory/CustomerStory.tsx"
+      ],
+      "selectors": [
+        ".title"
+      ],
+      "controls": [
+        "color",
+        "textStyle",
+        "align"
+      ],
+      "text": {
+        "source": "sanity",
+        "document": {
+          "type": "dockSchedulingPage",
+          "id": "dockSchedulingPage"
+        },
+        "fields": {
+          "customerStory.title": 70
+        }
+      },
+      "reach": "the home page"
+    },
+    "customerStory.cta": {
+      "label": "Case study link",
+      "section": "Customer story",
+      "files": [
+        "src/components/sections/CustomerStory/CustomerStory.module.css",
+        "src/components/sections/CustomerStory/CustomerStory.tsx"
+      ],
+      "selectors": [
+        ".cta"
+      ],
+      "controls": [
+        "color",
+        "textStyle"
+      ],
+      "text": {
+        "source": "sanity",
+        "document": {
+          "type": "dockSchedulingPage",
+          "id": "dockSchedulingPage"
+        },
+        "fields": {
+          "customerStory.cta.label": 30
+        }
+      },
+      "reach": "the home page"
+    },
+    "customerStory.illustration": {
+      "label": "Illustration",
+      "section": "Customer story",
+      "files": [
+        "src/components/sections/CustomerStory/CustomerStory.module.css",
+        "src/components/sections/CustomerStory/CustomerStory.tsx"
+      ],
+      "selectors": [
+        ".illustration"
+      ],
+      "controls": [
+        "background"
+      ],
+      "hideable": true,
+      "reach": "the home page"
+    },
+    "customerStory.summary": {
+      "label": "Summary",
+      "section": "Customer story",
+      "files": [
+        "src/components/sections/CustomerStory/CustomerStory.module.css",
+        "src/components/sections/CustomerStory/CustomerStory.tsx"
+      ],
+      "selectors": [
+        ".summary"
+      ],
+      "controls": [
+        "color",
+        "textStyle",
+        "align"
+      ],
+      "text": {
+        "source": "sanity",
+        "document": {
+          "type": "dockSchedulingPage",
+          "id": "dockSchedulingPage"
+        },
+        "fields": {
+          "customerStory.summary": 180
+        }
+      },
+      "reach": "the home page"
+    },
+    "customerStory.stat": {
+      "label": "Key figure",
+      "section": "Customer story",
+      "files": [
+        "src/components/sections/CustomerStory/CustomerStory.module.css",
+        "src/components/sections/CustomerStory/CustomerStory.tsx"
+      ],
+      "selectors": [
+        ".stat"
+      ],
+      "controls": [
+        "gap"
+      ],
+      "hint": "The style applies to all key figures; the text, to the one you selected.",
+      "text": {
+        "source": "sanity",
+        "document": {
+          "type": "dockSchedulingPage",
+          "id": "dockSchedulingPage"
+        },
+        "fields": {
+          "customerStory.stats[_key==\"$key\"].value": 8,
+          "customerStory.stats[_key==\"$key\"].label": 40
+        }
+      },
+      "children": [
+        "customerStory.stat.value",
+        "customerStory.stat.label"
+      ],
+      "reach": "the home page"
+    },
+    "customerStory.stat.value": {
+      "label": "Figure",
+      "section": "Customer story",
+      "files": [
+        "src/components/sections/CustomerStory/CustomerStory.module.css",
+        "src/components/sections/CustomerStory/CustomerStory.tsx"
+      ],
+      "selectors": [
+        ".value"
+      ],
+      "controls": [
+        "color",
+        "textStyle",
+        "align"
+      ],
+      "hint": "The style applies to all figures; the text, to the one you selected.",
+      "text": {
+        "source": "sanity",
+        "document": {
+          "type": "dockSchedulingPage",
+          "id": "dockSchedulingPage"
+        },
+        "fields": {
+          "customerStory.stats[_key==\"$key\"].value": 8
+        }
+      },
+      "reach": "the home page"
+    },
+    "customerStory.stat.label": {
+      "label": "Figure caption",
+      "section": "Customer story",
+      "files": [
+        "src/components/sections/CustomerStory/CustomerStory.module.css",
+        "src/components/sections/CustomerStory/CustomerStory.tsx"
+      ],
+      "selectors": [
+        ".label"
+      ],
+      "controls": [
+        "color",
+        "textStyle",
+        "align"
+      ],
+      "hint": "The style applies to all figure captions; the text, to the one you selected.",
+      "text": {
+        "source": "sanity",
+        "document": {
+          "type": "dockSchedulingPage",
+          "id": "dockSchedulingPage"
+        },
+        "fields": {
+          "customerStory.stats[_key==\"$key\"].label": 40
+        }
+      },
+      "reach": "the home page"
+    },
+    "customerStory.result": {
+      "label": "Result",
+      "section": "Customer story",
+      "files": [
+        "src/components/sections/CustomerStory/CustomerStory.module.css",
+        "src/components/sections/CustomerStory/CustomerStory.tsx"
+      ],
+      "selectors": [
+        ".result"
+      ],
+      "controls": [
+        "color",
+        "textStyle"
+      ],
+      "hint": "The style applies to all results; the text, to the one you selected.",
+      "text": {
+        "source": "sanity",
+        "document": {
+          "type": "dockSchedulingPage",
+          "id": "dockSchedulingPage"
+        },
+        "fields": {
+          "customerStory.results[_key==\"$key\"].label": 60
+        }
+      },
+      "reach": "the home page"
+    },
+    "testimonial": {
+      "label": "Section",
+      "section": "Testimonial",
+      "files": [
+        "src/components/sections/Testimonial/Testimonial.module.css",
+        "src/components/sections/Testimonial/Testimonial.tsx"
+      ],
+      "selectors": [
+        ".testimonial",
+        ".scene",
+        ".photo",
+        ".person"
+      ],
+      "controls": [
+        "background"
+      ],
+      "children": [
+        "testimonial.quote",
+        "testimonial.cta"
+      ],
+      "reach": "the home page"
+    },
+    "testimonial.quote": {
+      "label": "Quote",
+      "section": "Testimonial",
+      "files": [
+        "src/components/sections/Testimonial/Testimonial.module.css",
+        "src/components/sections/Testimonial/Testimonial.tsx"
+      ],
+      "selectors": [
+        ".quote"
+      ],
+      "controls": [
+        "gap"
+      ],
+      "hint": "The text comes from CMS › Testimonials: changing it changes that testimonial.",
+      "text": {
+        "source": "sanity",
+        "document": {
+          "type": "testimonial",
+          "from": "data-edit-doc"
+        },
+        "fields": {
+          "quote": 320,
+          "name": 50,
+          "role": 60,
+          "company": 60
+        }
+      },
+      "children": [
+        "testimonial.quote.text",
+        "testimonial.quote.author"
+      ],
+      "reach": "the home page"
+    },
+    "testimonial.quote.text": {
+      "label": "Quote text",
+      "section": "Testimonial",
+      "files": [
+        "src/components/sections/Testimonial/Testimonial.module.css",
+        "src/components/sections/Testimonial/Testimonial.tsx"
+      ],
+      "selectors": [
+        ".text"
+      ],
+      "controls": [
+        "color",
+        "textStyle",
+        "align"
+      ],
+      "hint": "Quotation marks are added by the site.",
+      "text": {
+        "source": "sanity",
+        "document": {
+          "type": "testimonial",
+          "from": "data-edit-doc"
+        },
+        "fields": {
+          "quote": 320
+        }
+      },
+      "reach": "the home page"
+    },
+    "testimonial.quote.author": {
+      "label": "Author",
+      "section": "Testimonial",
+      "files": [
+        "src/components/sections/Testimonial/Testimonial.module.css",
+        "src/components/sections/Testimonial/Testimonial.tsx"
+      ],
+      "selectors": [
+        ".author"
+      ],
+      "controls": [
+        "color",
+        "textStyle",
+        "align"
+      ],
+      "text": {
+        "source": "sanity",
+        "document": {
+          "type": "testimonial",
+          "from": "data-edit-doc"
+        },
+        "fields": {
+          "name": 50,
+          "role": 60,
+          "company": 60
+        }
+      },
+      "reach": "the home page"
+    },
+    "testimonial.cta": {
+      "label": "Button",
+      "section": "Testimonial",
+      "files": [
+        "src/components/sections/Testimonial/Testimonial.module.css",
+        "src/components/sections/Testimonial/Testimonial.tsx"
+      ],
+      "selectors": [
+        ".cta"
+      ],
+      "controls": [
+        "color",
+        "textStyle"
+      ],
+      "text": {
+        "source": "sanity",
+        "document": {
+          "type": "dockSchedulingPage",
+          "id": "dockSchedulingPage"
+        },
+        "fields": {
+          "testimonial.cta.label": 30
+        }
+      },
+      "reach": "the home page"
+    },
+    "integrations": {
+      "label": "Section",
+      "section": "Integrations",
+      "files": [
+        "src/components/sections/Integrations/Integrations.module.css",
+        "src/components/sections/Integrations/Integrations.tsx"
+      ],
+      "selectors": [
+        ".integrations",
+        ".heading",
+        ".action"
+      ],
+      "controls": [
+        "background",
+        "sectionSpacing"
+      ],
+      "children": [
+        "integrations.eyebrow",
+        "integrations.title",
+        "integrations.body",
+        "integrations.cta",
+        "integrations.stat",
+        "integrations.logos"
+      ],
+      "reach": "the home page"
+    },
+    "integrations.eyebrow": {
+      "label": "Eyebrow",
+      "section": "Integrations",
+      "files": [
+        "src/components/sections/Integrations/Integrations.module.css",
+        "src/components/sections/Integrations/Integrations.tsx"
+      ],
+      "selectors": [
+        ".eyebrow"
+      ],
+      "controls": [
+        "color",
+        "textStyle"
+      ],
+      "text": {
+        "source": "sanity",
+        "document": {
+          "type": "dockSchedulingPage",
+          "id": "dockSchedulingPage"
+        },
+        "fields": {
+          "integrations.eyebrow": 30
+        }
+      },
+      "hideable": true,
+      "reach": "the home page"
+    },
+    "integrations.title": {
+      "label": "Title",
+      "section": "Integrations",
+      "files": [
+        "src/components/sections/Integrations/Integrations.module.css",
+        "src/components/sections/Integrations/Integrations.tsx"
+      ],
+      "selectors": [
+        ".title"
+      ],
+      "controls": [
+        "color",
+        "textStyle",
+        "align"
+      ],
+      "text": {
+        "source": "sanity",
+        "document": {
+          "type": "dockSchedulingPage",
+          "id": "dockSchedulingPage"
+        },
+        "fields": {
+          "integrations.title": 60
+        }
+      },
+      "reach": "the home page"
+    },
+    "integrations.body": {
+      "label": "Text",
+      "section": "Integrations",
+      "files": [
+        "src/components/sections/Integrations/Integrations.module.css",
+        "src/components/sections/Integrations/Integrations.tsx"
+      ],
+      "selectors": [
+        ".body"
+      ],
+      "controls": [
+        "color",
+        "textStyle",
+        "align"
+      ],
+      "text": {
+        "source": "sanity",
+        "document": {
+          "type": "dockSchedulingPage",
+          "id": "dockSchedulingPage"
+        },
+        "fields": {
+          "integrations.body": 200
+        }
+      },
+      "reach": "the home page"
+    },
+    "integrations.cta": {
+      "label": "Integrations link",
+      "section": "Integrations",
+      "files": [
+        "src/components/sections/Integrations/Integrations.module.css",
+        "src/components/sections/Integrations/Integrations.tsx"
+      ],
+      "selectors": [
+        ".cta"
+      ],
+      "controls": [
+        "color",
+        "textStyle"
+      ],
+      "text": {
+        "source": "sanity",
+        "document": {
+          "type": "dockSchedulingPage",
+          "id": "dockSchedulingPage"
+        },
+        "fields": {
+          "integrations.cta.label": 30
+        }
+      },
+      "reach": "the home page"
+    },
+    "integrations.stat": {
+      "label": "Key figure",
+      "section": "Integrations",
+      "files": [
+        "src/components/sections/Integrations/Integrations.module.css",
+        "src/components/sections/Integrations/Integrations.tsx"
+      ],
+      "selectors": [
+        ".stat",
+        ".statValue",
+        ".statLabel"
+      ],
+      "controls": [
+        "color",
+        "textStyle",
+        "align"
+      ],
+      "text": {
+        "source": "sanity",
+        "document": {
+          "type": "dockSchedulingPage",
+          "id": "dockSchedulingPage"
+        },
+        "fields": {
+          "integrations.statValue": 8,
+          "integrations.statLabel": 45
+        }
+      },
+      "reach": "the home page"
+    },
+    "integrations.logos": {
+      "label": "Logos",
+      "section": "Integrations",
+      "files": [
+        "src/components/sections/Integrations/Integrations.module.css",
+        "src/components/sections/Integrations/Integrations.tsx"
+      ],
+      "selectors": [
+        ".logos",
+        ".logo",
+        ".pfizer",
+        ".americanAirlines"
+      ],
+      "controls": [
+        "gap"
+      ],
+      "hint": "The logos and their alternative texts are in the code.",
+      "text": {
+        "source": "code",
+        "files": [
+          "src/components/sections/Integrations/Integrations.tsx"
+        ]
+      },
+      "hideable": true,
+      "logotype": true,
+      "reach": "the home page"
+    },
+    "tour": {
+      "label": "Section",
+      "section": "Tour",
+      "files": [
+        "src/components/sections/Tour/Tour.module.css",
+        "src/components/sections/Tour/Tour.tsx"
+      ],
+      "selectors": [
+        ".tour"
+      ],
+      "controls": [
+        "sectionSpacing"
+      ],
+      "children": [
+        "tour.title",
+        "tour.lede",
+        "tour.cta"
+      ],
+      "reach": "the home page"
+    },
+    "tour.title": {
+      "label": "Title",
+      "section": "Tour",
+      "files": [
+        "src/components/sections/Tour/Tour.module.css",
+        "src/components/sections/Tour/Tour.tsx"
+      ],
+      "selectors": [
+        ".title"
+      ],
+      "controls": [
+        "color",
+        "textStyle",
+        "align"
+      ],
+      "text": {
+        "source": "sanity",
+        "document": {
+          "type": "dockSchedulingPage",
+          "id": "dockSchedulingPage"
+        },
+        "fields": {
+          "tour.title": 40
+        }
+      },
+      "reach": "the home page"
+    },
+    "tour.lede": {
+      "label": "Text",
+      "section": "Tour",
+      "files": [
+        "src/components/sections/Tour/Tour.module.css",
+        "src/components/sections/Tour/Tour.tsx"
+      ],
+      "selectors": [
+        ".lede"
+      ],
+      "controls": [
+        "color",
+        "textStyle",
+        "align"
+      ],
+      "text": {
+        "source": "sanity",
+        "document": {
+          "type": "dockSchedulingPage",
+          "id": "dockSchedulingPage"
+        },
+        "fields": {
+          "tour.lede": 120
+        }
+      },
+      "reach": "the home page"
+    },
+    "tour.cta": {
+      "label": "Button",
+      "section": "Tour",
+      "files": [
+        "src/components/sections/Tour/Tour.module.css",
+        "src/components/sections/Tour/Tour.tsx"
+      ],
+      "selectors": [
+        ".cta"
+      ],
+      "controls": [
+        "color",
+        "textStyle"
+      ],
+      "text": {
+        "source": "sanity",
+        "document": {
+          "type": "dockSchedulingPage",
+          "id": "dockSchedulingPage"
+        },
+        "fields": {
+          "tour.cta.label": 30
+        }
+      },
+      "reach": "the home page"
+    },
+    "faq": {
+      "label": "Section",
+      "section": "FAQ",
+      "files": [
+        "src/components/sections/Faq/Faq.module.css",
+        "src/components/sections/Faq/Faq.tsx"
+      ],
+      "selectors": [
+        ".faq",
+        ".heading",
+        ".questions"
+      ],
+      "controls": [
+        "background",
+        "sectionSpacing"
+      ],
+      "children": [
+        "faq.eyebrow",
+        "faq.title",
+        "faq.item",
+        "faq.support"
+      ],
+      "reach": "the home page"
+    },
+    "faq.eyebrow": {
+      "label": "Eyebrow",
+      "section": "FAQ",
+      "files": [
+        "src/components/sections/Faq/Faq.module.css",
+        "src/components/sections/Faq/Faq.tsx"
+      ],
+      "selectors": [
+        ".eyebrow"
+      ],
+      "controls": [
+        "color",
+        "textStyle"
+      ],
+      "text": {
+        "source": "sanity",
+        "document": {
+          "type": "dockSchedulingPage",
+          "id": "dockSchedulingPage"
+        },
+        "fields": {
+          "faq.eyebrow": 40
+        }
+      },
+      "hideable": true,
+      "reach": "the home page"
+    },
+    "faq.title": {
+      "label": "Title",
+      "section": "FAQ",
+      "files": [
+        "src/components/sections/Faq/Faq.module.css",
+        "src/components/sections/Faq/Faq.tsx"
+      ],
+      "selectors": [
+        ".title"
+      ],
+      "controls": [
+        "color",
+        "textStyle",
+        "align"
+      ],
+      "text": {
+        "source": "sanity",
+        "document": {
+          "type": "dockSchedulingPage",
+          "id": "dockSchedulingPage"
+        },
+        "fields": {
+          "faq.title": 60
+        }
+      },
+      "reach": "the home page"
+    },
+    "faq.item": {
+      "label": "Question",
+      "section": "FAQ",
+      "files": [
+        "src/components/sections/Faq/Faq.module.css",
+        "src/components/sections/Faq/Faq.tsx"
+      ],
+      "selectors": [
+        ".item"
+      ],
+      "controls": [
+        "padding"
+      ],
+      "hint": "The style applies to every question; the text comes from CMS › FAQ.",
+      "text": {
+        "source": "sanity",
+        "document": {
+          "type": "faq",
+          "from": "data-edit-doc"
+        },
+        "fields": {
+          "question": 100
+        }
+      },
+      "children": [
+        "faq.item.question",
+        "faq.item.answer"
+      ],
+      "reach": "the home page"
+    },
+    "faq.item.question": {
+      "label": "Question text",
+      "section": "FAQ",
+      "files": [
+        "src/components/sections/Faq/Faq.module.css",
+        "src/components/sections/Faq/Faq.tsx"
+      ],
+      "selectors": [
+        ".question"
+      ],
+      "controls": [
+        "color",
+        "textStyle",
+        "align"
+      ],
+      "hint": "The style applies to every question; the text, to the one you selected.",
+      "text": {
+        "source": "sanity",
+        "document": {
+          "type": "faq",
+          "from": "data-edit-doc"
+        },
+        "fields": {
+          "question": 100
+        }
+      },
+      "reach": "the home page"
+    },
+    "faq.item.answer": {
+      "label": "Answer",
+      "section": "FAQ",
+      "files": [
+        "src/components/sections/Faq/Faq.module.css",
+        "src/components/sections/Faq/Faq.tsx"
+      ],
+      "selectors": [
+        ".answer"
+      ],
+      "controls": [
+        "color",
+        "textStyle",
+        "align"
+      ],
+      "hint": "Answers are rich text: edit their wording in CMS › FAQ.",
+      "reach": "the home page"
+    },
+    "faq.support": {
+      "label": "Help card",
+      "section": "FAQ",
+      "files": [
+        "src/components/sections/Faq/Faq.module.css",
+        "src/components/sections/Faq/Faq.tsx"
+      ],
+      "selectors": [
+        ".support"
+      ],
+      "controls": [
+        "background",
+        "padding"
+      ],
+      "text": {
+        "source": "sanity",
+        "document": {
+          "type": "dockSchedulingPage",
+          "id": "dockSchedulingPage"
+        },
+        "fields": {
+          "faq.supportText": 100,
+          "faq.supportCta.label": 30
+        },
+        "lines": {
+          "faq.supportText": 2
+        }
+      },
+      "children": [
+        "faq.support.text",
+        "faq.support.cta"
+      ],
+      "reach": "the home page"
+    },
+    "faq.support.text": {
+      "label": "Help card text",
+      "section": "FAQ",
+      "files": [
+        "src/components/sections/Faq/Faq.module.css",
+        "src/components/sections/Faq/Faq.tsx"
+      ],
+      "selectors": [
+        ".supportText"
+      ],
+      "controls": [
+        "color",
+        "textStyle",
+        "align"
+      ],
+      "hint": "Line breaks are kept on large screens (two lines at most).",
+      "text": {
+        "source": "sanity",
+        "document": {
+          "type": "dockSchedulingPage",
+          "id": "dockSchedulingPage"
+        },
+        "fields": {
+          "faq.supportText": 100
+        },
+        "lines": {
+          "faq.supportText": 2
+        }
+      },
+      "reach": "the home page"
+    },
+    "faq.support.cta": {
+      "label": "Help card button",
+      "section": "FAQ",
+      "files": [
+        "src/components/sections/Faq/Faq.module.css",
+        "src/components/sections/Faq/Faq.tsx"
+      ],
+      "selectors": [
+        ".supportCta"
+      ],
+      "controls": [
+        "color",
+        "textStyle"
+      ],
+      "text": {
+        "source": "sanity",
+        "document": {
+          "type": "dockSchedulingPage",
+          "id": "dockSchedulingPage"
+        },
+        "fields": {
+          "faq.supportCta.label": 30
+        }
+      },
+      "reach": "the home page"
+    },
+    "insights": {
+      "label": "Section",
+      "section": "Articles",
+      "files": [
+        "src/components/sections/Insights/Insights.module.css",
+        "src/components/sections/Insights/Insights.tsx"
+      ],
+      "selectors": [
+        ".insights",
+        ".heading",
+        ".scroller",
+        ".cards"
+      ],
+      "controls": [
+        "background",
+        "sectionSpacing",
+        "gap"
+      ],
+      "children": [
+        "insights.eyebrow",
+        "insights.title",
+        "insights.card"
+      ],
+      "reach": "the home page"
+    },
+    "insights.eyebrow": {
+      "label": "Eyebrow",
+      "section": "Articles",
+      "files": [
+        "src/components/sections/Insights/Insights.module.css",
+        "src/components/sections/Insights/Insights.tsx"
+      ],
+      "selectors": [
+        ".eyebrow"
+      ],
+      "controls": [
+        "color",
+        "textStyle"
+      ],
+      "text": {
+        "source": "sanity",
+        "document": {
+          "type": "dockSchedulingPage",
+          "id": "dockSchedulingPage"
+        },
+        "fields": {
+          "insights.eyebrow": 30
+        }
+      },
+      "hideable": true,
+      "reach": "the home page"
+    },
+    "insights.title": {
+      "label": "Title",
+      "section": "Articles",
+      "files": [
+        "src/components/sections/Insights/Insights.module.css",
+        "src/components/sections/Insights/Insights.tsx"
+      ],
+      "selectors": [
+        ".title"
+      ],
+      "controls": [
+        "color",
+        "textStyle",
+        "align"
+      ],
+      "text": {
+        "source": "sanity",
+        "document": {
+          "type": "dockSchedulingPage",
+          "id": "dockSchedulingPage"
+        },
+        "fields": {
+          "insights.title": 50
+        }
+      },
+      "reach": "the home page"
+    },
+    "insights.card": {
+      "label": "Card slot",
+      "section": "Articles",
+      "files": [
+        "src/components/sections/Insights/Insights.module.css",
+        "src/components/sections/Insights/Insights.tsx"
+      ],
+      "selectors": [
+        ".card"
+      ],
+      "controls": [],
+      "hint": "The four latest Blog posts, placed by the home page.",
+      "children": [
+        "post.card"
+      ],
+      "reach": "the home page"
+    },
+    "post.card": {
+      "label": "Article card",
+      "section": "Articles",
+      "files": [
+        "src/components/ui/PostCard/PostCard.module.css",
+        "src/components/ui/PostCard/PostCard.tsx"
+      ],
+      "selectors": [
+        ".card"
+      ],
+      "controls": [
+        "background",
+        "padding",
+        "gap"
+      ],
+      "hint": "The style applies to every article card; the text, to the article of the card.",
+      "text": {
+        "source": "sanity",
+        "document": {
+          "type": "post",
+          "from": "data-edit-doc"
+        },
+        "fields": {
+          "title": 90,
+          "category": 20
+        },
+        "closed": [
+          "category"
+        ]
+      },
+      "children": [
+        "post.card.category",
+        "post.card.title",
+        "post.card.meta"
+      ],
+      "reach": "every article card of the site (Home › Articles and /blog)"
+    },
+    "post.card.category": {
+      "label": "Category",
+      "section": "Articles",
+      "files": [
+        "src/components/ui/PostCard/PostCard.module.css",
+        "src/components/ui/PostCard/PostCard.tsx"
+      ],
+      "selectors": [
+        ".category"
+      ],
+      "controls": [
+        "color",
+        "textStyle"
+      ],
+      "hint": "The category is picked from a fixed list in CMS › Blog.",
+      "text": {
+        "source": "sanity",
+        "document": {
+          "type": "post",
+          "from": "data-edit-doc"
+        },
+        "fields": {
+          "category": 20
+        },
+        "closed": [
+          "category"
+        ]
+      },
+      "reach": "every article card of the site (Home › Articles and /blog)"
+    },
+    "post.card.title": {
+      "label": "Article title",
+      "section": "Articles",
+      "files": [
+        "src/components/ui/PostCard/PostCard.module.css",
+        "src/components/ui/PostCard/PostCard.tsx"
+      ],
+      "selectors": [
+        ".title",
+        ".link"
+      ],
+      "controls": [
+        "color",
+        "textStyle",
+        "align"
+      ],
+      "text": {
+        "source": "sanity",
+        "document": {
+          "type": "post",
+          "from": "data-edit-doc"
+        },
+        "fields": {
+          "title": 90
+        }
+      },
+      "reach": "every article card of the site (Home › Articles and /blog)"
+    },
+    "post.card.meta": {
+      "label": "Date and reading time",
+      "section": "Articles",
+      "files": [
+        "src/components/ui/PostCard/PostCard.module.css",
+        "src/components/ui/PostCard/PostCard.tsx"
+      ],
+      "selectors": [
+        ".meta"
+      ],
+      "controls": [
+        "color",
+        "textStyle"
+      ],
+      "hint": "Date and reading time are computed from the article.",
+      "reach": "every article card of the site (Home › Articles and /blog)"
+    },
+    "getStarted": {
+      "label": "Section",
+      "section": "Get started",
+      "files": [
+        "src/components/sections/GetStarted/GetStarted.module.css",
+        "src/components/sections/GetStarted/GetStarted.tsx"
+      ],
+      "selectors": [
+        ".getStarted",
+        ".photo",
+        ".heading",
+        ".actions"
+      ],
+      "controls": [
+        "sectionSpacing"
+      ],
+      "children": [
+        "getStarted.eyebrow",
+        "getStarted.title",
+        "getStarted.text",
+        "getStarted.primaryCta",
+        "getStarted.secondaryCta"
+      ],
+      "reach": "the home page"
+    },
+    "getStarted.eyebrow": {
+      "label": "Eyebrow",
+      "section": "Get started",
+      "files": [
+        "src/components/sections/GetStarted/GetStarted.module.css",
+        "src/components/sections/GetStarted/GetStarted.tsx"
+      ],
+      "selectors": [
+        ".eyebrow"
+      ],
+      "controls": [
+        "color",
+        "textStyle"
+      ],
+      "text": {
+        "source": "sanity",
+        "document": {
+          "type": "dockSchedulingPage",
+          "id": "dockSchedulingPage"
+        },
+        "fields": {
+          "getStarted.eyebrow": 30
+        }
+      },
+      "hideable": true,
+      "reach": "the home page"
+    },
+    "getStarted.title": {
+      "label": "Title",
+      "section": "Get started",
+      "files": [
+        "src/components/sections/GetStarted/GetStarted.module.css",
+        "src/components/sections/GetStarted/GetStarted.tsx"
+      ],
+      "selectors": [
+        ".title"
+      ],
+      "controls": [
+        "color",
+        "textStyle",
+        "align"
+      ],
+      "text": {
+        "source": "sanity",
+        "document": {
+          "type": "dockSchedulingPage",
+          "id": "dockSchedulingPage"
+        },
+        "fields": {
+          "getStarted.title": 60,
+          "getStarted.titleMuted": 40
+        }
+      },
+      "children": [
+        "getStarted.title.muted"
+      ],
+      "reach": "the home page"
+    },
+    "getStarted.title.muted": {
+      "label": "Title (muted end)",
+      "section": "Get started",
+      "files": [
+        "src/components/sections/GetStarted/GetStarted.module.css",
+        "src/components/sections/GetStarted/GetStarted.tsx"
+      ],
+      "selectors": [
+        ".muted"
+      ],
+      "controls": [
+        "color"
+      ],
+      "text": {
+        "source": "sanity",
+        "document": {
+          "type": "dockSchedulingPage",
+          "id": "dockSchedulingPage"
+        },
+        "fields": {
+          "getStarted.titleMuted": 40
+        }
+      },
+      "reach": "the home page"
+    },
+    "getStarted.text": {
+      "label": "Text",
+      "section": "Get started",
+      "files": [
+        "src/components/sections/GetStarted/GetStarted.module.css",
+        "src/components/sections/GetStarted/GetStarted.tsx"
+      ],
+      "selectors": [
+        ".text"
+      ],
+      "controls": [
+        "color",
+        "textStyle",
+        "align"
+      ],
+      "text": {
+        "source": "sanity",
+        "document": {
+          "type": "dockSchedulingPage",
+          "id": "dockSchedulingPage"
+        },
+        "fields": {
+          "getStarted.text": 160
+        }
+      },
+      "reach": "the home page"
+    },
+    "getStarted.primaryCta": {
+      "label": "Button 1",
+      "section": "Get started",
+      "files": [
+        "src/components/sections/GetStarted/GetStarted.module.css",
+        "src/components/sections/GetStarted/GetStarted.tsx"
+      ],
+      "selectors": [
+        ".primaryCta"
+      ],
+      "controls": [
+        "color",
+        "textStyle"
+      ],
+      "text": {
+        "source": "sanity",
+        "document": {
+          "type": "dockSchedulingPage",
+          "id": "dockSchedulingPage"
+        },
+        "fields": {
+          "getStarted.primaryCta.label": 30
+        }
+      },
+      "reach": "the home page"
+    },
+    "getStarted.secondaryCta": {
+      "label": "Button 2",
+      "section": "Get started",
+      "files": [
+        "src/components/sections/GetStarted/GetStarted.module.css",
+        "src/components/sections/GetStarted/GetStarted.tsx"
+      ],
+      "selectors": [
+        ".secondaryCta"
+      ],
+      "controls": [
+        "color",
+        "textStyle"
+      ],
+      "text": {
+        "source": "sanity",
+        "document": {
+          "type": "dockSchedulingPage",
+          "id": "dockSchedulingPage"
+        },
+        "fields": {
+          "getStarted.secondaryCta.label": 30
+        }
+      },
+      "reach": "the home page"
+    }
+  }
+}

@@ -1,0 +1,67 @@
+/* Figma « Drawer » 336:970 (et C4) : 810 × 900, à droite, bg/elevated, trait gauche border/default, Elevation/Modal. */
+.layer {
+  position: fixed;
+  inset: 0;
+  z-index: var(--k-z-overlay, 900);
+}
+
+.drawer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  max-width: 100vw;
+  border-left: 1px solid var(--k-border-default);
+  background-color: var(--k-bg-elevated);
+  box-shadow: var(--k-elevation-modal);
+  --k-icon-current: var(--k-icon-default);
+}
+
+.drawer:focus-visible {
+  outline: none;
+}
+
+/* En-tête : H gap 8, pad 10 8 10 16, trait bas border/subtle. */
+.header {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: var(--k-space-8);
+  padding: var(--k-space-10) var(--k-space-8) var(--k-space-10) var(--k-space-16);
+  border-bottom: 1px solid var(--k-border-subtle);
+}
+
+.title {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  color: var(--k-text-primary);
+  font: var(--k-text-heading-4);
+  letter-spacing: var(--k-text-heading-4-tracking);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Corps : V gap 12, pad 16, défilement. */
+.body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: var(--k-space-12);
+  min-height: 0;
+  padding: var(--k-space-16);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* Pied : pad 16, trait haut border/subtle. */
+.footer {
+  display: flex;
+  flex-shrink: 0;
+  flex-direction: column;
+  padding: var(--k-space-16);
+  border-top: 1px solid var(--k-border-subtle);
+}

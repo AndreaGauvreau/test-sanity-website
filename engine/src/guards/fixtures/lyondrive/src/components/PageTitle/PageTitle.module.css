@@ -1,0 +1,19 @@
+.pageTitle {
+  padding-block: var(--layout-section) var(--space-7);
+}
+
+.title {
+  color: var(--color-ink);
+  font-family: var(--font-serif);
+  font-size: var(--text-3xl);
+  font-weight: var(--weight-bold);
+  text-align: left;
+}
+
+.intro {
+  max-width: var(--layout-measure);
+  margin-top: var(--space-4);
+  color: var(--color-mist);
+  font-family: var(--font-sans);
+  font-size: var(--text-lg);
+}

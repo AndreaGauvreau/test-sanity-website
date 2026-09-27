@@ -1,0 +1,72 @@
+/* Figma « Switch » 330:329 : H gap 8 ; track 32×18, pad 2, radius/full ; thumb 14 ; on = interactive/primary, thumb text/on-accent. */
+.switch {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--k-space-8);
+  cursor: pointer;
+  user-select: none;
+}
+
+.disabled {
+  cursor: not-allowed;
+}
+
+.track {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  width: 32px;
+  height: 18px;
+  padding: var(--k-space-2);
+  border-radius: var(--k-radius-full);
+  background-color: var(--k-bg-input-hover);
+  cursor: pointer;
+  transition: background-color var(--k-duration-fast) ease;
+}
+
+.track:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.disabled .label {
+  opacity: 0.4;
+}
+
+.track:focus-visible {
+  outline: 2px solid var(--k-border-focus);
+  outline-offset: 2px;
+}
+
+.thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: var(--k-radius-full);
+  background-color: var(--k-text-tertiary);
+  transition:
+    transform var(--k-duration-fast) var(--k-ease-out),
+    background-color var(--k-duration-fast) ease;
+}
+
+.track[data-state='on'] {
+  background-color: var(--k-interactive-primary);
+}
+
+.track[data-state='on'] .thumb {
+  background-color: var(--k-text-on-accent);
+  transform: translateX(14px);
+}
+
+.label {
+  color: var(--k-text-secondary);
+  font: var(--k-text-body);
+  letter-spacing: var(--k-text-body-tracking);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .track,
+  .thumb {
+    transition: none;
+  }
+}
