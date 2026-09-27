@@ -40,6 +40,18 @@ Différences du HTML **non visibles**, attendues (métadonnées, lues dans `site
   `siteSettings`, variables {{…}} résolues), texte alternatif lu sur l'asset (`coalesce(alt, asset->altText)`) ;
 - `/` · témoignage : inchangé (Teresa Nelson reste la première de l'ordre manuel).
 
+## Format d'image figé (correctif du 2026-09-27)
+
+`cdn.sanity.io` (`auto=format`) choisit le format sur l'en-tête `Accept` : avec celui de Chrome
+(`image/avif,image/webp,…`), la même URL revenait tantôt en AVIF, tantôt en WebP, et la référence ne se
+rejouait pas à 0 pixel (jusqu'à ~460 000 px d'écart sur `home-1440`, `blog-768`…). `capture.ts` intercepte
+désormais toutes les requêtes d'images (`context.route`, `scripts/site-baseline/image-format.ts`) et fixe
+`Accept: image/webp,image/png,image/jpeg;q=0.9,*/*;q=0.5` : sans AVIF, le CDN sert toujours du WebP.
+Test : `npx tsx --test scripts/site-baseline/image-format.test.ts`.
+
+Vérifié : deux captures successives → **aucune différence** (12 PNG + 3 textes). Les PNG de `apres/` ont été
+recapturés avec ce format (contenu inchangé, textes identiques) ; une capture suivante leur est identique.
+
 ## Rejouer la comparaison
 
 Le serveur de dev doit tourner (http://127.0.0.1:4040, dataset `development`). Chrome installé.

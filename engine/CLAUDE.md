@@ -70,7 +70,7 @@ client est appliquée), `fail`, `budget` ; `auto` = text si « T Text » est coc
 
 ## Forces
 - Tout est injectable (Claude, aperçu, Chrome, Sanity, processus) : le moteur entier démarre dans un test
-  (`src/main.test.ts`) sans réseau ni Claude. 127 tests propres à engine-core (16 fichiers), sur de vrais dépôts git
+  (`src/main.test.ts`) sans réseau ni Claude. 129 tests propres à engine-core (16 fichiers), sur de vrais dépôts git
   temporaires, dont un test de fumée sur le vrai design system de Conduit (`jobs/conduit.test.ts`).
 - Invariants du POC tenus par construction : une demande à la fois (vérification synchrone), textsBefore enregistré avant
   toute écriture, retour arrière fichiers + textes, coût d'une session reprise jamais doublé, plafond du cumul par demande.

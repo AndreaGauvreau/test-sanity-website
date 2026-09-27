@@ -20,6 +20,9 @@ Ask AI (ask-ai).
 
 ## Fichiers
 
+- `admin-icon.ts` — PUR : `ADMIN_ICON_SVG` (copie exacte de l'icône DS `admin.svg`) et `ADMIN_ICON_URL` (URL `data:`),
+  déclarée dans `metadata.icons` du layout /admin (plus de 404 /favicon.ico ; pas de `icon.svg` : le proxy redirigerait
+  vers A1 sans cookie). Test : `admin-icon.test.ts` (dérive contre le DS + métadonnées du layout).
 - `nav.ts` — PUR : `buildShellNav(config, role, counts)` (sections de la sidebar selon le rôle), `resolveShellLocation(pathname, routes)`
   (entrée active + nom de l'écran), `toShellRouteConfig`, `articleCollection`, `pageNavLabel`, `resolveHubUrl`, `isExternalHref`, `ADMIN_BASE`.
 - `counts.ts` — SERVEUR (`server-only`) : `getCollectionCounts(collections)` (une requête GROQ, perspective `drafts`, 2,5 s max),
@@ -64,7 +67,7 @@ Ask AI (ask-ai).
 
 **Racine (`src/app/admin/layout.tsx`)** : importe `tokens.css` puis `base.css` (seul endroit, avec la galerie), pose
 `data-kz-admin` + `data-theme="dark"` + `adminFontClassName` sur le même élément, `<ToastProvider>` une fois. Métadonnées :
-titre « Conduit — Admin » (modèle « %s · Conduit Admin »), `robots: noindex, nofollow, nocache`, `referrer: same-origin`.
+titre « Conduit — Admin » (modèle « %s · Conduit Admin »), `robots: noindex, nofollow, nocache`, `referrer: same-origin`, `icons` = icône DS « admin » en `data:` (favicon du site public intact).
 Ne rend ni `<html>` ni `<body>`. Garde : sous 1 024 px (`max-width: 1023.98px`), `.app` en `display: none` et message
 « This admin is designed for a computer. » (Body Large, icône desktop) — le Figma n'a pas d'écran pour ce message.
 

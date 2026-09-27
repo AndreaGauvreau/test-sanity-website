@@ -377,6 +377,37 @@ describe('modification en attente : ajustement, Validate, Cancel, 409', () => {
     assert.equal((await bench.service.validate(KUARTZ, first.changeId)).status, 'validated')
   })
 
+  it('Validate accepté dès que la demande est done, sans attendre l’écriture du journal de consommation', async () => {
+    bench = await makeBench([DARKER], { usageDelayMs: 1_500 })
+    const first = await start(bench)
+    await bench.until(first.id, ['done'], 10_000)
+    // Aucun `idle()` : l'admin envoie Validate dès que le sondage montre done, le journal (lent) n'est pas encore écrit.
+    const started = Date.now()
+    const validated = await bench.service.validate(CLIENT, first.changeId)
+    assert.equal(validated.status, 'validated')
+    assert.ok(Date.now() - started < 1_000, `Validate a attendu le journal (${Date.now() - started} ms)`)
+    assert.equal(bench.usage.length, 0)
+    assert.equal(bench.service.blocker(), null)
+    // Le journal reste suivi : `idle()` l'attend, l'entrée n'est pas perdue.
+    await bench.service.idle()
+    assert.deepEqual(bench.usage.map((job) => job.id), [first.id])
+  })
+
+  it('résumé et titre de publication : l’état FINAL après un ajustement, sans la valeur remplacée', async () => {
+    bench = await makeBench([DARKER, ACCENT])
+    const first = await start(bench)
+    await bench.until(first.id, ['done'])
+    await bench.service.idle()
+    const adjust = await bench.service.request(CLIENT, editRequest({ changeId: first.changeId, note: 'Orange instead.' }))
+    await bench.until(adjust.id, ['done'])
+    await bench.service.idle()
+    const pending = (await bench.service.state('/', CLIENT)).pending!
+    assert.deepEqual(pending.summary, [{ target: 'Hero · Lede', description: 'color → Color text accent (token)', kind: 'style', where: 'code' }])
+    await bench.service.validate(CLIENT, first.changeId)
+    const [item] = await bench.service.validatedDesign()
+    assert.equal(item.title, 'Hero · Lede — color → Color text accent (token)')
+  })
+
   it('ajustement puis Cancel : retour arrière de la demande ET de l’ajustement (fichiers + textes)', async () => {
     bench = await makeBench([
       { steps: [...DARKER.steps!, { kind: 'set_text', field: TITLE_FIELD, value: 'First title' }], message: 'ok' },

@@ -201,6 +201,8 @@ export async function makeBench(
     fakeClaude?: string
     /** Domaines du site (SEC-08) ; défaut : aucun. */
     siteDomains?: readonly string[]
+    /** Durée d'une écriture du journal de consommation (écriture aiUsage dans Sanity simulée) ; défaut : immédiate. */
+    usageDelayMs?: number
   } = {},
 ): Promise<Bench> {
   const ws = await makeWorkspace()
@@ -216,7 +218,12 @@ export async function makeBench(
     { EDITOR_QUESTION_TIMEOUT_MS: String(options.questionTimeoutMs ?? 60_000) },
     { configDir: path.join(ws.workspace, 'claude') },
   )
-  const recorder: UsageRecorder = { record: async ({ job }) => void usage.push(job) }
+  const recorder: UsageRecorder = {
+    record: async ({ job }) => {
+      if (options.usageDelayMs) await new Promise((resolve) => setTimeout(resolve, options.usageDelayMs))
+      usage.push(job)
+    },
+  }
   const health = async (): Promise<EngineHealth> => ({
     ok: true,
     version: 'test',

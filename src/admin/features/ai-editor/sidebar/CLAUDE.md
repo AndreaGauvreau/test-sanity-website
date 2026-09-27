@@ -220,3 +220,9 @@ Toutes faites (vérifiées le 2026-09-27) :
 - ~~ui-foundations (Chip, FOLLOWUPS #23)~~ : `.chip[data-state='on']:hover` garde le fond inversé (`Chip.module.css`).
 - publish-ui (FOLLOWUPS #32, #41) : côté éditeur fait — `listValidatedDesignChanges()` (avec `page` pour View ↗) /
   `clearValidatedDesignChanges()`, et `pendingTotal` lu dans la publication simulée.
+
+## En-tête : libellé du modèle
+
+- `EditorHeader` reçoit `model = { id, label }` (EditorState.model) : le libellé du moteur prime sur `modelLabel(id)`
+  (ex. « Fake Claude (auto) — no real call »). Faux Claude repéré par `isFakeModel` (/fake/i sur libellé ou id) et
+  signalé en jaune (`data-fake`). Sans libellé : repli sur `ModelUsage` avec l'id. Test : `components/EditorHeader.test.tsx`.

@@ -9,12 +9,14 @@
  * - texte visible (`innerText` du body) dans un .txt ;
  * - HTML servi (sans JavaScript) dans un .html, pour vérifier l'absence de data-edit et de stega.
  *
+ * Images : en-tête Accept figé sans AVIF (image-format.ts), cdn.sanity.io renvoie donc toujours du WebP.
  * Chrome installé (/Applications/Google Chrome.app, channel « chrome ») via playwright-core.
  * Lecture seule : ce script n'écrit que dans <dossier>.
  */
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { chromium, type Page } from 'playwright-core'
+import { pinImageFormat } from './image-format'
 
 export const WIDTHS = [375, 768, 1280, 1440] as const
 
@@ -117,6 +119,8 @@ async function main() {
           reducedMotion: 'reduce',
           colorScheme: 'light',
         })
+        // Format d'image figé (WebP) : voir image-format.ts.
+        await pinImageFormat(context)
         const page = await context.newPage()
         await page.goto(`${base}${p.path}`, { waitUntil: 'networkidle' })
         await settle(page)

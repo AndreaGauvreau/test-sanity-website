@@ -18,6 +18,7 @@ import type { StoredChange, StoredJob, TextSnapshot, WrittenText } from '../stor
 import type { EditorGate } from './lock'
 import { checkRequestAgainst, ID_PATTERN, isPagePath, parseRequestShape, zoneLabel } from './request'
 import { runEditJob, timeoutMessage } from './run'
+import { mergeSummary } from './summary'
 import { INTERRUPTED_MESSAGE, STOPPED_MESSAGE, type EditorDeps } from './types'
 
 /**
@@ -74,6 +75,8 @@ export function createEditorService(deps: EditorDeps): EditorService {
   let running: string | null = null
   let idleWaiters: (() => void)[] = []
   let chain: Promise<unknown> = Promise.resolve()
+  /** Écritures du journal de consommation en cours (tâches de fond suivies : `idle` et `shutdown` les attendent). */
+  const journal = new Set<Promise<void>>()
 
   /** Opérations qui démarrent ou clôtent une modification : une à la fois. */
   const serial = <T>(task: () => Promise<T>): Promise<T> => {
@@ -103,6 +106,18 @@ export function createEditorService(deps: EditorDeps): EditorService {
     }
     if (open.change.status !== 'to-validate') throw busy()
     return open
+  }
+
+  /**
+   * La demande en cours a déjà son statut final (done, failed…) mais sa fin n'est pas encore inscrite (modification
+   * passée en to-validate, `running` libéré) : on attend cette fin, brève (le journal de consommation n'en fait plus
+   * partie), plutôt que de répondre 409 busy à un Validate / Cancel / ajustement envoyé dès que l'admin voit `done`.
+   */
+  async function settleFinished() {
+    if (!running) return
+    const stored = store.job(running)
+    if (stored && ['queued', 'running', 'waiting'].includes(stored.job.status)) return
+    await live.get(running)?.done
   }
 
   const jobOf = (id: string): StoredJob => {
@@ -199,8 +214,8 @@ export function createEditorService(deps: EditorDeps): EditorService {
         if (job.status === 'done') {
           entry.change.status = 'to-validate'
           if (internal.commit) entry.internal.commits.push(internal.commit)
-          const seen = new Set(entry.change.summary.map((item) => `${item.target}|${item.description}`))
-          for (const item of job.summary) if (!seen.has(`${item.target}|${item.description}`)) entry.change.summary.push(item)
+          // État FINAL : la ligne d'un ajustement remplace celle de la même propriété du même élément.
+          entry.change.summary = mergeSummary(entry.change.summary, job.summary)
           entry.change.checks = job.checks
         } else if (job.kind === 'request') {
           // La demande n'a rien appliqué : il n'y a pas de modification à valider.
@@ -213,12 +228,26 @@ export function createEditorService(deps: EditorDeps): EditorService {
         if (usage) entry.change.usage = usage
       })
     }
-    // Toute demande terminée passe au journal (sans `usage` : Claude n'a pas été appelé).
-    if (deps.usage) {
-      await deps.usage.record({ job: store.job(id)!.job, change: store.change(job.changeId)?.change ?? null }).catch((error) => {
-        log(`[engine] usage not recorded for ${id}: ${error instanceof Error ? error.message : String(error)}`)
-      })
-    }
+    // Toute demande terminée passe au journal (sans `usage` : Claude n'a pas été appelé). En tâche de fond SUIVIE : la
+    // demande est libérée sans attendre l'écriture dans Sanity (sinon ~1 s de 409 busy après done) ; une erreur est
+    // journalisée (le journal de secours du module usage garde l'entrée, rien n'est perdu).
+    recordUsage(id, job.changeId)
+  }
+
+  function recordUsage(id: string, changeId: string) {
+    const recorder = deps.usage
+    if (!recorder) return
+    // Copie figée : la modification peut être validée pendant l'écriture.
+    const input = structuredClone({ job: store.job(id)!.job, change: store.change(changeId)?.change ?? null })
+    const task: Promise<void> = Promise.resolve()
+      .then(() => recorder.record(input))
+      .catch((error) => log(`[engine] usage not recorded for ${id}: ${error instanceof Error ? error.message : String(error)}`))
+      .finally(() => void journal.delete(task))
+    journal.add(task)
+  }
+
+  const journalDone = async () => {
+    while (journal.size) await Promise.all([...journal])
   }
 
   // ─── Textes d'une modification (Cancel) ───────────────────────────────────
@@ -299,6 +328,7 @@ export function createEditorService(deps: EditorDeps): EditorService {
     request: (user, body) =>
       serial(async () => {
         const shape = parseRequestShape(body)
+        await settleFinished()
         assertCanStart(shape.changeId)
         // Un texte d'une demande précédente n'a pas pu être remis : on retente ; tant qu'il reste, rien ne démarre (une
         // nouvelle demande prendrait la valeur fausse pour « valeur d'avant »).
@@ -424,6 +454,7 @@ export function createEditorService(deps: EditorDeps): EditorService {
 
     validate: (user, changeId) =>
       serial(async () => {
+        await settleFinished()
         const stored = ID_PATTERN.test(changeId) ? store.change(changeId) : null
         if (!stored) throw notFound('This change no longer exists.')
         if (stored.change.status === 'validated') return stored.change
@@ -460,6 +491,7 @@ export function createEditorService(deps: EditorDeps): EditorService {
 
     cancel: (_user, changeId) =>
       serial(async () => {
+        await settleFinished()
         const stored = ID_PATTERN.test(changeId) ? store.change(changeId) : null
         if (!stored) throw notFound('This change no longer exists.')
         if (stored.change.status === 'cancelled') return stored.change
@@ -564,6 +596,7 @@ export function createEditorService(deps: EditorDeps): EditorService {
           await Promise.race([entry.done, new Promise((resolve) => setTimeout(resolve, timeoutMs).unref?.())])
         }
       }
+      await Promise.race([journalDone(), new Promise((resolve) => setTimeout(resolve, timeoutMs).unref?.())])
       await store.flush()
     },
 
@@ -572,12 +605,14 @@ export function createEditorService(deps: EditorDeps): EditorService {
       for (const stored of store.validatedChanges()) {
         if (!stored.change.commit) continue
         const change = stored.change
-        const first = change.summary[0]
+        // État FINAL après ajustements (un résumé ancien enregistré bout à bout est replié de la même façon).
+        const final = mergeSummary([], change.summary)
         const targets = [...new Set(change.targets.map((target) => target.label))].join(', ')
+        const described = final.length ? `${final[0].description}${final.length > 1 ? ` (+${final.length - 1} more)` : ''}` : ''
         items.push({
           changeId: change.id,
           commit: change.commit!,
-          title: first ? `${targets} — ${first.description}` : targets,
+          title: described ? `${targets} — ${described}` : targets,
           validatedBy: change.validatedBy?.name ?? '',
           validatedAt: change.validatedAt ?? '',
           files: await repo.commitFiles(change.commit!).catch(() => []),
@@ -586,9 +621,9 @@ export function createEditorService(deps: EditorDeps): EditorService {
       return items
     },
 
-    idle() {
-      if (!running && !queue.length) return Promise.resolve()
-      return new Promise((resolve) => idleWaiters.push(resolve))
+    async idle() {
+      if (running || queue.length) await new Promise<void>((resolve) => idleWaiters.push(resolve))
+      await journalDone()
     },
   }
   return service

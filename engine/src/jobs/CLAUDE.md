@@ -1,6 +1,6 @@
 # File et cycle d'une demande (`engine/src/jobs`) — LLM context
 
-> Propriétaire : engine-core · Figma : D1-D3, G1, G2 (états de la sidebar) · Mis à jour : 2026-09-27
+> Propriétaire : engine-core · Figma : D1-D3, G1, G2 (états de la sidebar) · Mis à jour : 2026-09-27 (journal en fond, résumé final)
 
 ## Utilité
 Le cœur de l'éditeur IA : la file (UNE demande à la fois, toutes personnes confondues), le cycle complet d'une demande
@@ -13,12 +13,13 @@ après un redémarrage, et le verrou partagé avec la publication. Pas de route 
 - `run.ts` — `runEditJob(ctx)` : le cycle d'une demande ; `MAX_ATTEMPTS = 2` ; `timeoutMessage`.
 - `request.ts` — `parseRequestShape` (zod, contrat EditRequest), `checkRequestAgainst` (zones.json), `isPagePath`, `ID_PATTERN`, `zoneLabel`.
 - `lock.ts` — `createEngineLock()` : `PublishLock` (lu par l'éditeur) + `runPublish` / `acquirePublish` (engine-publish), `EditorGate`.
-- `summary.ts` — `describeChanges` : résumé client calculé d'après les fichiers entiers (postcss) et les textes écrits.
+- `summary.ts` — `describeChanges` : résumé client calculé d'après les fichiers entiers (postcss) et les textes écrits ;
+  `mergeSummary` : résumé cumulé d'une modification à l'état FINAL (clé = élément + nature + lieu + propriété).
 - `site.ts` — `listPages` (routes PUBLIQUES de `src/app/(site)`, sans `DEV_ROUTES` : `/bench`, `/preview/*`), `isDevRoute`, `typecheck` (`next typegen` puis `tsc --noEmit` dans le clone), `siteDomainsOf` / `loadSiteDomains` (domaines du site, SEC-08).
 - `fake-claude.ts` — `createEngineFakeClaude(scenario)` : faux Claude du démarrage (`ENGINE_FAKE_CLAUDE`, FOLLOWUPS #12), scénarios css / text / ask / fail / budget / auto construits sur `createFakeAgent` / `fakeScenarios` d'engine-claude.
 - `types.ts` — `EditorDeps`, `JobRunAgent`, `UsageRecorder`, messages finaux du contrat.
 - `testing.ts` — banc d'essai (tests seulement) : espace temporaire façon Conduit, faux aperçu, faux signal, `makeBench`
-  (options `runAgent`, `listPages`, `fakeClaude`, `siteDomains`), `TEST_IDENTITY` (paire Ed25519 de test) et
+  (options `runAgent`, `listPages`, `fakeClaude`, `siteDomains`, `usageDelayMs` = journal de consommation lent), `TEST_IDENTITY` (paire Ed25519 de test) et
   `signedIdentity(user)` (en-têtes signés comme l'admin), `LEDE_MUTED` / `ledeColor(valeur)` (old_string UNIQUE de la
   couleur de `.lede` du Hero de test : `color: var(--color-text-muted);` seul y figure deux fois et l'outil Edit, le faux
   Claude et le hook refusent un old_string ambigu) — utilisés aussi par engine-publish et ask-ai.
@@ -37,7 +38,8 @@ après un redémarrage, et le verrou partagé avec la publication. Pas de route 
   `Preview`, `ToolAccess`), `git/`, `store/`, `content/`. Manifeste du site (`<ENGINE_SOURCE_REPO>/src/admin.config.ts`,
   `site.domain` et `site.url`) lu au démarrage par `loadSiteDomains` → `EditorDeps.siteDomains`.
 - Ports : `UsageRecorder.record({ job, change })` appelé à la fin de CHAQUE demande (sans `usage` si Claude n'a pas
-  tourné) ; `pendingTotal()` (« Validated — added to Publish (N changes) ») ; `PublishLock.isPublishing()`.
+  tourné), en TÂCHE DE FOND SUIVIE (copie figée, erreur journalisée ; `idle()` l'attend, `shutdown` aussi dans son délai) :
+  la demande est libérée (`running = null`) sans attendre l'écriture aiUsage dans Sanity ; `pendingTotal()` (« Validated — added to Publish (N changes) ») ; `PublishLock.isPublishing()`.
 
 ## Comportement
 **Refus d'une nouvelle demande** (synchrones, revérifiés juste avant l'inscription, aucune attente entre les deux) :
@@ -63,9 +65,13 @@ et essai 2 dans la session reprise (`buildRetryPrompt(retryProblems)`), sauf si 
 fois) ; budget passé au SDK = min(`EDITOR_MAX_BUDGET_USD`, plafond de la demande − déjà dépensé) ; plus de 2e essai si
 le cumul atteint `maxRequestUsd`. `EditJob.usage` = `toUsage` ; `PendingChange.usage` = somme de ses demandes.
 
-**Modification en attente** : créée avec la demande (`working`) ; demande `done` → `to-validate` (résumé cumulé, contrôles
-de la dernière) ; première demande sans effet → `cancelled` ; ajustement sans effet → reste `to-validate` telle qu'avant.
-Validate : tête = dernier commit de la modification (sinon 409 conflict), `squashSince(base)` au nom de l'auteur de la
+**Modification en attente** : créée avec la demande (`working`) ; demande `done` → `to-validate` (résumé cumulé à l'état
+FINAL par `mergeSummary` : la ligne d'un ajustement remplace celle de la même propriété du même élément ; contrôles de la
+dernière) ; première demande sans effet → `cancelled` ; ajustement sans effet → reste `to-validate` telle qu'avant.
+Validate, Cancel et nouvelle demande attendent d'abord (`settleFinished`) la fin d'inscription d'une demande dont le
+statut est déjà final (sinon 409 busy pendant la mise à jour de la modification). Titre de publication
+(`validatedDesign`, E1 / Diff) : « <éléments> — <1re ligne du résumé FINAL> (+N more) », résumé ancien replié par
+`mergeSummary([], …)`. Validate : tête = dernier commit de la modification (sinon 409 conflict), `squashSince(base)` au nom de l'auteur de la
 demande, message « Validated by … », statut `validated`, entrée de fil `validated`. Cancel : aucun texte retouché ailleurs
 depuis (valeur actuelle = dernière écrite ou déjà remise, sinon 409 conflict), tête = dernier commit (sinon 409), puis
 TEXTES d'abord (remis à leur valeur d'avant la PREMIÈRE demande qui les a écrits ; brouillon supprimé s'il n'existait pas
@@ -130,7 +136,10 @@ Messages finaux : `failed` « Couldn’t apply — nothing was changed. », `sto
 ## Points sensibles
 - JAMAIS d'écriture Sanity avant que l'instantané soit dans le magasin ; jamais de 2e essai après `fatal`.
 - JAMAIS un libellé ou un texte venu du navigateur dans le prompt (zones.json fait foi ; la note est citée par buildPrompt).
-- Ne pas ajouter d'`await` entre `assertCanStart` et `store.transact` dans `request`.
+- Ne pas ajouter d'`await` entre `assertCanStart` et `store.transact` dans `request` (`settleFinished` vient AVANT le
+  premier `assertCanStart`).
+- Ne jamais remettre `await deps.usage.record` dans `afterJob` : `running` resterait pris le temps de l'écriture Sanity
+  (~1 s de 409 busy après done, vu en vérification réelle).
 - Ne jamais faire rendre l'aperçu (measure, `signal.waitFresh`) sans passer par `waitFreshChecked` (SEC-07).
 - `toolAccess` toujours avec `lint` (SEC-07) ; `hardcoded` passé par RÉFÉRENCE (jamais une copie).
 - Tout texte de Claude montré au client passe par `toClient` (= `clientMessage(…, allowedDomains)`, SEC-08).

@@ -86,7 +86,7 @@ export function EditorSidebar() {
 
   return (
     <aside id={`${id}-sidebar`} className={styles.sidebar} style={{ width }} aria-label="Claude">
-      <EditorHeader backHref={backHref} locked={locked} model={c.model?.id ?? null} usage={c.conversationUsage} />
+      <EditorHeader backHref={backHref} locked={locked} model={c.model ?? null} usage={c.conversationUsage} />
 
       <div ref={scrollRef} className={styles.scroll} onScroll={onScroll}>
         {c.load.status === 'loading' ? (

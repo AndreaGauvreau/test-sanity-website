@@ -36,3 +36,22 @@
   border-radius: var(--k-radius-sm);
   background-color: var(--k-bg-subtle);
 }
+
+/* Libellé du modèle fourni par le moteur ; faux Claude signalé en jaune (avertissement). */
+.model {
+  flex-shrink: 1;
+  min-width: 0;
+  margin-right: var(--k-space-6);
+  overflow: hidden;
+  font: var(--k-text-caption);
+  color: var(--k-text-secondary);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.model[data-fake='true'] {
+  padding: 0 var(--k-space-6);
+  border-radius: var(--k-radius-sm);
+  background-color: var(--k-bg-tint-warning);
+  color: var(--k-interactive-warning);
+}

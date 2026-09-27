@@ -110,3 +110,25 @@ export function describeChanges(input: {
   const seen = new Set<string>()
   return items.filter((item) => !seen.has(`${item.target}|${item.description}`) && seen.add(`${item.target}|${item.description}`)).slice(0, MAX_ITEMS)
 }
+
+/** Clé d'une ligne de résumé : élément, nature, lieu et propriété (« color (hover) », « Text »…), sans la valeur. */
+const summaryKey = (item: ChangeSummaryItem) => `${item.target}|${item.kind}|${item.where}|${item.description.split(' → ')[0]}`
+
+/**
+ * Résumé cumulé d'une modification : les lignes d'un ajustement REMPLACENT (à leur place) celles de la même propriété du
+ * même élément ; les autres s'ajoutent. Le résumé montre donc l'état FINAL (« color → Accent », pas « color → Text » puis
+ * « color → Accent »). Sert aussi à relire un résumé ancien enregistré bout à bout (`mergeSummary([], ancien)`).
+ */
+export function mergeSummary(previous: readonly ChangeSummaryItem[], next: readonly ChangeSummaryItem[]): ChangeSummaryItem[] {
+  const merged: ChangeSummaryItem[] = []
+  const at = new Map<string, number>()
+  for (const item of [...previous, ...next]) {
+    const key = summaryKey(item)
+    const index = at.get(key)
+    if (index === undefined) {
+      at.set(key, merged.length)
+      merged.push(item)
+    } else merged[index] = item
+  }
+  return merged
+}

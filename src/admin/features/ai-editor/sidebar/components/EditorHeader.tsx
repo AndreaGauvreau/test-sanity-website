@@ -3,6 +3,11 @@ import type { Usage } from '@/admin/core/contracts'
 import { Button, ButtonContent, buttonClassName, ModelUsage } from '@/admin/ui'
 import styles from './EditorHeader.module.css'
 
+/** Faux Claude (moteur simulé / mode auto) : repéré par son libellé ou son id, signalé visiblement. */
+export function isFakeModel(model: { id: string; label?: string | null }): boolean {
+  return /fake/i.test(model.label ?? '') || /fake/i.test(model.id)
+}
+
 /**
  * En-tête de la sidebar Claude (Figma « Editor header ») : « ‹ Admin » (retour à l'écran d'origine), « Publish ↗ »
  * (E1, grisé pendant que Claude travaille — state=locked), puis la consommation cumulée de la conversation.
@@ -17,8 +22,9 @@ export function EditorHeader({
   backHref: string
   publishHref?: string
   locked: boolean
-  /** Id du modèle de la conversation (null pendant le chargement). */
-  model: string | null
+  /** Modèle de la conversation tel que fourni par le moteur (null pendant le chargement). Le libellé du moteur
+   *  prime sur l'id (ex. « Fake Claude (auto) — no real call » quand le faux Claude est actif). */
+  model: { id: string; label?: string | null } | null
   usage: Usage | null
 }) {
   return (
@@ -43,7 +49,20 @@ export function EditorHeader({
         )}
       </div>
       <div className={styles.usage} aria-label="Conversation usage">
-        {model ? <ModelUsage model={model} usage={usage} size="small" /> : <span className={styles.placeholder} aria-hidden="true" />}
+        {model ? (
+          model.label ? (
+            <>
+              <span className={styles.model} data-fake={isFakeModel(model) ? 'true' : undefined} title={model.label}>
+                {model.label}
+              </span>
+              <ModelUsage model={model.id} usage={usage} size="small" showModel={false} />
+            </>
+          ) : (
+            <ModelUsage model={model.id} usage={usage} size="small" />
+          )
+        ) : (
+          <span className={styles.placeholder} aria-hidden="true" />
+        )}
       </div>
     </header>
   )
