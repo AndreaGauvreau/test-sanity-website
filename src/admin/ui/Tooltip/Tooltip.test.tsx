@@ -44,8 +44,11 @@ describe('Tooltip', () => {
     act(() => vi.advanceTimersByTime(250))
     expect(screen.getByRole('tooltip').textContent).toContain('Later')
     fireEvent.pointerLeave(trigger, { pointerType: 'mouse' })
+    // Fermeture décidée tout de suite (plus de lien aria-describedby) ; le retrait du DOM suit l'animation de sortie,
+    // qui peut dépasser la seconde par défaut de waitFor quand toute la suite tourne (FOLLOWUPS #43).
+    expect(trigger.getAttribute('aria-describedby')).toBeNull()
     vi.useRealTimers()
-    await waitFor(() => expect(screen.queryByRole('tooltip')).toBeNull())
+    await waitFor(() => expect(screen.queryByRole('tooltip')).toBeNull(), { timeout: 5000 })
   })
 
   it('IconButton : infobulle = nom accessible, pas de aria-describedby en double', async () => {
