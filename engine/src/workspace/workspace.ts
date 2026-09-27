@@ -57,6 +57,9 @@ export const PREVIEW_ENV_KEYS = [
   'REACT_EDITOR',
 ] as const
 
+/** Argument de commande shell affichable tel quel (entre apostrophes s'il contient autre chose que des caractères sûrs). */
+export const shellArg = (value: string) => (/^[\w@%+=:,./-]+$/.test(value) ? value : `'${value.replace(/'/g, `'\\''`)}'`)
+
 const real = (dir: string) => {
   try {
     return realpathSync(dir)
@@ -237,7 +240,17 @@ export async function syncWorkspace(config: EngineConfig, deps: WorkspaceDeps = 
     return { from: draft, to: target, changed: false }
   }
   if (!(await work.isAncestor(draft, target))) {
-    throw new WorkspaceError(`The source branch "${branch}" has diverged from the engine's main: a developer must reconcile them.`)
+    // Cas courant en local (ENGINE_GIT_PUSH=0) : une publication de code a fait avancer le main du clone, et ces commits
+    // ne sont jamais revenus dans la source. On ne l'écrit pas nous-mêmes (aucune écriture dans le dépôt source) : on
+    // donne les commandes exactes au développeur.
+    const ahead = await work.run(['rev-list', '--count', `refs/remotes/origin/${branch}..${draft}`]).catch(() => '?')
+    throw new WorkspaceError(
+      `The engine's main has ${ahead} commit(s) that the source branch "${branch}" doesn't have (usually published AI ` +
+        `changes). Bring them into the source, commit, then sync again:\n` +
+        `  cd ${shellArg(meta.sourceRepo)}\n` +
+        `  git fetch ${shellArg(config.paths.repo)} +main:refs/remotes/engine/main\n` +
+        `  git merge engine/main`,
+    )
   }
   const lockBefore = await work.run(['rev-parse', 'HEAD:package-lock.json']).catch(() => '')
   await work.run(['merge', '--quiet', '--ff-only', target])

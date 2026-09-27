@@ -8,7 +8,7 @@ vérification au démarrage du moteur (`checkWorkspace`). Le dépôt source (cel
 
 ## Fichiers
 - `setup.ts` — point d'entrée CLI (lit `engine/.env.local` par tsx) ; `pendingWork(config)` (ce qui bloque une sync).
-- `workspace.ts` — `setupWorkspace`, `syncWorkspace`, `checkWorkspace`, `engineRunning`, `previewEnvFile`, `dotenvValue`, `npmInstall`, `readMeta`, `sourceBranchOf`, `sourceDirtyCount`, `PID_FILE`, `META_FILE`.
+- `workspace.ts` — `setupWorkspace`, `syncWorkspace`, `checkWorkspace`, `engineRunning`, `previewEnvFile`, `dotenvValue`, `npmInstall`, `readMeta`, `sourceBranchOf`, `sourceDirtyCount`, `shellArg`, `PID_FILE`, `META_FILE`.
 - `workspace.test.ts` — dépôts git temporaires, installation simulée.
 
 ## Contrats
@@ -34,14 +34,17 @@ sans lockfile) seulement si `node_modules` manque, environnement sans secrets ; 
 commit de base).
 **sync** : refusée si le moteur tourne (`data/engine.pid` vivant), si une demande / modification / modification validée
 / publication attend, si draft ≠ main, si la copie est sale ; `fetch` puis avance rapide de draft et main ; divergence
-refusée (« a developer must reconcile ») ; réinstallation si `package-lock.json` a changé.
+refusée avec les commandes exactes à lancer dans la source (`git fetch <clone> +main:refs/remotes/engine/main` puis
+`git merge engine/main`) ; réinstallation si `package-lock.json` a changé.
+Cas typique en local (ENGINE_GIT_PUSH=0) : une publication de code avance le `main` du clone, jamais la source ; la sync
+suivante diverge tant que ces commits ne sont pas ramenés (vu le 2026-09-28 avec la publication-1).
 
 ## Forces
 Idempotent et testé sur de vrais dépôts ; valeurs dotenv sûres (une ligne, guillemets choisis, refus sinon).
 
 ## Faiblesses et limites connues
 - Seuls les COMMITS de la source vont dans le clone : un site modifié mais non commité n'est pas ce que l'aperçu montre.
-- `sync` ne rebase jamais : une divergence demande une intervention humaine.
+- `sync` ne rebase jamais : une divergence demande une intervention humaine (le message donne les commandes).
 - `npm ci` tourne en premier plan (sortie de npm affichée).
 
 ## Points sensibles

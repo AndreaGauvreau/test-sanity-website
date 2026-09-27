@@ -20,6 +20,10 @@ npm run engine:setup -- sync   # avance main/draft du clone sur la branche sourc
 
 Le clone ne voit que le code COMMITÉ de la source : committer avant `sync`.
 
+Si un moteur local a publié du code (Publish depuis l'admin), ces commits sont dans le clone mais pas dans la source :
+`sync` refuse alors (« … commit(s) that the source branch doesn't have ») et affiche les commandes pour les ramener
+(`git fetch ../sanity-test-engine/repo +main:refs/remotes/engine/main` puis `git merge engine/main`).
+
 ## Se connecter
 
 - En local, `ADMIN_DEV_AUTOLOGIN=kuartz` (dans `.env.local`) ouvre une session de développement sans connexion Sanity ;

@@ -8,7 +8,7 @@ import { afterEach, beforeEach, describe, it } from 'vitest'
 import { readEngineConfig, type EngineConfig } from '../config'
 import { pendingWork } from './setup'
 import { TEST_IDENTITY } from '../jobs/testing'
-import { checkWorkspace, dotenvValue, previewEnvFile, readMeta, setupWorkspace, syncWorkspace, WorkspaceError } from './workspace'
+import { checkWorkspace, dotenvValue, previewEnvFile, readMeta, setupWorkspace, shellArg, syncWorkspace, WorkspaceError } from './workspace'
 
 /** Mise en place de l'espace de travail sur des dépôts git TEMPORAIRES (jamais le vrai dépôt source). */
 
@@ -148,7 +148,22 @@ describe('syncWorkspace', () => {
     await writeFile(path.join(source, 'other.txt'), 'o')
     git(source, 'add', '--all')
     git(source, 'commit', '--quiet', '-m', 'other')
-    await assert.rejects(syncWorkspace(config, deps()), /diverged/)
+    await assert.rejects(syncWorkspace(config, deps()), (error: Error) => {
+      assert.match(error.message, /1 commit\(s\) that the source branch/)
+      assert.ok(error.message.includes(`git fetch ${repo.dir} +main:refs/remotes/engine/main`), error.message)
+      assert.ok(error.message.endsWith('git merge engine/main'))
+      return true
+    })
+    // Les commandes données ramènent bien la source au niveau du clone : la synchronisation passe ensuite.
+    git(source, 'fetch', '--quiet', repo.dir, '+main:refs/remotes/engine/main')
+    git(source, 'merge', '--quiet', '--no-edit', 'engine/main')
+    assert.equal((await syncWorkspace(config, deps())).changed, true)
+  })
+
+  it('shellArg : chemins sûrs tels quels, sinon entre apostrophes', () => {
+    assert.equal(shellArg('/Users/a/sanity-test-engine/repo'), '/Users/a/sanity-test-engine/repo')
+    assert.equal(shellArg('/tmp/my repo'), "'/tmp/my repo'")
+    assert.equal(shellArg("/tmp/it's"), "'/tmp/it'\\''s'")
   })
 })
 
