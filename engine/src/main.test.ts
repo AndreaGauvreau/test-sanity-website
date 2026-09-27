@@ -179,6 +179,57 @@ describe('startEngine', () => {
     assert.ok(!onDisk.includes(key) && !JSON.stringify(saved.json).includes(key) && !lines.join('\n').includes(key))
   })
 
+  it('AI settings (B5) : la demande SUIVANTE prend le nouveau modèle et le nouvel effort, une demande en cours garde les siens ; /health suit', async () => {
+    const calls: { model: string; effort: string }[] = []
+    let release!: () => void
+    const gate = new Promise<void>((resolve) => (release = resolve))
+    const agent = createFakeAgent(() => fakeScenarios.nothingChanged())
+    const { call, ws } = await boot(
+      { EDITOR_MODEL: 'claude-opus-5-5', EDITOR_EFFORT: 'medium' },
+      {
+        runAgent: async (run, limits) => {
+          calls.push({ model: limits.model, effort: limits.effort })
+          if (calls.length === 1) await gate
+          return agent(run)
+        },
+      },
+    )
+    await engine!.context.preview.waitReady(2_000)
+    const initial = await call('GET', '/claude/settings')
+    assert.deepEqual([initial.status, initial.json.source, initial.json.current], [200, 'default', { model: 'claude-opus-5-5', effort: 'medium' }])
+    assert.equal(((await call('GET', '/health')).json as EngineHealth).claude.editorModel, 'claude-opus-5-5')
+
+    // 1. Fable 5.1 / high, puis une demande (bloquée dans Claude le temps de changer encore les réglages).
+    assert.equal((await call('POST', '/claude/settings', { model: 'claude-fable-5-1', effort: 'high' })).status, 200)
+    assert.equal(((await call('GET', '/health')).json as EngineHealth).claude.editorModel, 'claude-fable-5-1')
+    const first = await call('POST', '/editor/requests', editRequest())
+    assert.equal(first.status, 201)
+    for (let i = 0; i < 500 && calls.length === 0; i++) await new Promise((resolve) => setTimeout(resolve, 5))
+    // 2. Pendant la demande : Sonnet 5 / low. La demande en cours ne change pas.
+    const changed = await call('POST', '/claude/settings', { model: 'claude-sonnet-5', effort: 'low' })
+    assert.deepEqual([changed.status, changed.json.current], [200, { model: 'claude-sonnet-5', effort: 'low' }])
+    assert.equal(engine!.context.settings.model, 'claude-sonnet-5')
+    release()
+    await engine!.context.editor.idle()
+    const firstJob = (await call('GET', `/editor/jobs/${(first.json as EditJob).id}`)).json as EditJob
+    assert.equal(firstJob.status, 'rejected')
+    // Coût et modèle journalisés : ceux de la demande (Fable 5.1), pas ceux choisis pendant qu'elle tournait.
+    assert.equal(firstJob.usage?.model, 'claude-fable-5-1')
+    // 3. Demande suivante : nouveaux réglages, sans redémarrage.
+    assert.equal((await call('POST', '/editor/requests', editRequest())).status, 201)
+    await engine!.context.editor.idle()
+    assert.deepEqual(calls, [
+      { model: 'claude-fable-5-1', effort: 'high' },
+      { model: 'claude-sonnet-5', effort: 'low' },
+    ])
+    assert.equal(((await call('GET', '/health')).json as EngineHealth).claude.editorModel, 'claude-sonnet-5')
+    // Corps invalide : 400, rien ne change ; fichier écrit dans data/.
+    const bad = await call('POST', '/claude/settings', { model: 'claude-sonnet-5', effort: 'low', maxTurns: 99 })
+    assert.deepEqual([bad.status, bad.json.error.code], [400, 'bad_request'])
+    const onDisk = JSON.parse(await import('node:fs/promises').then((fs) => fs.readFile(path.join(ws.workspace, 'data', 'ai-settings.json'), 'utf8')))
+    assert.deepEqual([onDisk.model, onDisk.effort], ['claude-sonnet-5', 'low'])
+  })
+
   it('FOLLOWUPS #14 : l’arrêt attend le crochet stop des modules avant d’écrire le magasin', async () => {
     const order: string[] = []
     const slow: EngineModule = {

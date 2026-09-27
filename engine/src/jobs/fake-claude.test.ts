@@ -18,7 +18,7 @@ afterEach(async () => {
 
 async function run(scenario: Parameters<typeof createEngineFakeClaude>[0], request = editRequest()) {
   const fake = createEngineFakeClaude(scenario)
-  bench = await makeBench([], { runAgent: (agentRun) => fake(agentRun, { maxBudgetUsd: 1 }), fakeClaude: scenario })
+  bench = await makeBench([], { runAgent: (agentRun) => fake(agentRun, { maxBudgetUsd: 1, model: 'claude-opus-5-5', effort: 'medium' }), fakeClaude: scenario })
   const job = await bench.service.request({ id: 'u-client', name: 'Marie Client', email: 'marie@conduit.test', role: 'client' }, request)
   return { job, bench }
 }
@@ -83,7 +83,7 @@ describe('ENGINE_FAKE_CLAUDE passe par le hook avec pré-validation (SEC-07, FOL
       runAgent: (agentRun) => {
         lints.push(agentRun.toolAccess.lint)
         const lint = agentRun.toolAccess.lint!
-        return fake({ ...agentRun, toolAccess: { ...agentRun.toolAccess, lint: { ...lint, scope: { style: false, text: true } } } }, { maxBudgetUsd: 1 })
+        return fake({ ...agentRun, toolAccess: { ...agentRun.toolAccess, lint: { ...lint, scope: { style: false, text: true } } } }, { maxBudgetUsd: 1, model: 'claude-opus-5-5', effort: 'medium' })
       },
     })
     const before = await readFile(path.join(bench.repoDir, HERO_CSS), 'utf8')

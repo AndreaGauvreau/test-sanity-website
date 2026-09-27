@@ -1,6 +1,6 @@
 # Contrats partagés — LLM context
 
-> Propriétaire : orchestrateur · Figma : tous les écrans (via `docs/admin/figma/`) · Mis à jour : 2026-09-27
+> Propriétaire : orchestrateur · Figma : tous les écrans (via `docs/admin/figma/`) · Mis à jour : 2026-09-28 (réglages de l'IA, tarifs)
 
 ## Utilité
 Les types et petites fonctions pures que partagent l'admin (Next), le moteur IA (`engine/`) et le site. C'est la
@@ -13,7 +13,8 @@ rester utilisable partout (composants serveur et client, route handlers, moteur,
 - `session.ts` — `Session` (serveur, avec le jeton Sanity de l'utilisateur), `PublicSession` (client, sans jeton), `EngineUser` (identité signée envoyée au moteur).
 - `manifest.ts` — `AdminConfig` : pages, sections, champs (`FieldDef`), collections, modèles SEO d'article. Instance : `src/admin.config.ts`.
 - `zones.ts` — zones de l'éditeur IA (`ZonesFile`, `ZoneDef`, liaisons de texte Sanity ou code), `TokensFile`. Instances : `src/editor/zones.json`, `src/styles/tokens.json`.
-- `engine.ts` — API HTTP du moteur : santé, connexion à Claude (`ClaudeAccessState`, `ClaudeAccessInput`, routes `/claude/access*`, validation pure `claudeApiKeyProblem` / `cleanClaudeApiKey` / `claudeKeyHint` partagée par l'écran, le mock et le moteur), éditeur (demandes, modifications en attente, fil), publication, versions, Ask AI, journal `aiUsage`. Les routes sont listées en commentaire à côté des types.
+- `engine.ts` — API HTTP du moteur : santé, connexion à Claude (`ClaudeAccessState`, `ClaudeAccessInput`, routes `/claude/access*`, validation pure `claudeApiKeyProblem` / `cleanClaudeApiKey` / `claudeKeyHint` partagée par l'écran, le mock et le moteur), réglages de l'IA de B5 (`AiModelId`, `AiEffort` = `EffortLevel` de l'Agent SDK 0.3.283, `AI_MODELS` ordonnés avec libellés, `AI_EFFORTS`, `AiSettings`, `AiSettingsState`, `DEFAULT_AI_SETTINGS`, validation stricte pure `aiSettingsProblem` / `isAiModelId` / `isAiEffort` partagée par le moteur et le mock, routes `/claude/settings`), éditeur (demandes, modifications en attente, fil), publication, versions, Ask AI, journal `aiUsage`. Les routes sont listées en commentaire à côté des types.
+- `pricing.ts` — `PRICES_PER_MTOK` (table gelée, $ par million de jetons), `priceOf` : SOURCE UNIQUE des tarifs, lue par le moteur (coût estimé, `complete()`, via la réexportation `engine/src/claude/pricing.ts`) et par l'admin (prix de la carte AI settings). Déplacée ici depuis le moteur le 2026-09-28.
 - `format.ts` — formats de la consommation (« 18.2k input · 1.1k output · $0.07 », « Opus 5.5 », durées, cumul).
 - `index.ts` — exports publics.
 
@@ -23,7 +24,7 @@ rester utilisable partout (composants serveur et client, route handlers, moteur,
 - Toutes les routes du contrat sont implémentées côté moteur et côté moteur simulé (dont `/publish/stage` et `/publish/unstage`, vague 3b).
 
 ## Comportement
-Pas de logique métier ici, sauf `can()`, les formats et `sumUsage()`. Les messages destinés au client (erreurs du moteur,
+Pas de logique métier ici, sauf `can()`, les formats, `sumUsage()`, `priceOf()` et les validations pures (`claudeApiKeyProblem`, `aiSettingsProblem`). Les messages destinés au client (erreurs du moteur,
 libellés) sont en anglais ; les commentaires en français.
 
 ## Forces
@@ -40,6 +41,8 @@ champ à champ ; les ajouts se font en champs facultatifs, sans casser les conso
 - `AiUsageDoc._id` commence par `aiUsage.` : le point rend le document privé dans un dataset public. Ne pas changer ce préfixe.
 
 ## Pièges
+- `AiSettingsInEffect.model` est une CHAÎNE (EDITOR_MODEL peut désigner un modèle hors liste) ; seul `AiSettings.model` (corps du POST) est restreint à `AiModelId`.
+- Ajouter un modèle à `AI_MODELS` : lui donner aussi un tarif (`pricing.ts`) et un libellé (`format.ts`) — le test « les trois modèles de B5 » de `engine/src/claude/cost.test.ts` le vérifie.
 - `CheckId` n'a pas d'id `placement` (information interne des garde-fous) : l'ajouter seulement si l'admin doit l'afficher.
 - `POST /publish` : `expected` accepte `<id>` ou `<id>@<updatedAt>` (contenu), `<changeId>` ou `<changeId>@<commit>` (design) ; la forme avec @ refuse aussi un élément modifié depuis.
 

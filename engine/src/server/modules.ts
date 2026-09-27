@@ -1,3 +1,4 @@
+import type { AiSettingsService } from '../access/ai-settings'
 import type { ClaudeAccessService } from '../access/service'
 import type { AccessResult, AgentSettings } from '../claude'
 import type { EngineConfig } from '../config'
@@ -33,7 +34,13 @@ export type EngineContext = {
   readonly access: AccessResult
   /** Connexion à Claude rechargeable (engine/src/access) : routes `/claude/access*`, test de connexion. */
   claudeAccess: ClaudeAccessService
-  settings: AgentSettings
+  /** Réglages de l'IA rechargeables (modèle et effort de l'éditeur, B5) : routes `/claude/settings`. */
+  aiSettings: AiSettingsService
+  /**
+   * Réglages de l'agent EN COURS (accesseur : modèle et effort suivent `aiSettings`). Lire au moment de l'appel, jamais
+   * copier à l'enregistrement d'un module.
+   */
+  readonly settings: AgentSettings
   /** Ports que les modules branchent (appelés par l'éditeur). */
   ports: {
     /** Journal de consommation, appelé à la fin de chaque demande (engine-publish). */

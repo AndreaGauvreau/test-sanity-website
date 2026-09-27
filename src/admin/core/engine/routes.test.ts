@@ -28,6 +28,8 @@ describe('liste blanche du relais', () => {
       ['POST', 'claude/access'],
       ['POST', 'claude/access/test'],
       ['POST', 'claude/access/clear'],
+      ['GET', 'claude/settings'],
+      ['POST', 'claude/settings'],
     ]
     for (const [method, path] of cases) expect(matchEngineRoute(method, path.split('/')), `${method} ${path}`).not.toBeNull()
     expect(ENGINE_ROUTES).toHaveLength(cases.length)
@@ -38,6 +40,13 @@ describe('liste blanche du relais', () => {
     expect(matchEngineRoute('POST', ['claude', 'access', 'clear'])?.route.capability).toBe('ai.access')
     expect(matchEngineRoute('GET', ['claude', 'access', 'test'])).toBeNull()
     expect(matchEngineRoute('POST', ['claude', 'access', 'key'])).toBeNull()
+  })
+  it('réglages de l’IA (B5 · AI settings) : droit ai.access, GET/POST seulement, jamais « admin local »', () => {
+    expect(matchEngineRoute('GET', ['claude', 'settings'])?.route.capability).toBe('ai.access')
+    expect(matchEngineRoute('POST', ['claude', 'settings'])?.route.capability).toBe('ai.access')
+    expect(matchEngineRoute('POST', ['claude', 'settings', 'reset'])).toBeNull()
+    expect(matchEngineRoute('PUT', ['claude', 'settings'])).toBeNull()
+    expect(requiresLocalAdmin('POST', ['claude', 'settings'], '{"kind":"subscription"}')).toBe(false)
   })
   it('« Use my Claude subscription » exige un admin local ; la clé API non', () => {
     expect(requiresLocalAdmin('POST', ['claude', 'access'], '{"kind":"subscription"}')).toBe(true)

@@ -1,6 +1,6 @@
 # core/engine — LLM context
 
-> Propriétaire : auth-core · Figma : — (sert D1-D3, G1-G4, E1, E2, B5) · Mis à jour : 2026-09-27 (vague 3b-2, FOLLOWUPS #39 ; routes `/claude/access*`)
+> Propriétaire : auth-core · Figma : — (sert D1-D3, G1-G4, E1, E2, B5) · Mis à jour : 2026-09-27 (vague 3b-2, FOLLOWUPS #39 ; routes `/claude/access*` ; 2026-09-28 : `/claude/settings`)
 > Possède aussi : `src/app/admin/api/engine/[...path]/route.ts` (relais). Voir « Propriété des mocks ».
 
 ## Utilité
@@ -45,7 +45,8 @@ SIMULÉ (`ENGINE_MOCK=1`) pour construire les écrans sans moteur. Aucun accès 
   job(id), answer(id, answers), stop(id), validate(changeId), cancel(changeId), shotUrl(jobId, file)}`,
   `.publish.{status(), run(expected), retry(), discard(item), stage({ kind: 'unpublish' | 'delete', id }), unstage(id),
   diff(changeId)}`, `.versions.{list(), rollback(number)}`, `.ask(request)`, `.claude.{access(), save(input), test(),
-  clear()}` (B5 · Claude connection : la clé part une fois en POST, seule `keyHint` revient) ; chaque appel accepte
+  clear(), settings(), saveSettings(input)}` (B5 · Claude connection : la clé part une fois en POST, seule `keyHint` revient ;
+  AI settings : modèle et effort de l'éditeur, `AiSettingsState`) ; chaque appel accepte
   `{ signal?, fetchImpl? }` et lève `EngineClientError { status, code, message }`.
 - Exports pour le moteur (`src/admin/core/engine/signature.ts`, import relatif) :
   - `verifyEngineUser(headers: { get(name): string | null } | Record<string, string | string[] | undefined>, publicKeySpkiB64: string, nowSeconds?: number): Promise<EngineUser | null>`
@@ -90,7 +91,7 @@ droits ; le gestionnaire reçoit segments, paramètres validés, corps parsé et
 | `mock/index.ts`, `mock/health.ts`, `mock/types.ts`, `mock/not-implemented.ts` | auth-core | répartiteur par premier segment ; GET /health = `mockEditorHealth()` (scénario de l'éditeur simulé) |
 | `mock/editor.ts` | **editor-sidebar** | implémenté : `handleEditor` (routes `/editor/*`), cycle d'une demande rejoué à l'horloge, scénarios `ENGINE_MOCK_EDITOR` / `setEditorMockScenario()` (défaut « ready ») ; monde sur `globalThis` |
 | `mock/publish.ts` | **publish-ui** | implémenté : `handlePublish` (routes `/publish/*`, dont `stage` / `unstage`, et `/versions/*`), scénarios `pending`, `content-only`, `idle`, `publishing`, `published`, `failed`, `pending-fails`, `hosted`, `empty`, `offline` (`ENGINE_MOCK_PUBLISH` ou `POST /admin/publish/mock-scenario`) |
-| `mock/claude.ts` | **code-usage** | implémenté : `handleClaude` (routes `/claude/access*`), mêmes règles que le moteur (validation du contrat, clé jamais renvoyée), scénarios `ENGINE_MOCK_CLAUDE` = `local` (défaut), `logged-out`, `hosted`, `env-key` ; une clé finissant par `FAIL0` échoue au test |
+| `mock/claude.ts` | **code-usage** | implémenté : `handleClaude` (routes `/claude/access*` et `/claude/settings`), mêmes règles que le moteur (validation du contrat : `claudeApiKeyProblem`, `aiSettingsProblem` → 400 ; clé jamais renvoyée), scénarios `ENGINE_MOCK_CLAUDE` = `local` (défaut), `logged-out`, `hosted`, `env-key` ; une clé finissant par `FAIL0` échoue au test ; réglages de l'IA en mémoire (défaut Opus 5.5 / medium, Ask AI Haiku 4.5), `ENGINE_MOCK_CLAUDE_SETTINGS=fail` fait échouer Fable 5.1 + Max (500) pour voir l'erreur de l'écran |
 | `mock/ask.ts` | **ask-ai** | implémenté : `handleAsk` (route `/ask`), réponses et liens du catalogue du rôle, déclencheurs `[mock:error]`, `[mock:slow]` |
 
 Un gestionnaire peut garder un état en mémoire (redémarrage du serveur = remise à zéro). Aucun n'écrit dans Sanity ni git.
@@ -144,8 +145,9 @@ Un gestionnaire peut garder un état en mémoire (redémarrage du serveur = remi
 
 `npx vitest run src/admin/core/engine` — Ed25519 (signature / vérification, en-têtes `Headers` et Node, interopérabilité
 `node:crypto`, HMAC du Bearer refusé (SEC-10), autre clé, rôle retouché, signature altérée, dates : exp, iat futur,
-durée > 120 s, marge de 30 s, clé PEM, clé absente) ; les 23 routes du contrat reconnues dont `publish/stage`,
-`publish/unstage` et `claude/access*` (droit `ai.access`, abonnement réservé à un admin local), routes / méthodes / segments hostiles refusés ; transport (en-têtes signés avec la clé d'identité,
+durée > 120 s, marge de 30 s, clé PEM, clé absente) ; les 25 routes du contrat reconnues dont `publish/stage`,
+`publish/unstage`, `claude/access*` (droit `ai.access`, abonnement réservé à un admin local) et `claude/settings` (GET/POST,
+`ai.access` : editor → 403 sans appel, 400 du moteur relayé), routes / méthodes / segments hostiles refusés ; transport (en-têtes signés avec la clé d'identité,
 filtrage, 404/403 sans appel, 400/413, relais d'erreur, 401 → 503, 502/504, PNG, configuration ou clé absente → 503) ;
 moteur simulé (santé cohérente, GET /health = `mockEditorHealth()` selon le scénario de l'éditeur, publication simulée
 relayée, droits, refus en production) ; client navigateur (URL, POST, stage / unstage, erreurs). Jeton d'aperçu :

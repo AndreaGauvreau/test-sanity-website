@@ -15,9 +15,11 @@ import type { PublishLock } from './lock'
 
 /**
  * Lance Claude pour un essai. `limits.maxBudgetUsd` : plafond du SDK pour CET appel, réduit à ce qui reste du plafond
- * de la demande. Le faux Claude d'engine-claude (`createFakeAgent`) convient tel quel (il ignore `limits`).
+ * de la demande ; `limits.model` / `limits.effort` : réglages de la DEMANDE, lus à son départ (B5 · AI settings,
+ * rechargement à chaud ; les deux essais d'une demande ont les mêmes). Le faux Claude d'engine-claude
+ * (`createFakeAgent`) convient tel quel (il ignore `limits`).
  */
-export type JobRunAgent = (run: AgentRun, limits: { maxBudgetUsd: number }) => Promise<AgentResult>
+export type JobRunAgent = (run: AgentRun, limits: { maxBudgetUsd: number; model: string; effort: AgentSettings['effort'] }) => Promise<AgentResult>
 
 /** Port de consommation (implémenté par engine-publish : document `aiUsage`), appelé à la fin de CHAQUE demande. */
 export type UsageRecorder = { record(input: { job: EditJob; change: PendingChange | null }): Promise<void> }
@@ -40,6 +42,10 @@ export type EditorDeps = {
   runAgent: JobRunAgent
   /** Résultat de resolveClaudeAccess (au démarrage). */
   access: AccessResult
+  /**
+   * Réglages de l'agent. main.ts passe un ACCESSEUR (modèle et effort choisis dans l'admin, B5) : `runEditJob` le lit
+   * UNE fois au départ de chaque demande.
+   */
   settings: AgentSettings
   /** Plafond du cumul d'une demande (tous essais), en dollars. */
   maxRequestUsd: number

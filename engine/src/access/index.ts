@@ -1,5 +1,6 @@
 import type { Router } from '../server/http'
 import type { EngineContext, EngineModule } from '../server/modules'
+import type { AiSettingsService } from './ai-settings'
 import type { ClaudeAccessService } from './service'
 
 /**
@@ -16,12 +17,22 @@ export function registerAccessRoutes(router: Router, service: ClaudeAccessServic
   router.add({ method: 'POST', path: '/claude/access/clear', capability: 'ai.access', handler: async () => ({ json: await service.clear() }) })
 }
 
+/**
+ * Réglages de l'IA (B5 · « AI settings ») : modèle et niveau de réflexion de l'éditeur. Même droit `ai.access` ; le
+ * service est créé par `startEngine` (main.ts) avant l'éditeur, qui le relit au début de chaque demande.
+ */
+export function registerAiSettingsRoutes(router: Router, service: AiSettingsService): void {
+  router.add({ method: 'GET', path: '/claude/settings', capability: 'ai.access', handler: async () => ({ json: service.state() }) })
+  router.add({ method: 'POST', path: '/claude/settings', capability: 'ai.access', handler: async ({ body }) => ({ json: await service.save(body) }) })
+}
+
 const WATCHERS = new WeakMap<EngineContext, () => void>()
 
 export const accessModule: EngineModule = {
   name: 'claude-access',
   register(context: EngineContext) {
     registerAccessRoutes(context.router, context.claudeAccess)
+    registerAiSettingsRoutes(context.router, context.aiSettings)
     // Abonnement de la machine : un /login fait dans un terminal s'applique sans passer par B5 (sonde toutes les 60 s).
     WATCHERS.set(context, context.claudeAccess.watch())
   },
@@ -31,6 +42,7 @@ export const accessModule: EngineModule = {
   },
 }
 
+export { createAiSettingsService, openAiSettingsStore, AI_SETTINGS_FILE, type AiSettingsDeps, type AiSettingsService, type AiSettingsStore } from './ai-settings'
 export { createClaudeAccessService, testConfigDirOf, type ClaudeAccessDeps, type ClaudeAccessService } from './service'
 export { openAccessStore, ACCESS_FILE, UNREADABLE_KEY, type AccessStore, type StoredAccess } from './store'
 export { detectMachineLogin, machineLoginOf, systemProbe, keychainService, keychainAccount, type MachineProbe } from './machine'

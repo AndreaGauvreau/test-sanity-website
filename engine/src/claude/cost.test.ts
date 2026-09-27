@@ -12,6 +12,7 @@ import {
   type MeteredCall,
   type Tokens,
 } from './cost'
+import { AI_MODELS, modelLabel } from '../../../src/admin/core/contracts'
 import { PRICES_PER_MTOK, priceOf } from './pricing'
 
 describe('pricing — tarifs par million de jetons (skill claude-api)', () => {
@@ -56,6 +57,14 @@ describe('meterUsage — jetons d’un appel interrompu', () => {
 
 describe('estimateCost', () => {
   const million = (part: keyof Tokens): Tokens => ({ ...NO_TOKENS, [part]: 1_000_000 })
+
+  it('les trois modèles de B5 · AI settings ont un tarif (coût estimé) et un libellé', () => {
+    const expected = { 'claude-opus-5-5': [4, 20], 'claude-fable-5-1': [10, 50], 'claude-sonnet-5': [2, 10] } as const
+    for (const model of AI_MODELS) {
+      assert.deepEqual([estimateCost(model.id, million('input')), estimateCost(model.id, million('output'))], expected[model.id])
+      assert.equal(modelLabel(model.id), model.label)
+    }
+  })
 
   it('aux tarifs d’Opus 5.5', () => {
     assert.equal(estimateCost('claude-opus-5-5', million('input')), 4)

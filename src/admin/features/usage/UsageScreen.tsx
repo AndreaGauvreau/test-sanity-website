@@ -4,6 +4,7 @@ import { formatCost, formatTokens } from '@/admin/core/contracts/format'
 import { USAGE_PERIOD_LABELS, type UsagePeriod, type UsageRow, type UsageSummary } from '@/admin/core/usage/aggregate'
 import { Avatar, ContentArea, PageHeader, StatCard, Table, TableCell, TableHeaderCell, TableRow, Tag } from '@/admin/ui'
 
+import { AiSettingsCard } from './AiSettingsCard'
 import { ClaudeConnectionCard } from './ClaudeConnectionCard'
 import { formatWhen, requestText, sinceLaunchHint, statusNote } from './format'
 import { UsagePeriodCard } from './UsagePeriodCard'
@@ -23,6 +24,8 @@ export type UsageScreenProps = {
    * `adminLocal` : admin ouvert sur 127.0.0.1 / localhost (seul cas où l'abonnement de la machine est proposé).
    */
   claudeConnection?: { adminLocal: boolean }
+  /** Carte « AI settings » (modèle et effort de l'éditeur IA, même droit ai.access) ; false / absente = pas de carte. */
+  aiSettings?: boolean
 }
 
 const META = "AI consumption on the site's own Claude account: model, input and output tokens, cost."
@@ -33,7 +36,7 @@ export const EMPTY_USAGE = 'No AI usage in this period.'
  * modèle), carte Since launch, tableau Recent requests. Server Component : seules les données agrégées (sans
  * jeton, sans e-mail) partent vers la carte client. Jamais de crédits, de plafond ni d'alerte (Figma B5).
  */
-export function UsageScreen({ period, summary, allTime, rows, limit, now, launchedAt, claudeConnection }: UsageScreenProps) {
+export function UsageScreen({ period, summary, allTime, rows, limit, now, launchedAt, claudeConnection, aiSettings }: UsageScreenProps) {
   const nextLimit = Math.min(limit + 50, 500)
   const moreHref = `?${new URLSearchParams({ ...(period !== 'month' ? { period } : {}), limit: String(nextLimit) })}`
 
@@ -47,6 +50,7 @@ export function UsageScreen({ period, summary, allTime, rows, limit, now, launch
       </div>
 
       {claudeConnection ? <ClaudeConnectionCard adminLocal={claudeConnection.adminLocal} /> : null}
+      {aiSettings ? <AiSettingsCard /> : null}
 
       <section className={styles.requests} aria-labelledby="usage-requests-title">
         <div className={styles.requestsHeader}>

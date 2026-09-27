@@ -2,7 +2,7 @@ import { rm, writeFile } from 'node:fs/promises'
 import type { AddressInfo } from 'node:net'
 import path from 'node:path'
 import { signPreviewToken } from '../../src/admin/core/engine/preview-token'
-import { accessModule, createClaudeAccessService, machineLoginOf, openAccessStore, systemProbe, testConfigDirOf, type ClaudeAccessService } from './access'
+import { accessModule, createAiSettingsService, createClaudeAccessService, openAiSettingsStore, type AiSettingsService, machineLoginOf, openAccessStore, systemProbe, testConfigDirOf, type ClaudeAccessService } from './access'
 import { createAgentRunner, readAgentSettings, type AccessResult, type AgentSettings, type SettingsEnv } from './claude'
 import { EngineConfigError, readEngineConfig, type EngineEnv } from './config'
 import { createRobotClient, sanityPort, type SanityPort } from './content/sanity'
@@ -59,6 +59,8 @@ export type EngineOverrides = {
   siteDomains?: readonly string[]
   /** Connexion à Claude (tests : faux réseau, faux Claude Code, fausse sonde de la machine). */
   claudeAccess?: ClaudeAccessService
+  /** Réglages de l'IA (tests : magasin en mémoire ou dossier temporaire). */
+  aiSettings?: AiSettingsService
   log?: (line: string) => void
 }
 
@@ -110,8 +112,21 @@ export async function startEngine(env: EngineEnv, overrides: EngineOverrides = {
     else if (initial.warning) log(`⚠ ${initial.warning}`)
   }
   const currentAccess = () => claudeAccess.current()
-  const settings: AgentSettings = readAgentSettings(env as SettingsEnv, { configDir: config.paths.claude })
-  const maxRequestUsd = config.maxRequestUsd ?? settings.maxBudgetUsd
+  // Réglages de l'agent : ceux de l'environnement (EDITOR_*), dont le modèle et l'effort ne sont que les valeurs PAR
+  // DÉFAUT — l'admin (B5 · AI settings, data/ai-settings.json) les remplace à chaud. `currentSettings()` est relu au
+  // début de chaque demande (accesseur `settings` de l'éditeur) : une demande lancée garde son modèle et son effort.
+  const baseSettings: AgentSettings = readAgentSettings(env as SettingsEnv, { configDir: config.paths.claude })
+  const aiSettings =
+    overrides.aiSettings ??
+    createAiSettingsService({
+      store: openAiSettingsStore({ dataDir: config.paths.data }),
+      defaults: { model: baseSettings.model, effort: baseSettings.effort },
+      askModel: config.models.ask,
+      log,
+    })
+  await aiSettings.load()
+  const currentSettings = (): AgentSettings => ({ ...baseSettings, ...aiSettings.current() })
+  const maxRequestUsd = config.maxRequestUsd ?? baseSettings.maxBudgetUsd
   // Faux Claude (ENGINE_FAKE_CLAUDE, mode local écrit seulement : validé par config.ts) : avertissement bruyant.
   const fake = config.fakeClaude
   if (fake) {
@@ -128,7 +143,9 @@ export async function startEngine(env: EngineEnv, overrides: EngineOverrides = {
     overrides.runAgent ??
     (fake
       ? createEngineFakeClaude(fake)
-      : (run, limits) => createAgentRunner({ ...settings, maxBudgetUsd: Math.min(settings.maxBudgetUsd, limits.maxBudgetUsd) })(run))
+      : // Modèle et effort de la DEMANDE (lus à son départ par jobs/run.ts), jamais ceux du démarrage.
+        (run, call) =>
+          createAgentRunner({ ...baseSettings, model: call.model, effort: call.effort, maxBudgetUsd: Math.min(baseSettings.maxBudgetUsd, call.maxBudgetUsd) })(run))
 
   // Sanity : jeton d'écriture « robot » (textes de l'éditeur, publication) ; sans lui, la portée Text est indisponible.
   let sanity: SanityPort | null = null
@@ -178,7 +195,10 @@ export async function startEngine(env: EngineEnv, overrides: EngineOverrides = {
     get access() {
       return currentAccess()
     },
-    editorModel: settings.model,
+    // Accesseur : /health suit le modèle choisi dans l'admin (B5 · AI settings).
+    get editorModel() {
+      return currentSettings().model
+    },
     askModel: config.models.ask,
     sanityWrite: texts.available,
     preview: () => ({ url: config.preview.origin, ready: preview.status().ready }),
@@ -203,7 +223,10 @@ export async function startEngine(env: EngineEnv, overrides: EngineOverrides = {
     get access() {
       return editorAccess()
     },
-    settings,
+    // Accesseur (rechargement à chaud) : relu au début de CHAQUE demande ; une demande lancée garde ses réglages.
+    get settings() {
+      return currentSettings()
+    },
     maxRequestUsd,
     fakeClaude: fake,
     siteDomains,
@@ -233,7 +256,10 @@ export async function startEngine(env: EngineEnv, overrides: EngineOverrides = {
       return currentAccess()
     },
     claudeAccess,
-    settings,
+    aiSettings,
+    get settings() {
+      return currentSettings()
+    },
     ports,
   }
   const modules = overrides.modules ?? MODULES

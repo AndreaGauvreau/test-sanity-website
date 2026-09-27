@@ -1,6 +1,6 @@
 # features/usage — LLM context
 
-> Propriétaire : code-usage · Figma : B5 (docs/admin/figma/screens/B5.md), fiches AIUsage, ModelUsage · Mis à jour : 2026-09-27
+> Propriétaire : code-usage · Figma : B5 (docs/admin/figma/screens/B5.md), fiches AIUsage, ModelUsage · Mis à jour : 2026-09-28 (carte AI settings)
 > Possède aussi : `src/app/admin/(shell)/settings/usage/` (page, loading). Données : `src/admin/core/usage/` (même propriétaire).
 
 ## Utilité
@@ -10,9 +10,12 @@ de solde, de plafond ni d'alerte.
 
 ## Fichiers
 - `UsageScreen.tsx` — Server Component : Page header, carte AI usage, carte Since launch (StatCard), carte Claude
-  connection (si `claudeConnection`), carte Recent requests (Table).
+  connection (si `claudeConnection`), carte AI settings (si `aiSettings`), carte Recent requests (Table).
 - `ClaudeConnectionCard.tsx` + `ClaudeConnection.module.css` — client : carte « Claude connection » (accès du moteur à
   Claude, sans maquette) ; `ClaudeConnectionCard.test.tsx` (faux client du moteur).
+- `AiSettingsCard.tsx` + `AiSettings.module.css` — client : carte « AI settings » (modèle et niveau de réflexion de
+  l'éditeur IA, sans maquette) ; `AiSettingsCard.test.tsx` (faux client du moteur). Exporte `AI_SETTINGS_TEXT`,
+  `EFFORT_HELP`, `priceHint`.
 - `UsagePeriodCard.tsx` — client : `AIUsage` du kit, période → `?period=` (router.replace), chargement pendant la transition.
 - `UsageSkeleton.tsx` — état de chargement (route `loading.tsx`). `UsageLoadError.tsx` — journal illisible.
 - `format.ts` — `formatWhen` (Today 14:12 · Yesterday · Sep 24), `formatDay`, `sinceLaunchHint`, `requestText`, `statusNote`.
@@ -27,6 +30,9 @@ de solde, de plafond ni d'alerte.
 - Carte Claude connection : `engineClient.claude.{access, save, test, clear}` (relais, routes `/claude/access*` du contrat,
   droit `ai.access` = Kuartz et client). La page passe `claudeConnection = { adminLocal }` seulement avec `ai.access`
   (`adminLocal` = hôte 127.0.0.1 / localhost, `isLocalHost(requestHost(headers()))`).
+- Carte AI settings : `engineClient.claude.{settings, saveSettings}` (routes `/claude/settings`, droit `ai.access`) ; la page
+  passe `aiSettings = can(role, 'ai.access')`. Modèles et niveaux : `AI_MODELS` / `AI_EFFORTS` du contrat ; prix :
+  `priceOf` de `core/contracts/pricing.ts` (même table que le coût estimé du moteur) ; libellés : `modelLabel`.
 
 ## Comportement
 - AI usage : totaux Input tokens / Output tokens / Cost, une ligne par fonctionnalité avec son modèle (ModelUsage),
@@ -50,6 +56,17 @@ de solde, de plafond ni d'alerte.
   Disconnect. ANTHROPIC_API_KEY dans l'env du moteur : Callout « takes priority ». Test automatique après chaque
   enregistrement + bouton « Test connection » ; pied « Last test: Today 14:12 — … » ; échec : Callout d'erreur lisible.
   Moteur injoignable : Callout d'erreur + Retry.
+- AI settings (Kuartz et client ; l'editor ne la voit pas), sous Claude connection : en-tête « AI settings » + « AI editor »
+  + Tag « Default » (rien d'enregistré : EDITOR_MODEL / EDITOR_EFFORT du moteur, sinon Opus 5.5 / Medium) ou « Saved ».
+  « Model » (Select du kit : Opus 5.5 · Fable 5.1 · Sonnet 5, prix « $4 / $20 » en méta et « … per M tokens » dans le
+  champ ; un modèle hors liste venu d'EDITOR_MODEL est montré « (engine default) », désactivé, et Save exige un modèle de
+  la liste) ; « Thinking effort » (SegmentedControl du kit : Low · Medium · High · Extra high · Max, une phrase d'aide
+  par niveau). Ligne « Ask AI isn’t affected: it always uses Haiku 4.5. » (+ valeurs par défaut du moteur si rien
+  d'enregistré). Pied : « Changes apply to the next AI editor request. A request already running keeps its settings. »
+  + Save (primaire, désactivé tant que rien n'a changé, chargement pendant l'envoi) ; après succès « Saved. The next AI
+  editor request uses Fable 5.1 · Extra high. » ; échec : Callout d'erreur lisible (message du moteur), choix gardé.
+  Animations sobres du kit : corps en fondu (`fade`), message et erreur en `slideDown` (AnimatePresence,
+  `useMotionVariants` → rien en mouvement réduit). Moteur injoignable : Callout + Retry.
 
 ## Forces
 - Rendu comparé au Figma B5 à 1440 × 900 (positions des cartes et des lignes identiques à quelques px) avec un jeu de
@@ -82,7 +99,9 @@ de solde, de plafond ni d'alerte.
 - Texte de la carte Since launch : `sinceLaunchHint` (format.ts) + `format.test.ts`.
 
 ## Tests
-`npx vitest run src/admin/features/usage src/admin/core/usage` — carte Claude connection (local / production, abonnement,
+`npx vitest run src/admin/features/usage src/admin/core/usage` — carte AI settings (rendu, prix des trois modèles depuis la
+table unique, Save désactivé sans changement, envoi, « Saved », erreur lisible, moteur injoignable + Retry, modèle hors
+liste), placement sous Claude connection et absence sans `aiSettings` (UsageScreen) ; carte Claude connection (local / production, abonnement,
 clé envoyée une fois et jamais affichée, sk-ant-oat refusé avant envoi, échec du test, clé de l'environnement, moteur
 injoignable) ; formats (fuseaux, années, « online since » avec ou sans
 `launchedAt`), rendu (cartes, tableau, statut, coût estimé, état vide, Show more, changement de période → URL). À la main : `/admin/settings/usage` en kuartz et client
@@ -95,6 +114,8 @@ injoignable) ; formats (fuseaux, années, « online since » avec ou sans
 - Accès : toute session (Kuartz, client, editor) — aucun droit dédié dans `roles.ts` pour la consommation ; la carte
   Claude connection exige `ai.access` (Kuartz et client), ajouté au contrat le 2026-09-27.
 - Carte Claude connection placée entre les deux cartes du haut et Recent requests (pas de maquette : composants du kit).
+- Carte AI settings (2026-09-28, demande de l'utilisatrice) juste sous Claude connection, même droit ; choix appliqué à la
+  demande SUIVANTE de l'éditeur (le moteur relit ses réglages au départ de chaque demande) ; Ask AI non concerné.
 - « Since launch » : le COÛT reste le cumul de toutes les demandes (y compris avant la mise en ligne) ; seule la date
   affichée vient de `launchedAt` (FOLLOWUPS #33).
 

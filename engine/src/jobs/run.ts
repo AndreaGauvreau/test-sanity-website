@@ -121,6 +121,7 @@ export async function runEditJob(ctx: RunContext): Promise<void> {
   const job = store.job(jobId)!.job
   const request = job.request
   const scope = scopeOf(request.scope)
+  // Lu UNE fois (accesseur de main.ts) : modèle et effort de cette demande, du premier au dernier essai.
   const settings = deps.settings
   let cost: CostState = EMPTY_COST
   let session: VisualSession | null = null
@@ -366,7 +367,9 @@ export async function runEditJob(ctx: RunContext): Promise<void> {
           signal,
           onEvent: (event) => step(event.kind, event.label, event.detail),
         },
-        { maxBudgetUsd: Math.max(0.01, Math.min(settings.maxBudgetUsd, remaining)) },
+        // Modèle et effort lus au départ de la demande (`settings`) : un changement fait entre-temps dans l'admin ne
+        // vaut que pour la demande suivante.
+        { maxBudgetUsd: Math.max(0.01, Math.min(settings.maxBudgetUsd, remaining)), model: settings.model, effort: settings.effort },
       )
       // Même session reprise : son total inclut déjà l'essai précédent (addCall ne l'additionne pas deux fois).
       cost = addCall(cost, result, resumed)

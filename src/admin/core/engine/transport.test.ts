@@ -59,6 +59,24 @@ describe('callEngine — moteur réel', () => {
     expect(fetchImpl).not.toHaveBeenCalled()
     expect((await callEngine({ method: 'GET', segments: ['publish', 'diff', 'c1'], user: kuartz }, deps)).status).toBe(200)
   })
+  it('réglages de l’IA (B5) : editor → 403 sans appel ; client relayé ; 400 du moteur relayé tel quel', async () => {
+    const editor: EngineUser = { ...client, id: 'u3', role: 'editor' }
+    const { fetchImpl, deps } = engine((_url, init) =>
+      JSON.parse(String(init.body ?? '{}')).effort === 'extreme'
+        ? Response.json({ error: { code: 'bad_request', message: 'Choose a thinking effort: low, medium, high, xhigh, max.' } }, { status: 400 })
+        : Response.json({ current: { model: 'claude-sonnet-5', effort: 'low' } }),
+    )
+    const body = JSON.stringify({ model: 'claude-sonnet-5', effort: 'low' })
+    expect((await callEngine({ method: 'GET', segments: ['claude', 'settings'], user: editor }, deps)).status).toBe(403)
+    expect((await callEngine({ method: 'POST', segments: ['claude', 'settings'], body, user: editor }, deps)).status).toBe(403)
+    expect(fetchImpl).not.toHaveBeenCalled()
+    const saved = await callEngine({ method: 'POST', segments: ['claude', 'settings'], body, user: client }, deps)
+    expect(saved.status).toBe(200)
+    expect(fetchImpl.mock.calls[0][0]).toBe('http://127.0.0.1:4043/claude/settings')
+    const refused = await callEngine({ method: 'POST', segments: ['claude', 'settings'], body: '{"model":"claude-sonnet-5","effort":"extreme"}', user: kuartz }, deps)
+    expect(refused.status).toBe(400)
+    expect(await refused.json()).toEqual({ error: { code: 'bad_request', message: 'Choose a thinking effort: low, medium, high, xhigh, max.' } })
+  })
   it('corps : JSON re-sérialisé, invalide → 400, trop gros → 413', async () => {
     const { fetchImpl, deps } = engine((_url, init) => Response.json({ echo: JSON.parse(String(init.body)) }, { status: 201 }))
     const ok = await callEngine({ method: 'POST', segments: ['editor', 'requests'], body: ' {"note":"hi"} ', user: client }, deps)

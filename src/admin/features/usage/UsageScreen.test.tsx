@@ -93,4 +93,40 @@ describe('UsageScreen', () => {
     await user.click(await screen.findByRole('option', { name: 'Last 3 months' }))
     expect(router.replace).toHaveBeenCalledWith('/admin/settings/usage?period=3-months', { scroll: false })
   })
+
+  it('carte « AI settings » seulement avec le droit ai.access (prop aiSettings), sous « Claude connection »', async () => {
+    const fetchMock = vi.fn(async (url: string) =>
+      Response.json(
+        String(url).endsWith('/claude/settings')
+          ? { current: { model: 'claude-opus-5-5', effort: 'medium' }, defaults: { model: 'claude-opus-5-5', effort: 'medium' }, source: 'default', askModel: 'claude-haiku-4-5' }
+          : { mode: 'hosted', subscriptionAllowed: false, access: 'none', source: 'none', saved: null, envApiKey: false },
+      ),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+    try {
+      renderScreen()
+      expect(screen.queryByRole('heading', { name: 'AI settings' })).toBeNull()
+      cleanup()
+      const docs = DOCS
+      render(
+        <div data-kz-admin="">
+          <UsageScreen
+            period="month"
+            summary={summarizeUsage(docs, 'month', NOW)}
+            allTime={summarizeUsage(docs, 'all-time', NOW)}
+            rows={usageRows(docs, 'month', NOW, 50)}
+            limit={50}
+            now={NOW}
+            claudeConnection={{ adminLocal: false }}
+            aiSettings
+          />
+        </div>,
+      )
+      const headings = screen.getAllByRole('heading', { level: 2 }).map((heading) => heading.textContent)
+      expect(headings.indexOf('AI settings')).toBe(headings.indexOf('Claude connection') + 1)
+      expect(await screen.findByRole('combobox', { name: /Model/ })).toBeTruthy()
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
 })

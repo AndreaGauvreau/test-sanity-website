@@ -13,7 +13,7 @@ export type ClaudeConnectionCardProps = {
   /** Admin ouvert sur 127.0.0.1 / localhost (calculé par la page serveur d'après l'hôte de la requête). */
   adminLocal: boolean
   /** Tests : client du moteur et horloge. */
-  client?: Pick<typeof engineClient, 'claude'>
+  client?: { claude: Pick<(typeof engineClient)['claude'], 'access' | 'save' | 'test' | 'clear'> }
   now?: () => Date
 }
 

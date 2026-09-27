@@ -61,6 +61,9 @@ export const ENGINE_ROUTES: readonly EngineRouteDef[] = [
   { method: 'POST', pattern: ['claude', 'access'], capability: 'ai.access' },
   { method: 'POST', pattern: ['claude', 'access', 'test'], capability: 'ai.access', timeoutMs: 75_000 },
   { method: 'POST', pattern: ['claude', 'access', 'clear'], capability: 'ai.access' },
+  // Réglages de l'IA (B5 · carte « AI settings ») : modèle et niveau de réflexion de l'éditeur. Kuartz et client.
+  { method: 'GET', pattern: ['claude', 'settings'], capability: 'ai.access' },
+  { method: 'POST', pattern: ['claude', 'settings'], capability: 'ai.access' },
 ]
 
 export const DEFAULT_ENGINE_TIMEOUT_MS = 15_000

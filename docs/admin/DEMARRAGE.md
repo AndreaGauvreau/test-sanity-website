@@ -55,6 +55,12 @@ Si un moteur local a publié du code (Publish depuis l'admin), ces commits sont 
    `subscription`) sans avertissement de faux Claude (relancer `npm run engine` seulement après avoir changé `engine/.env.local`).
 4. Réglages par défaut : `claude-opus-5-5`, effort `medium`, 24 tours, 1,5 $ par appel et plafond du cumul par demande
    (`EDITOR_MAX_REQUEST_USD`), 2 essais au plus. Chaque demande écrit un document `aiUsage` visible en B5.
+   Le MODÈLE et le NIVEAU DE RÉFLEXION de l'éditeur se changent dans l'admin (Kuartz ou client) : **Site Settings ›
+   Usage › AI settings** — Opus 5.5 (4 $ / 20 $ par million de jetons), Fable 5.1 (10 $ / 50 $), Sonnet 5 (2 $ / 10 $) ;
+   effort Low, Medium, High, Extra high, Max → Save. Rien à redémarrer : la demande SUIVANTE les prend (une demande en
+   cours garde les siens). Enregistré par le moteur dans `<ENGINE_WORKSPACE>/data/ai-settings.json` ; sans ce fichier,
+   `EDITOR_MODEL` / `EDITOR_EFFORT` de `engine/.env.local` (sinon Opus 5.5 / medium) restent les valeurs par défaut.
+   Ask AI n'est pas concerné (toujours `ASK_MODEL`, Haiku 4.5).
 
 ## Ce qui a été vérifié en réel (moteur réel + faux Claude, dataset development)
 

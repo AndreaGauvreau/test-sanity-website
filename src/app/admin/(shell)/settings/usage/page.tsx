@@ -23,7 +23,7 @@ function parseLimit(raw: string | string[] | undefined): number {
 }
 
 /**
- * B5 · Site Settings › Usage — Kuartz et client (toute session de l'admin) ; carte « Claude connection » avec ai.access. Période dans l'URL : `?period=`
+ * B5 · Site Settings › Usage — Kuartz et client (toute session de l'admin) ; cartes « Claude connection » et « AI settings » avec ai.access. Période dans l'URL : `?period=`
  * (month par défaut, 3-months, all-time) ; `?limit=` pour « Show more ».
  */
 export default async function UsagePage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
@@ -32,6 +32,8 @@ export default async function UsagePage({ searchParams }: { searchParams: Promis
   // Carte « Claude connection » : Kuartz et client (ai.access). Abonnement de la machine proposé seulement si l'admin
   // est ouvert sur cette machine (le relais et le moteur le revérifient).
   const claudeConnection = can(session.role, 'ai.access') ? { adminLocal: isLocalHost(requestHost(await headers())) } : undefined
+  // Carte « AI settings » (modèle et effort de l'éditeur IA) : même droit ai.access.
+  const aiSettings = can(session.role, 'ai.access')
   const period = isUsagePeriod(query.period) ? query.period : 'month'
   const limit = parseLimit(query.limit)
   let overview: Awaited<ReturnType<typeof getUsageOverview>>
@@ -41,5 +43,5 @@ export default async function UsagePage({ searchParams }: { searchParams: Promis
     console.error('[usage] load failed', err)
     return <UsageLoadError />
   }
-  return <UsageScreen period={period} limit={limit} now={new Date()} launchedAt={site.launchedAt} claudeConnection={claudeConnection} {...overview} />
+  return <UsageScreen period={period} limit={limit} now={new Date()} launchedAt={site.launchedAt} claudeConnection={claudeConnection} aiSettings={aiSettings} {...overview} />
 }

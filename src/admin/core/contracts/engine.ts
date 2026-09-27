@@ -161,6 +161,84 @@ export function claudeApiKeyProblem(raw: string): string | null {
 /** « sk-ant-…XXXX » : les 4 derniers caractères seulement. */
 export const claudeKeyHint = (key: string) => `sk-ant-…${cleanClaudeApiKey(key).slice(-4)}`
 
+// ─── Réglages de l'IA (B5 · carte « AI settings ») ───────────────────────────
+
+/**
+ * Modèles proposés pour l'ÉDITEUR IA (Ask AI reste sur ASK_MODEL, Haiku : non concerné). Tarifs :
+ * `PRICES_PER_MTOK` de `pricing.ts` (source unique, lue aussi par le moteur).
+ */
+export type AiModelId = 'claude-opus-5-5' | 'claude-fable-5-1' | 'claude-sonnet-5'
+
+/**
+ * Niveau de réflexion (« effort ») : exactement `EffortLevel` de @anthropic-ai/claude-agent-sdk 0.3.283 (sdk.d.ts).
+ * D'après le SDK et le skill `claude-api` (2026-09-28), les trois modèles de la liste acceptent les cinq niveaux ; un
+ * niveau non pris en charge par un modèle serait ramené en silence par Claude Code au plus proche.
+ */
+export type AiEffort = 'low' | 'medium' | 'high' | 'xhigh' | 'max'
+
+/** Liste ordonnée des modèles de l'écran (libellés identiques à `modelLabel` de format.ts). */
+export const AI_MODELS: readonly { id: AiModelId; label: string }[] = [
+  { id: 'claude-opus-5-5', label: 'Opus 5.5' },
+  { id: 'claude-fable-5-1', label: 'Fable 5.1' },
+  { id: 'claude-sonnet-5', label: 'Sonnet 5' },
+]
+
+/** Liste ordonnée des niveaux, du plus rapide au plus poussé, avec leur libellé lisible (anglais). */
+export const AI_EFFORTS: readonly { id: AiEffort; label: string }[] = [
+  { id: 'low', label: 'Low' },
+  { id: 'medium', label: 'Medium' },
+  { id: 'high', label: 'High' },
+  { id: 'xhigh', label: 'Extra high' },
+  { id: 'max', label: 'Max' },
+]
+
+/** Réglages choisis depuis l'admin (corps de POST /claude/settings). */
+export type AiSettings = { model: AiModelId; effort: AiEffort }
+
+/** Valeurs par défaut quand ni l'environnement du moteur (EDITOR_MODEL / EDITOR_EFFORT) ni l'admin n'en donnent. */
+export const DEFAULT_AI_SETTINGS: AiSettings = { model: 'claude-opus-5-5', effort: 'medium' }
+
+/**
+ * Réglages effectivement appliqués. `model` reste une chaîne : EDITOR_MODEL de l'environnement du moteur peut désigner
+ * un modèle hors de la liste (ex. « claude-opus-5 »), gardé tel quel comme valeur par défaut.
+ */
+export type AiSettingsInEffect = { model: string; effort: AiEffort }
+
+export type AiSettingsState = {
+  /** Réglages que prendra la PROCHAINE demande de l'éditeur (une demande en cours garde les siens). */
+  current: AiSettingsInEffect
+  /** Valeurs par défaut du moteur : EDITOR_MODEL / EDITOR_EFFORT, sinon `DEFAULT_AI_SETTINGS`. */
+  defaults: AiSettingsInEffect
+  /** default : rien d'enregistré, les valeurs par défaut s'appliquent ; saved : choisi depuis l'admin. */
+  source: 'default' | 'saved'
+  /** Date ISO du dernier enregistrement (source = saved). */
+  updatedAt?: string
+  /** Modèle d'Ask AI (ASK_MODEL du moteur), NON concerné par ces réglages. */
+  askModel: string
+}
+
+// Routes (droit `ai.access`, revérifié par le moteur) :
+//   GET  /claude/settings                 → AiSettingsState
+//   POST /claude/settings  AiSettings     → AiSettingsState · 400 bad_request (`aiSettingsProblem`)
+// Prise en compte à chaud : chaque NOUVELLE demande de l'éditeur lit les réglages en cours à son départ.
+
+export const isAiModelId = (value: unknown): value is AiModelId => AI_MODELS.some((model) => model.id === value)
+export const isAiEffort = (value: unknown): value is AiEffort => AI_EFFORTS.some((effort) => effort.id === value)
+
+/**
+ * Validation STRICTE d'un corps `AiSettings` (anglais, sans jamais citer l'entrée), ou null s'il est valide :
+ * un objet avec exactement `model` (de la liste) et `effort` (des cinq niveaux), rien d'autre.
+ * Partagée par le moteur et le moteur simulé.
+ */
+export function aiSettingsProblem(input: unknown): string | null {
+  if (typeof input !== 'object' || input === null || Array.isArray(input)) return 'Send a model and a thinking effort.'
+  const body = input as Record<string, unknown>
+  if (Object.keys(body).some((key) => key !== 'model' && key !== 'effort')) return 'Only the model and the thinking effort can be set.'
+  if (!isAiModelId(body.model)) return `Choose one of these models: ${AI_MODELS.map((model) => model.label).join(', ')}.`
+  if (!isAiEffort(body.effort)) return `Choose a thinking effort: ${AI_EFFORTS.map((effort) => effort.id).join(', ')}.`
+  return null
+}
+
 // ─── Éditeur IA (D1-D3, G1, G2) ──────────────────────────────────────────────
 
 export type Scope = 'style' | 'text'

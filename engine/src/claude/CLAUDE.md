@@ -1,6 +1,6 @@
 # Pilotage de Claude (moteur IA) — LLM context
 
-> Propriétaire : engine-claude · Figma : D1-D3, G2 (questions, journal, coût), G4 (Ask AI via `complete`) · Mis à jour : 2026-09-27
+> Propriétaire : engine-claude · Figma : D1-D3, G2 (questions, journal, coût), G4 (Ask AI via `complete`) · Mis à jour : 2026-09-28 (tarifs dans les contrats, modèle/effort de l'admin)
 
 ## Utilité
 Tout ce qui parle à Claude dans le moteur (`engine/`, processus Node séparé, jamais importé par Next) :
@@ -37,7 +37,8 @@ est en anglais ; commentaires et ce fichier en français.
 - `text.ts` — `resolveTextFields`, `editableFields`, `validateText`, `createTextTool` (écriture injectée), `clientMessage`.
 - `quote.ts` — `quoteData` (texte du site/Sanity cité comme donnée, guillemets “ ” « » " → ‹ ›, longueur bornée).
 - `cost.ts` — `meterUsage`, `estimateCost`, `addCall` (banked/session), `toUsage`, `usageFromTokens` (format `Usage` du contrat).
-- `pricing.ts` — `PRICES_PER_MTOK` (table typée et gelée), `priceOf`.
+- `pricing.ts` — RÉEXPORTE `PRICES_PER_MTOK` (table typée et gelée) et `priceOf` de `src/admin/core/contracts/pricing.ts`
+  (source unique, partagée avec l'admin pour la carte AI settings de B5 ; déplacée le 2026-09-28).
 - `complete.ts` — `complete` / `createComplete` (Ask AI), `completeOptions`, `transcriptPrompt`, `CompleteError`.
 - `fake.ts` — `createFakeAgent`, `fakeScenarios` (faux Claude scriptable, même interface que `RunAgent`), `applyEdit`
   (l'outil Edit réel appliqué à un contenu).
@@ -83,7 +84,7 @@ est en anglais ; commentaires et ce fichier en français.
 | Option | Valeur | Pourquoi |
 |---|---|---|
 | `cwd` | clone de travail (branche draft), absolu | Claude ne voit que le site ; chemin vide/relatif refusé (piège 5 du POC) |
-| `model` / `effort` | `EDITOR_MODEL` (claude-opus-5-5) / `EDITOR_EFFORT` (medium) | réglages validés au POC ; Opus 5.5 : medium est aussi son défaut |
+| `model` / `effort` | ceux de la DEMANDE : choisis dans l'admin (B5 · AI settings, `engine/src/access/ai-settings.ts`), sinon `EDITOR_MODEL` (claude-opus-5-5) / `EDITOR_EFFORT` (medium) | main.ts construit les réglages de chaque appel avec le modèle et l'effort lus au départ de la demande (`jobs/run.ts`) ; Opus 5.5 : medium est aussi son défaut |
 | `maxTurns` / `maxBudgetUsd` | 24 / 1.5 | plafonds PAR APPEL de query() (voir Pièges) |
 | `tools` | `['Read','Edit','Glob','Grep']` | ni Bash, ni Write, ni Web |
 | `allowedTools` | les 4 + `mcp__kuartz__set_text`, `…__measure`, `…__ask_client`, FIXE et gelé | cache ; le droit se décide à l'appel (hook) |
@@ -169,7 +170,7 @@ dans `ANTHROPIC_API_KEY` est refusé. Les blancs d'un jeton sont retirés (copie
 ### Coût
 `Usage.inputTokens` = non cachés + lus + écrits en cache. `costKind: 'estimated'` dès qu'un appel est interrompu. Avec
 l'abonnement, le coût est calculé (SDK) mais non facturé : `access: 'subscription'`. Tarifs (skill `claude-api`, 2026-09-27) :
-Opus 5.5 4/20 $, Sonnet 5 2/10 $, Haiku 4.5 1/5 $ par million ; cache : lecture 0,1 ×, écriture 5 min 1,25 ×.
+Opus 5.5 4/20 $, Fable 5.1 10/50 $, Sonnet 5 2/10 $, Haiku 4.5 1/5 $ par million (revérifiés le 2026-09-28) ; cache : lecture 0,1 ×, écriture 5 min 1,25 ×.
 
 ### Catalogue des tokens du prompt (`buildPrompt`) et RULES.md
 Le catalogue suit l'ordre de tokens.json : couleurs (rôles), styles de texte avec leur tracking (paire `font` +
@@ -260,7 +261,8 @@ outil (`tools: []`, `allowedTools: []`, hook qui refuse tout, `mcpServers: {}`, 
 - Ajouter une consigne pour Claude : dans `src/editor/RULES.md` (fixe, en cache) si elle vaut pour toute demande, sinon
   dans `buildPrompt` ; ajouter la phrase au test (`rules.test.ts` ou `prompt.test.ts`). Toute règle de valeur doit être
   vraie pour `css-policy` d'engine-guards (le test le vérifie).
-- Changer un tarif / ajouter un modèle : `pricing.ts` + test « pricing » de `cost.test.ts` (skill `claude-api` comme source).
+- Changer un tarif / ajouter un modèle : `src/admin/core/contracts/pricing.ts` (source unique) + test « pricing » de
+  `cost.test.ts` (skill `claude-api` comme source) ; modèle proposé dans B5 : aussi `AI_MODELS` (contrat) et `modelLabel`.
 - Changer une option de query() : `buildAgentOptions` + test « passe exactement les options attendues » ; vérifier dans
   `node_modules/@anthropic-ai/claude-agent-sdk/sdk.d.ts`.
 - Nouveau refus de question : `questionProblems` + phrase dans `ASK_CLIENT_DESCRIPTION` (≤ 2 048) + RULES.md.

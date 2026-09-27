@@ -2,15 +2,15 @@
 
 > Propriétaire de ce fichier, de `src/main.ts`, `src/config.ts` et des dossiers `server/ store/ jobs/ git/ workspace/
 > preview/ content/` : engine-core · Figma : D1-D3, G1, G2 (éditeur) ; E1-E2, G3 (engine-publish) ; G4 (ask-ai) ·
-> Mis à jour : 2026-09-27
+> Mis à jour : 2026-09-28
 
 ## Utilité
 Processus Node PERSISTANT, séparé de Next (jamais importé par l'admin), sur `127.0.0.1:ENGINE_PORT` (4043). Seul
 détenteur de l'accès à Claude, du jeton d'écriture Sanity « robot » et du dépôt git de travail. L'admin l'appelle côté
 serveur par son relais signé (`src/admin/core/engine/`). Il pilote l'aperçu du brouillon (`next dev` du clone, 4042).
 Fait : éditeur IA (`/editor/*`, engine-core), publication et versions (`/publish/*`, `/versions/*`, engine-publish),
-journal `aiUsage` (engine-publish), Ask AI (`/ask`, ask-ai), connexion à Claude réglée depuis l'admin
-(`/claude/access*`, B5, engine-core). Les quatre derniers sont branchés par `MODULES` de `main.ts`.
+journal `aiUsage` (engine-publish), Ask AI (`/ask`, ask-ai), connexion à Claude et réglages de l'IA (modèle,
+effort) réglés depuis l'admin (`/claude/access*`, `/claude/settings`, B5, engine-core). Les quatre derniers sont branchés par `MODULES` de `main.ts`.
 Ne fait pas : retour arrière Vercel en local (501), mode hébergé (non construit, voir « Points sensibles »).
 
 ## Fichiers (racine du moteur)
@@ -30,7 +30,7 @@ Ne fait pas : retour arrière Vercel en local (501), mode hébergé (non constru
 | `src/workspace/` | engine-core | `npm run engine:setup` (clone, main/draft, .env.local de l'aperçu, npm ci) et `sync` |
 | `src/preview/` | engine-core | processus `next dev` de l'aperçu : lancement, sonde, redémarrage, arrêt, éditeur inerte |
 | `src/content/` | engine-core | Sanity : port + client robot, textes de l'éditeur, publication, signal et jeton d'aperçu du moteur |
-| `src/access/` | engine-core | accès à Claude rechargeable à chaud : clé API chiffrée, abonnement de la machine (local), test (voir son CLAUDE.md) |
+| `src/access/` | engine-core | accès à Claude rechargeable à chaud : clé API chiffrée, abonnement de la machine (local), test ; réglages de l'IA (modèle et effort de l'éditeur, `data/ai-settings.json`) (voir son CLAUDE.md) |
 | `src/claude/` | engine-claude | Agent SDK, outils MCP fixes, prompts, questions, coût, faux Claude scriptable (voir son CLAUDE.md) |
 | `src/guards/` | engine-guards | design system, hook, lint CSS/TSX, contrôles du rendu (Chrome) (voir son CLAUDE.md) |
 | `src/usage/` | engine-publish | journal `aiUsage` (port `ports.usage`, `getUsageJournal`) |
@@ -54,8 +54,10 @@ Ne fait pas : retour arrière Vercel en local (501), mode hébergé (non constru
    et `draft`, écrit `repo/.env.local` de l'aperçu (0600, exclu de git), `npm ci` une fois. Idempotent.
    `npm run engine:setup -- sync` : avance main/draft sur la source (moteur arrêté, rien en attente, avance rapide).
 3. `npm run engine` : config validée (refus clair) → espace vérifié → `data/engine.pid` → magasin → accès à Claude
-   (`engine/src/access` : env, `data/claude-access.json`, machine) → reprise des demandes interrompues → modules →
-   aperçu lancé → écoute. L'accès à Claude se règle ensuite dans l'admin (B5 · Usage › Claude connection), SANS redémarrage.
+   (`engine/src/access` : env, `data/claude-access.json`, machine) → réglages de l'IA (`data/ai-settings.json`, sinon
+   EDITOR_MODEL / EDITOR_EFFORT) → reprise des demandes interrompues → modules →
+   aperçu lancé → écoute. L'accès à Claude et le modèle / l'effort de l'éditeur se règlent ensuite dans l'admin (B5 · Usage › Claude
+   connection, AI settings), SANS redémarrage.
 4. Arrêt (SIGINT/SIGTERM) : serveur fermé → demande en cours arrêtée et remise en état (fichiers + textes) → publication
    en cours ATTENDUE (`publishServiceOf(context).idle()`, 30 s au plus, FOLLOWUPS #14) → `stop()` des modules (ordre
    inverse, 30 s chacun) → aperçu arrêté (SIGTERM au groupe, SIGKILL après 5 s) → magasins écrits → pid retiré.
@@ -98,7 +100,9 @@ client est appliquée), `fail`, `budget` ; `auto` = text si « T Text » est coc
   (`resolveClaudeAccess`, `engine/src/access` ; plus de NODE_ENV, constat AI-02) ; jamais en hosted. `ENGINE_FAKE_CLAUDE`
   refusé hors local écrit. Clé API enregistrée depuis l'admin : `data/claude-access.json` (0600, AES-256-GCM, clé dérivée
   d'ENGINE_SECRET), jamais renvoyée ni journalisée ; ANTHROPIC_API_KEY de l'environnement reste prioritaire.
-- `context.access` est un ACCESSEUR (rechargement à chaud) : un module le lit au moment de l'appel, jamais à l'enregistrement.
+- `context.access` et `context.settings` sont des ACCESSEURS (rechargement à chaud) : un module les lit au moment de
+  l'appel, jamais à l'enregistrement. L'éditeur lit `settings` UNE fois au départ d'une demande (`jobs/run.ts`) et passe
+  `model` / `effort` au lanceur (`JobRunAgent`) ; /health (`claude.editorModel`) suit le modèle en cours.
 - Sanity : le robot n'écrit que des BROUILLONS (`drafts.<id>`) ; avertissement au démarrage si le dataset est `production`.
   Le port expose aussi les actions `unpublish` / `delete` (`SanityAction`), utilisées par la seule publication.
 - Adresses dans les textes du client (SEC-08) : liste blanche = domaines du site lus au démarrage dans
@@ -116,7 +120,7 @@ client est appliquée), `fail`, `budget` ; `auto` = text si « T Text » est coc
 - Le proxy de l'aperçu (auth-core) n'accepte plus le secret racine, même en cookie : tout accès du moteur à 4042 passe
   par `createPreviewCredential` (content/visible.ts). Un clone pas encore synchronisé fait tourner l'ANCIEN proxy.
 - `npm run engine` ne recharge pas à chaud : un changement de code ou de `.env.local` demande un redémarrage à la main
-  (seul l'accès à Claude réglé dans l'admin s'applique sans redémarrage).
+  (seuls l'accès à Claude et les réglages de l'IA réglés dans l'admin s'appliquent sans redémarrage).
 
 ## Comment modifier
 - Nouvelle variable : `SCHEMA` et `EngineConfig` de `config.ts` (message avec le NOM seulement) + test dans

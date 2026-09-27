@@ -1,4 +1,6 @@
 import type {
+  AiSettings,
+  AiSettingsState,
   Answer,
   AskRequest,
   AskResponse,
@@ -101,6 +103,9 @@ export const engineClient = {
     save: (input: ClaudeAccessInput, o?: Options) => call<ClaudeAccessState>('POST', 'claude/access', input, o),
     test: (o?: Options) => call<ClaudeAccessState>('POST', 'claude/access/test', {}, o),
     clear: (o?: Options) => call<ClaudeAccessState>('POST', 'claude/access/clear', {}, o),
+    /** Réglages de l'IA (B5 · AI settings) : modèle et niveau de réflexion de l'éditeur, pris à la demande suivante. */
+    settings: (o?: Options) => call<AiSettingsState>('GET', 'claude/settings', undefined, o),
+    saveSettings: (input: AiSettings, o?: Options) => call<AiSettingsState>('POST', 'claude/settings', input, o),
   },
 }
 
