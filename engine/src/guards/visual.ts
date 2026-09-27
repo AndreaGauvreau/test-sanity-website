@@ -610,8 +610,9 @@ export function unmeasuredRules(
 /**
  * Accès à l'aperçu du brouillon (`next dev` du clone de travail, 127.0.0.1:4042) : son URL, le cookie du secret d'aperçu
  * (ENGINE_PREVIEW_SECRET ; nom décidé par engine-core et le site), le navigateur (Chrome installé, playwright-core
- * channel « chrome » par défaut) et les largeurs relevées (375, 768, 1280). `settle` : attente appelée sur chaque page
- * après son chargement et ses polices, avant tout relevé (texte attendu présent, feuille rechargée…) ; aucune par défaut.
+ * channel « chrome » par défaut) et les largeurs relevées (`PREVIEW_VIEWPORTS` par défaut : 375, 810, 1280). `settle` :
+ * attente appelée sur chaque page après son chargement et ses polices, avant tout relevé (texte attendu présent, feuille
+ * rechargée…) ; aucune par défaut.
  *
  * Le secret passe par un COOKIE lié à l'origine de l'aperçu, jamais par un en-tête : les en-têtes supplémentaires d'un
  * contexte Playwright partent vers toutes les origines (images du CDN Sanity, polices…). Le secret n'est jamais journalisé

@@ -1,6 +1,5 @@
 import Link from 'next/link'
-import type { Usage } from '@/admin/core/contracts'
-import { Button, ButtonContent, buttonClassName, ModelUsage } from '@/admin/ui'
+import { Button, ButtonContent, buttonClassName, ModelUsage, type ModelUsageValue } from '@/admin/ui'
 import styles from './EditorHeader.module.css'
 
 /** Faux Claude (moteur simulé / mode auto) : repéré par son libellé ou son id, signalé visiblement. */
@@ -10,7 +9,8 @@ export function isFakeModel(model: { id: string; label?: string | null }): boole
 
 /**
  * En-tête de la sidebar Claude (Figma « Editor header ») : « ‹ Admin » (retour à l'écran d'origine), « Publish ↗ »
- * (E1, grisé pendant que Claude travaille — state=locked), puis la consommation cumulée de la conversation.
+ * (E1, grisé pendant que Claude travaille — state=locked), puis la consommation cumulée de la conversation (coût
+ * facturé ; « Included » pour ce qui est passé par l'abonnement Claude, prix API dans l'infobulle).
  */
 export function EditorHeader({
   backHref,
@@ -25,7 +25,8 @@ export function EditorHeader({
   /** Modèle de la conversation tel que fourni par le moteur (null pendant le chargement). Le libellé du moteur
    *  prime sur l'id (ex. « Fake Claude (auto) — no real call » quand le faux Claude est actif). */
   model: { id: string; label?: string | null } | null
-  usage: Usage | null
+  /** Cumul de la conversation (`cumulativeUsage` : `costUsd` facturé + `includedUsd`), ou une consommation seule. */
+  usage: ModelUsageValue | null
 }) {
   return (
     <header className={styles.header} data-state={locked ? 'locked' : 'default'}>

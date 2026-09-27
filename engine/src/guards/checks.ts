@@ -1,3 +1,4 @@
+import { EDITOR_VIEWPORTS } from '../../../src/admin/core/contracts/engine'
 import { formatRatio } from './contrast'
 import {
   coveredCount,
@@ -304,8 +305,8 @@ export function frameCheck(before: ZoneMeasure[], after: ZoneMeasure[]): RawChec
   }
 }
 
-/** Largeur où une ligne gagnée demande l’accord du client. */
-const MOBILE = 375
+/** Largeur où une ligne gagnée demande l’accord du client : le format Mobile de l’éditeur (375). */
+const MOBILE: number = EDITOR_VIEWPORTS.mobile
 
 /**
  * Mêmes mots, aux blancs et à la casse près : le texte relevé (innerText) suit text-transform, qu’un style seul peut
@@ -506,7 +507,7 @@ const thousands = (value: number) => String(value).replace(/\B(?=(\d{3})+$)/g, '
  */
 export function contrastCheck(before: PaintedMeasure[], after: PaintedMeasure[], exempt: boolean): RawCheck | null {
   // Un groupe par texte, par état et par baisse, ses occurrences et ses largeurs réunies : « “Accueil” on hover:
-  // 17.06 → 1 at 375, 768 px », « “24 septembre 2026” (occurrences 1, 2 and 3 of 3): 3.75 → 3.07 at 375 px ».
+  // 17.06 → 1 at 375, 810 px », « “24 septembre 2026” (occurrences 1, 2 and 3 of 3): 3.75 → 3.07 at 375 px ».
   const drops = new Map<string, Drop>()
   // Rang de première apparition de chaque texte : les baisses d’un même texte se suivent.
   const order = new Map<string, number>()

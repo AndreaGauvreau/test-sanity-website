@@ -169,6 +169,8 @@ describe('runRenderChecks', () => {
     assert.deepEqual(result.checks.map((check) => check.id).slice(0, 4), ['render', 'responsive', 'isolation', 'frame'])
     assert.equal(result.ok, true)
     assert.equal(result.warning, null)
+    // Libellé tiré des formats de l'éditeur (contrat EDITOR_VIEWPORTS) : Tablet = point de rupture tablette du site.
+    assert.equal(result.checks[1].label, 'No overflow at 375, 810 and 1280 px')
   })
 
   it('refuse une ligne gagnée à 375 px sans l’accord du client, l’accepte avec', async () => {
@@ -189,7 +191,7 @@ describe('runRenderChecks', () => {
   })
 
   it('ne compte pas contre l’isolation les autres zones visées par la même demande', async () => {
-    const isolation = { ok: false, zones: ['hero.lede', 'footer'], detail: 'hero.lede (375, 768 px), footer (1280 px)' }
+    const isolation = { ok: false, zones: ['hero.lede', 'footer'], detail: 'hero.lede (375, 810 px), footer (1280 px)' }
     const run = (alsoChanged?: string[]) =>
       runRenderChecks({
         session: session(measuresOf({}), verdict(measuresOf({}), { isolation })),
@@ -198,7 +200,7 @@ describe('runRenderChecks', () => {
         alsoChanged,
       })
     const alone = (await run()).checks.find((check) => check.id === 'isolation')!
-    assert.deepEqual([alone.ok, alone.detail], [false, 'hero.lede (375, 768 px), footer (1280 px)'])
+    assert.deepEqual([alone.ok, alone.detail], [false, 'hero.lede (375, 810 px), footer (1280 px)'])
     const shared = (await run(['hero.lede'])).checks.find((check) => check.id === 'isolation')!
     assert.deepEqual([shared.ok, shared.detail], [false, 'footer (1280 px)'])
     const all = (await run(['hero.lede', 'footer'])).checks.find((check) => check.id === 'isolation')!

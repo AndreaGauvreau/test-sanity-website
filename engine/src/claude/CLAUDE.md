@@ -1,6 +1,6 @@
 # Pilotage de Claude (moteur IA) — LLM context
 
-> Propriétaire : engine-claude · Figma : D1-D3, G2 (questions, journal, coût), G4 (Ask AI via `complete`) · Mis à jour : 2026-09-28 (tarifs dans les contrats, modèle/effort de l'admin)
+> Propriétaire : engine-claude · Figma : D1-D3, G2 (questions, journal, coût), G4 (Ask AI via `complete`) · Mis à jour : 2026-09-28 (tarifs dans les contrats, modèle/effort de l'admin, largeurs de l'aperçu tirées du contrat)
 
 ## Utilité
 Tout ce qui parle à Claude dans le moteur (`engine/`, processus Node séparé, jamais importé par Next) :
@@ -26,10 +26,13 @@ est en anglais ; commentaires et ce fichier en français.
   CHAUD par `engine/src/access` (engine-core, B5), qui s'appuie sur `resolveClaudeAccess` pour l'environnement.
 - `agent.ts` — `createAgentRunner` (query() et lecture du flux), `buildAgentOptions`, `agentEnv`, `createKuartzServer`,
   `createAgentClock` (pauseClock), `fatalApiError`, `RESULT_ERRORS`, `describeTool`.
-- `tools.ts` — outils MCP `kuartzTools` (définitions, schémas zod, descriptions en anglais, dont `ASK_CLIENT_DESCRIPTION`).
+- `tools.ts` — outils MCP `kuartzTools` (définitions, schémas zod, descriptions en anglais, dont `ASK_CLIENT_DESCRIPTION`) ;
+  largeurs citées tirées du contrat `EDITOR_VIEWPORTS` (measure : `MEASURED_VIEWPORTS_TEXT` = 375, 810 et 1280 px ;
+  ligne gagnée : Mobile, 375 px), fixes d'une demande à l'autre.
 - `hook.ts` — `createGuardHook` (adaptateur SDK du `checkToolUse` d'engine-guards), `toolAccessFor`, `scopeOf`.
 - `names.ts` — ré-exporte les noms d'outils d'engine-guards (une seule source) : `mcp__kuartz__*`, `ALLOWED_TOOLS`, `SITE_DIRS`.
-- `prompt.ts` — `SYSTEM_SENTENCES`, `systemAppend`, `buildPrompt` (catalogue des tokens), `buildRetryPrompt`, `sharedDisplays`, `DATA`, `MEASURED_TEXTS`.
+- `prompt.ts` — `SYSTEM_SENTENCES`, `systemAppend`, `buildPrompt` (catalogue des tokens), `buildRetryPrompt`, `sharedDisplays`, `DATA`, `MEASURED_TEXTS` ;
+  largeurs citées (outil measure, étape 3) tirées du contrat, jamais recopiées.
 - `palette.ts` — `cssCustomValues` (custom properties d'une feuille ; `ds.cssValues` d'engine-guards donne la même chose),
   `resolveCssValue` (chaîne var() → valeur, AI-03).
 - `sanitize.ts` — `sanitizeClientText`, `containsAddress`, `stripInvisible`, `LINK_REMOVED` (filtre des adresses, SEC-08).
@@ -46,11 +49,13 @@ est en anglais ; commentaires et ce fichier en français.
   `designSystem()` construit par engine-guards.
 - `*.test.ts` — tests (voir Tests). `rules.test.ts` et un cas de `prompt.test.ts` lisent le VRAI design system du dépôt
   (`loadDesignSystem(repo)` : src/styles/tokens.json, tokens.css, src/editor/zones.json, src/editor/RULES.md).
-- `../../../src/editor/RULES.md` — règles données à Claude, en anglais (propriété d'engine-claude dans un dossier du site).
+- `../../../src/editor/RULES.md` — règles données à Claude, en anglais (propriété d'engine-claude dans un dossier du site) ;
+  il RECOPIE les formats de l'éditeur (Mobile 375, Tablet 810 = point de rupture `50.625rem`, Desktop 1280, largeurs de
+  measure) : `rules.test.ts` les compare au contrat `EDITOR_VIEWPORTS`.
 
 ## Contrats
 - Entrées : `core/contracts/engine.ts` (`EditRequest`, `ElementTarget`, `Question`, `QuestionOption`, `Answer`,
-  `Usage`, `ClaudeAccess`, `StepKind`), `core/contracts/zones.ts` (`ZoneDef`, `SanityTextBinding`, `ZonesFile`) ;
+  `Usage`, `ClaudeAccess`, `StepKind`, formats de l'aperçu `EDITOR_VIEWPORTS` / `MEASURED_VIEWPORTS_TEXT`), `core/contracts/zones.ts` (`ZoneDef`, `SanityTextBinding`, `ZonesFile`) ;
   engine-guards : `DesignSystem` (`loadDesignSystem`, dont `rules` = RULES.md et `cssValues` = custom properties de
   tokens.css), `checkToolUse`, `repoPath`, `SITE_DIRS`,
   noms d'outils, `css-policy` (`EXTERNAL_RESOURCE`, `NEGATIVE_OR_CALC`, `isExemptable`, `unmeasurableColor`,
@@ -184,7 +189,9 @@ main, pas de tokens.css), variable inconnue, boucle > 8 niveaux : le libellé se
 l'interdit). `src/editor/RULES.md` décrit le VRAI design system : couleurs de
 rôle, 3 polices, échelle d'espacement 8-64 px (padding, margin, gap, outline-offset), tokens de mise en page (padding et
 margin ; `--page-max` pour max-width), pas de token d'arrondi, d'ombre ni de graisse, points de rupture 50.625 / 64 / 80 /
-90 rem (groupe `breakpoint`, écrits en valeur car une media query ne lit pas var()), aucun soulèvement au survol.
+90 rem (groupe `breakpoint`, écrits en valeur car une media query ne lit pas var()), aucun soulèvement au survol, et les
+formats de l'éditeur (Mobile 375, Tablet 810 = `50.625rem`, Desktop 1280 : une demande « tablette » vise le rendu de
+`50.625rem` à `64rem`). La demande dit à quelle largeur l'élément a été choisi (« viewed at 810 px wide » en Tablet).
 
 ### Ask AI (`complete`)
 Clé API → API Messages, système marqué `cache_control` éphémère, coût calculé aux tarifs. Avec le système actuel
@@ -268,6 +275,9 @@ outil (`tools: []`, `allowedTools: []`, hook qui refuse tout, `mcpServers: {}`, 
 - Nouveau refus de question : `questionProblems` + phrase dans `ASK_CLIENT_DESCRIPTION` (≤ 2 048) + RULES.md.
 - Le design system de Conduit change (tokens.json, zones.json) : relancer `rules.test.ts` ; il dit quelle phrase de
   RULES.md ne correspond plus (rôle absent, rôle vide annoncé, réglage non permis, point de rupture).
+- Les formats de l'éditeur changent (contrat `EDITOR_VIEWPORTS`, par exemple un autre point de rupture tablette) : prompt,
+  outils et contrôles suivent seuls ; recopier les largeurs dans RULES.md (phrase des formats et de measure), `rules.test.ts`
+  le dit.
 - Élargir ou resserrer le filtre d'adresses : `sanitize.ts` seulement (un seul filtre pour tous les textes) + cas dans
   `sanitize.test.ts` (dont le test de linéarité). Les domaines permis viennent des appelants (`allowedDomains`).
 - Nouveau scénario de faux Claude : `fakeScenarios` dans `fake.ts` + un test.
@@ -285,12 +295,13 @@ rien n'est écrit, rien au journal (le vrai runner ne journalise pas les résult
 sans blancs de fin).
 
 ## Tests
-`npx vitest run engine/src/claude` (13 fichiers, 184 tests, ≈ 2 s, aucun réseau). Couvert : options exactes, env, hook
+`npx vitest run engine/src/claude` (13 fichiers, 187 tests, ≈ 2 s, aucun réseau). Couvert : options exactes, env, hook
 (avec le vrai `checkToolUse`), lecture du flux (succès, erreurs de résultat, fatales, interruption, Stop, délai),
 pauseClock, outils MCP fixes, questions (refus, ids, réponses, longer-text, #21), textes (chemins `$key`, lignes,
 fermés, mise en avant optionnelle), coût et tarifs, prompts (sections, ordre, neutralisation, multi-éléments, catalogue
 des couleurs résolu sur le vrai design system passé tel quel, `ds.cssValues` compris), RULES.md (phrases des 14 règles + ajouts de la tâche 12, valeurs
-promises acceptées par la politique réelle, fidélité au vrai design system), accès (abonnement refusé hors mode local,
+promises acceptées par la politique réelle, fidélité au vrai design system, formats de l'éditeur et largeurs de measure
+= contrat `EDITOR_VIEWPORTS`, plus de 768), largeurs citées par le prompt et l'outil measure (375, 810 et 1280 px), accès (abonnement refusé hors mode local,
 quel que soit NODE_ENV), filtre d'adresses (domaines nus, IDN, punycode, liste blanche, linéarité) dans questions, message
 final et journal, `complete` (faux client Messages et faux query), faux Claude (dont `applyEdit` et l'Edit jugé par le
 hook avec `lint` : valeur en dur refusée avant l'écriture, token permis écrit, old_string ambigu, `replaceAll`, `content`). Non couvert : un vrai appel à Claude (interdit pendant la construction).
@@ -309,6 +320,9 @@ Typage : `npx tsc --noEmit -p .` depuis la racine (zéro erreur dans ce dossier 
   REFUSÉES et renvoyées à Claude (le client ne voit rien) ; liste blanche vide par défaut ; pas de dépendance à une liste
   de TLD (heuristique + extensions de fichiers exclues).
 - `buildPrompt` accepte 1 à 8 éléments (contrat) : une section STYLE/TEXT commune, règles et portée par zone.
+- Largeurs citées à Claude (2026-09-28) : tirées du contrat `EDITOR_VIEWPORTS` (measure relève 375, 810 et 1280 px ;
+  Tablet = point de rupture tablette du site, plus le 768 du Figma, sous lequel Conduit est encore en mise en page mobile :
+  Claude refusait une demande « tablette » à cause de lui). Aucune largeur recopiée dans le prompt ni les outils.
 
 ## Demandes de contrat
 - ~~**engine-guards** (AI-03) : `DesignSystem.cssValues`~~ — **fait** (FOLLOWUPS #37) : rempli par `loadDesignSystem`,

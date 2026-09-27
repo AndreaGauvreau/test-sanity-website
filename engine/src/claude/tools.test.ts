@@ -3,7 +3,7 @@ import { describe, it } from 'vitest'
 import { z } from 'zod'
 import { ALLOWED_TOOLS, ASK_TOOL, MEASURE_TOOL, TEXT_TOOL } from './names'
 import { questionProblems } from './questions'
-import { ASK_CLIENT_DESCRIPTION, kuartzTools, SET_TEXT_SCHEMA, type ToolHandlers } from './tools'
+import { ASK_CLIENT_DESCRIPTION, kuartzTools, MEASURE_DESCRIPTION, SET_TEXT_SCHEMA, type ToolHandlers } from './tools'
 
 /**
  * Nos outils MCP ouvrent le prompt envoyé au modèle (outils → système → messages) : leurs définitions ne doivent pas
@@ -131,5 +131,11 @@ describe('ASK_CLIENT_DESCRIPTION — en anglais, quatre usages, refus annoncés'
       )
       assert.match(problem ?? '', /cannot take a hard-coded value|font outside the design system/, `${property} refusé`)
     }
+  })
+})
+
+describe('MEASURE_DESCRIPTION', () => {
+  it('annonce les largeurs relevées : les formats de l’éditeur (contrat EDITOR_VIEWPORTS), Tablet à 810 et non 768', () => {
+    assert.ok(MEASURE_DESCRIPTION.startsWith('Measures the selected element as it renders right now in the draft preview, at 375, 810 and 1280 px: '))
   })
 })

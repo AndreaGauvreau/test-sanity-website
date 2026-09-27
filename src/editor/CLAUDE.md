@@ -1,7 +1,7 @@
 # Zones de l'éditeur IA (zones.json) et tokens du site — LLM context
 
 > Propriétaire : site-adapter (`zones.json`, `zones.test.ts`, `src/styles/tokens.json` + test) · `RULES.md` : engine-claude
-> · Figma : D0-D3, G1 · Contrat : src/admin/core/contracts/zones.ts · Mis à jour : 2026-09-27
+> · Figma : D0-D3, G1 · Contrat : src/admin/core/contracts/zones.ts · Mis à jour : 2026-09-28 (points de rupture ↔ formats de l'éditeur)
 
 ## Utilité
 Dit à l'éditeur IA (moteur `engine/`, pont `src/admin/editor-bridge`, interface D1-D3) ce qui est modifiable sur la
@@ -92,6 +92,10 @@ demande (dans son clone), par le pont (repérage `data-edit`) et par l'admin (li
   src/admin.config.ts ; 5) `npx vitest run src/editor src/admin.config.test.ts` ; 6) captures de référence
   (docs/admin/research/site-baseline/README.md) : le HTML public ne doit pas changer.
 - **Nouveau token** : l'ajouter à `tokens.css` puis à `tokens.json` (même valeur) ; `npx vitest run src/styles`.
+- **Changer un point de rupture** (`breakpoint-tablet`, `breakpoint-desktop`) : les formats de l'aperçu de l'éditeur IA
+  en dépendent (contrat `EDITOR_VIEWPORTS` : Tablet = `breakpoint-tablet` × 16 = 810, Desktop ≥ `breakpoint-desktop`) ;
+  `src/admin/core/contracts/viewports.test.ts` échoue tant que le contrat ne suit pas, puis `RULES.md` (phrase des
+  formats, `engine/src/claude/rules.test.ts`).
 
 ## Tests
 `npx vitest run src/editor src/styles` (zones : 5 tests ; tokens : 3). À la main : l'aperçu 4042 du moteur

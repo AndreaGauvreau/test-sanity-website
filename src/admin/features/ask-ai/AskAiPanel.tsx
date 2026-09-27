@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent, type Ref } from 'react'
 
-import { formatCost, formatTokens } from '@/admin/core/contracts/format'
+import { formatCostShort, formatTokens, formatUsageLine } from '@/admin/core/contracts/format'
 import { Button, ButtonContent, buttonClassName } from '@/admin/ui/Button'
 import { Callout } from '@/admin/ui/Callout'
 import { Icon } from '@/admin/ui/icons'
@@ -54,11 +54,18 @@ function isSendShortcut(event: KeyboardEvent<HTMLTextAreaElement>): boolean {
   return event.key === 'Enter' && (event.metaKey || event.ctrlKey) && !event.shiftKey && !event.altKey && !event.nativeEvent.isComposing
 }
 
-function monthLine(info: AskAiInfo | null): string | null {
-  if (!info) return `This month: ${ASK_AI_TEXT.loading}`
+/**
+ * Pied « This month: 1.2M input · 147k output · $4.80 » : coût FACTURÉ ; ce qui est passé par l'abonnement Claude
+ * s'affiche « Included » (« $0.10 + included » avec du facturé), le détail dans l'infobulle.
+ */
+function monthLine(info: AskAiInfo | null): { text: string; title?: string } | null {
+  if (!info) return { text: `This month: ${ASK_AI_TEXT.loading}` }
   if (!info.ok || !info.month) return null
-  const m = info.month
-  return `This month: ${formatTokens(m.inputTokens)} input · ${formatTokens(m.outputTokens)} output · ${formatCost(m.costUsd)}`
+  const m = { ...info.month, includedUsd: info.month.includedUsd ?? 0 }
+  return {
+    text: `This month: ${formatTokens(m.inputTokens)} input · ${formatTokens(m.outputTokens)} output · ${formatCostShort(m)}`,
+    title: `This month: ${formatUsageLine(m)}`,
+  }
 }
 
 export function AskAiPanel({ turns, info, pending, onSend, onRetry, onClose, inputRef, panelRef }: AskAiPanelProps) {
@@ -178,7 +185,9 @@ export function AskAiPanel({ turns, info, pending, onSend, onRetry, onClose, inp
       </div>
 
       <div className={styles.footer}>
-        <span className={styles.month}>{month}</span>
+        <span className={styles.month} title={month?.title}>
+          {month?.text}
+        </span>
         <Link href={USAGE_HREF} className={buttonClassName({ variant: 'ghost', size: 'small' })}>
           <ButtonContent size="small" iconRight="external">
             {ASK_AI_TEXT.usage}

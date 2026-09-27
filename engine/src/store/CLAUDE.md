@@ -1,6 +1,6 @@
 # Magasin persistant du moteur (`engine/src/store`) — LLM context
 
-> Propriétaire : engine-core · Figma : — · Mis à jour : 2026-09-27
+> Propriétaire : engine-core · Figma : — · Mis à jour : 2026-09-28 (relecture d'un magasin d'une version précédente)
 
 ## Utilité
 État durable du moteur dans `<ENGINE_WORKSPACE>/data/` : demandes (EditJob + état interne), modifications en attente
@@ -28,6 +28,10 @@ ATOMIQUEMENT. Tout ce qu'il faut pour remettre en état après un crash y est é
 l'éditeur s'en sert pour ses refus 409), puis écrit ; les écritures partent dans l'ordre. Un fichier illisible fait
 échouer le démarrage (jamais écrasé en silence). Fils : 200 entrées gardées par page, 50 montrées ; une demande qui
 n'est plus citée par un fil ni par une modification ouverte ou validée est retirée (sauf restauration en échec).
+Relecture : seule la forme générale est vérifiée (`version`, collections) ; les demandes, modifications et entrées ne
+sont PAS revalidées contre le contrat du jour. Un magasin d'une version précédente se relit donc tel quel, et le fichier
+n'est pas réécrit à l'ouverture (ex. demandes faites en Tablet à 768 avant le 2026-09-28 : largeur gardée dans
+l'historique, affichée en Tablet par l'admin ; `store.test.ts`, démarrage complet dans `../main.test.ts`).
 
 ## Forces
 Atomicité (rename), ordre garanti, relecture testée, clés lues avec `Object.hasOwn`.
@@ -54,6 +58,8 @@ Ne jamais modifier la valeur de `get()` directement (passer par `update`/`transa
   `updateJob` ; ne jamais le renvoyer à l'admin.
 - Nouveau format : passer `version` à 2, faire convertir la version 1 par `migrateEditor` / `migratePublications`
   (lecture), et tester la relecture d'un fichier version 1 dans `store.test.ts`.
+- Une valeur du contrat change (ex. formats de l'aperçu) : ne PAS réécrire l'historique à la relecture ; le lecteur la
+  normalise à l'affichage (`viewportOf`), et un test relit un fichier de l'ancienne version.
 - Nouvelle collection : l'ajouter à `EditorData` avec sa valeur initiale et sa normalisation dans `migrateEditor`.
 
 ## Tests

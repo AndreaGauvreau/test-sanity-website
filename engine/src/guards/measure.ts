@@ -644,7 +644,7 @@ export function describeMeasures(measures: ZoneMeasure[]): string {
     .join('\n')
 }
 
-/** Résumé court pour le journal visible dans l’éditeur (en anglais : « 2 lines at 375 px, hidden at 768 px »). */
+/** Résumé court pour le journal visible dans l’éditeur (en anglais : « 2 lines at 375 px, hidden at 810 px »). */
 export const lineSummary = (measures: ZoneMeasure[]) =>
   measures
     .map((m) => {

@@ -2,7 +2,7 @@
 
 > Propriétaire : editor-sidebar · Figma : D1, D2, D3 (docs/admin/figma/screens/D1-3.md), G2 (states/G2.md, les 9 états),
 > G1 scénario 2 · fiches EditorHeader, ModelUsage, ClaudeHeader, Message, Step, AnswerOption, ReviewCard, Composer,
-> ElementChip · Mis à jour : 2026-09-27 (vague 3)
+> ElementChip · Mis à jour : 2026-09-28 (coût facturé / inclus dans l'abonnement Claude)
 > Possède aussi : `src/admin/features/ai-editor/state/` (voir son CLAUDE.md) et `src/admin/core/engine/mock/editor.ts`
 > (moteur simulé, section dédiée ci-dessous).
 
@@ -24,7 +24,8 @@ la barre d'outils ni la barre flottante « Modified by Claude · to validate » 
   `stepView`, `summaryText`, `checksLine` / `checksSpoken`, `reviewTitle`, `validatedText`, `latestJobIndex`,
   `upsertJob`, `shouldRestoreRequest`, `adjustmentScope`, textes `UI` (anglais), constantes (600, 300, 8, 900 ms).
 - `poller.ts` — PUR (minuteurs) : `startJobPolling` (900 ms, recul 5 s max, erreurs remontées, abort, 404 = fin).
-- `usage.ts` — PUR : `usageByJob`, `cumulativeUsage` (cumul du moteur + écarts par demande, sans double compte).
+- `usage.ts` — PUR : `usageByJob`, `cumulativeUsage` (cumul du moteur + écarts par demande, sans double compte ; coût
+  séparé demande par demande : `ConversationUsage` = `costUsd` FACTURÉ + `includedUsd` abonnement Claude).
 - `components/EditorHeader.tsx` — ‹ Admin (next/link) · Publish ↗ (lien, ou bouton désactivé pendant le travail) · ModelUsage small.
 - `components/ClaudeHeader.tsx` — ✦ Claude + état (ready / working + loader / asking / done + usage / stopped).
 - `components/Message.tsx` — bulle request (puces) / adjustment. `components/ElementChip.tsx` — puce + ✕ facultatif.
@@ -74,7 +75,12 @@ la barre d'outils ni la barre flottante « Modified by Claude · to validate » 
 - Fil : la dernière demande est détaillée seulement si elle termine le fil ; les autres sont repliées sur une ligne
   (« Done · 24 s » + tokens + coût) — G2 : « chaque demande garde sa durée, ses tokens et son coût ».
 - En-tête : cumul de la conversation (`cumulativeUsage`) ; « 0 input · 0 output · $0.00 » au départ ; « ~ » si un
-  coût est estimé (demande interrompue).
+  coût FACTURÉ est estimé (demande interrompue). Demandes passées par l'abonnement Claude (`Usage.access`, moteur
+  local) : jamais comptées comme facturées — « Opus 5.5 120k input · 2.8k output · Included » (« $0.02 + included » en
+  cas de mélange), prix API dans l'infobulle et la ligne lue (« … included in your Claude subscription (≈ $0.39 at API
+  prices) »). Même règle pour chaque demande du fil (« Done · 24 s » + usage, lignes repliées) : `ModelUsage` lit
+  `access`. Le cumul du moteur (`sumUsage`) ne garde que l'accès de sa 1re demande : la séparation est refaite depuis le
+  fil, jamais lue sur ce cumul.
 - G1 scénario 2 : au chargement, `EditorState.pending` de la page → carte + Composer `adjust` ; demande active → sondage
   repris. Demande active ou modification en attente sur une AUTRE page → Callout + Composer inactif.
 - Sondage : 900 ms après chaque réponse ; erreur affichée sous le fil (« … Retrying… », « (retrying — N attempts) ») ;
@@ -187,8 +193,9 @@ la barre d'outils ni la barre flottante « Modified by Claude · to validate » 
 
 ## Tests
 
-`npx vitest run src/admin/features/ai-editor/sidebar src/admin/core/engine/mock/editor.test.ts` — 51 + 22 tests :
-machine d'états du Composer, `canApply`, réponses (`buildAnswers`), libellés, cumul, sondage (intervalle, recul, 404,
+`npx vitest run src/admin/features/ai-editor/sidebar src/admin/core/engine/mock/editor.test.ts` — 61 + 24 tests :
+machine d'états du Composer, `canApply`, réponses (`buildAnswers`), libellés, cumul (dont coût facturé / inclus :
+abonnement seul, mélange, « ~ » du facturé seulement ; en-tête « Included » / « $0.02 + included »), sondage (intervalle, recul, 404,
 abort), Composer (jsdom, user-event réel), sidebar complète (jsdom, moteur simulé : 1→8, Stop, échec, Other answer,
 Cancel + reprise G1, décision par le magasin, 409 busy, 409 publishing, 503 « no-claude », erreur de sondage +
 démontage, erreur de chargement, poignée), moteur simulé (enchaînement, gardes, idempotence, 5 scénarios, verrou de
@@ -226,3 +233,6 @@ Toutes faites (vérifiées le 2026-09-27) :
 - `EditorHeader` reçoit `model = { id, label }` (EditorState.model) : le libellé du moteur prime sur `modelLabel(id)`
   (ex. « Fake Claude (auto) — no real call »). Faux Claude repéré par `isFakeModel` (/fake/i sur libellé ou id) et
   signalé en jaune (`data-fake`). Sans libellé : repli sur `ModelUsage` avec l'id. Test : `components/EditorHeader.test.tsx`.
+- `usage` de l'en-tête : `ModelUsageValue` (le `ConversationUsage` de `cumulativeUsage`, forme « cumul » : `costUsd`
+  facturé + `includedUsd`). Faux Claude : son coût simulé reste affiché dans le fil (marqué par le libellé jaune) mais
+  le moteur ne l'écrit plus dans le journal aiUsage (B5, B1 et Ask AI ne le voient jamais).

@@ -5,6 +5,7 @@ import { MotionGlobalConfig } from 'motion/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { parseUsageDocs, summarizeUsage, usageRows } from '@/admin/core/usage/aggregate'
+import { AI_USAGE_NOTES } from '@/admin/ui'
 
 /** B5 en jsdom : chiffres formatés, tableau, état vide, changement de période par l'URL. Données de TEST en mémoire. */
 
@@ -71,6 +72,72 @@ describe('UsageScreen', () => {
     expect(rows[1].textContent).toContain('Question · Failed')
     expect(rows[1].textContent).toContain('~$0.50 (estimated)')
     expect(rows[2].textContent).toContain('Make the title bigger')
+  })
+
+  describe('abonnement Claude : jamais additionné au coût facturé', () => {
+    const user = { id: 'a', name: 'Andrea', role: 'kuartz' }
+    // Forme du dataset development au 28/09 : 5 demandes facturées (clé API, 0,02 $) + 2 par l'ABONNEMENT (0,18 $ et
+    // 0,12 $ au prix de l'API, non facturées). Données de TEST en mémoire.
+    const billed = Array.from({ length: 5 }, (_, i) => ({
+      _id: `aiUsage.k${i}`,
+      feature: 'editor',
+      createdAt: `2026-09-2${i}T08:00:00Z`,
+      model: 'claude-opus-5-5',
+      inputTokens: 9_000,
+      outputTokens: 100,
+      costUsd: 0.02,
+      costKind: 'billed',
+      access: 'api-key',
+      status: 'done',
+      user,
+    }))
+    const subscription = [
+      { _id: 'aiUsage.s1', feature: 'editor', createdAt: '2026-09-27T10:00:00Z', model: 'claude-opus-5-5', inputTokens: 120_000, outputTokens: 2_800, costUsd: 0.18, costKind: 'billed', access: 'subscription', status: 'done', request: 'Make the title bigger', user },
+      { _id: 'aiUsage.s2', feature: 'editor', createdAt: '2026-09-26T10:00:00Z', model: 'claude-opus-5-5', inputTokens: 80_000, outputTokens: 900, costUsd: 0.12, costKind: 'billed', access: 'subscription', status: 'done', user },
+    ]
+    const INCLUDED = '≈ $0.30 at API prices — included in your Claude subscription'
+
+    it('mélange : Cost et Since launch = facturé seulement ; part incluse à part ; note adaptée', () => {
+      renderScreen(parseUsageDocs([...billed, ...subscription]))
+      const card = screen.getByRole('heading', { name: 'AI usage' }).closest('section')!
+      expect(within(card).getByText('$0.10')).toBeTruthy()
+      expect(within(card).getByText(INCLUDED)).toBeTruthy()
+      expect(within(card).getByText(AI_USAGE_NOTES.mixed)).toBeTruthy()
+      expect(within(card).getByText('$0.10 + included')).toBeTruthy()
+      // Since launch : même règle (valeur facturée, part incluse sur sa ligne).
+      expect(screen.getAllByText('$0.10')).toHaveLength(2)
+      expect(screen.getAllByText(INCLUDED)).toHaveLength(2)
+      expect(document.body.textContent).not.toContain('$0.40')
+    })
+
+    it('abonnement seulement : Cost $0.00, « Included » par fonctionnalité, note de l’abonnement', () => {
+      renderScreen(parseUsageDocs(subscription))
+      const card = screen.getByRole('heading', { name: 'AI usage' }).closest('section')!
+      expect(within(card).getByText('$0.00')).toBeTruthy()
+      expect(within(card).getByText(INCLUDED)).toBeTruthy()
+      expect(within(card).getByText(AI_USAGE_NOTES.included)).toBeTruthy()
+      expect(within(card).queryByText(AI_USAGE_NOTES.billed)).toBeNull()
+      expect(within(within(card).getByRole('list', { name: 'Usage by feature' })).getByText('Included')).toBeTruthy()
+    })
+
+    it('Recent requests : « Included » + prix API en secondaire (et lu en entier) ; facturé inchangé', () => {
+      renderScreen(parseUsageDocs([...billed, ...subscription]))
+      const rows = within(screen.getByRole('table')).getAllByRole('row')
+      const cost = (row: HTMLElement) => row.querySelectorAll('td')[7]
+      expect(cost(rows[1]).textContent).toContain('Included')
+      expect(cost(rows[1]).textContent).toContain('≈ $0.18')
+      expect(cost(rows[1]).textContent).toContain('included in your Claude subscription (≈ $0.18 at API prices)')
+      expect(cost(rows[1]).querySelector('[title]')?.getAttribute('title')).toBe('≈ $0.18 at API prices — included in your Claude subscription')
+      expect(cost(rows[2]).textContent).toContain('≈ $0.12')
+      expect(cost(rows[3]).textContent).toBe('$0.02')
+    })
+
+    it('anciens documents sans `access` : facturés, comme avant', () => {
+      renderScreen()
+      const card = screen.getByRole('heading', { name: 'AI usage' }).closest('section')!
+      expect(within(card).getByText(AI_USAGE_NOTES.billed)).toBeTruthy()
+      expect(document.body.textContent).not.toContain('Included')
+    })
   })
 
   it('état vide', () => {

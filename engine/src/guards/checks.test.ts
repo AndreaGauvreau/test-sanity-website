@@ -80,9 +80,9 @@ describe('frameCheck — décalages relatifs (position: relative avec top, right
 
   it('refuse un élément intérieur décalé (une date poussée hors d’une carte qui masque ce qui dépasse)', () => {
     const pushed = rawZone({ offsets: [{ key: '1.2', top: 96, left: 8 }] })
-    const check = frameCheck(measuresOf({}), measuresOf({ 768: pushed }))
+    const check = frameCheck(measuresOf({}), measuresOf({ 810: pushed }))
     assert.equal(check.ok, false)
-    assert.equal(check.detail, '768 px: relative offset (an inner element 96 px down and 8 px to the right)')
+    assert.equal(check.detail, '810 px: relative offset (an inner element 96 px down and 8 px to the right)')
   })
 
   it('laisse passer un décalage qui existait déjà, refuse celui qui change', () => {
@@ -91,7 +91,7 @@ describe('frameCheck — décalages relatifs (position: relative avec top, right
     const further = rawZone({ offsets: [{ key: '0', top: 8, left: 0 }] })
     const check = frameCheck(measuresOf({}, shifted), measuresOf({}, further))
     assert.equal(check.ok, false)
-    assert.match(String(check.detail), /^375 px: relative offset \(an inner element 8 px down\); 768 px: /)
+    assert.match(String(check.detail), /^375 px: relative offset \(an inner element 8 px down\); 810 px: /)
   })
 })
 
@@ -195,9 +195,9 @@ describe('frameCheck — un texte visible avant ne disparaît pas', () => {
 
   it('refuse un texte masqué (display: none, visibility: hidden) dans une zone restée affichée', () => {
     const masked = rawZone({ ...nav, texts: [blog], hiddenTexts: ['0'] })
-    const check = frameCheck(measuresOf({ 768: nav }), measuresOf({ 768: masked }))
+    const check = frameCheck(measuresOf({ 810: nav }), measuresOf({ 810: masked }))
     assert.equal(check.ok, false)
-    assert.equal(check.detail, '768 px: invisible text (“Accueil” hidden)')
+    assert.equal(check.detail, '810 px: invisible text (“Accueil” hidden)')
   })
 
   it('laisse passer un texte déjà invisible avant, un texte retiré par set_text, et la zone masquée (R03)', () => {
@@ -247,10 +247,10 @@ describe('coverWarning — une ligne visible avant, recouverte après : avertiss
     const two = rawZone({
       texts: [rawText({ text: 'Accueil', coveredLines: [0] }), rawText({ key: '1', text: 'Blog', coveredLines: [0] })],
     })
-    assert.deepEqual(coverWarning(measuresOf({}), measuresOf({ 768: two })), {
-      step: 'Warning: “Accueil” covered at 768 px (1 of 1 line); “Blog” covered at 768 px (1 of 1 line).',
+    assert.deepEqual(coverWarning(measuresOf({}), measuresOf({ 810: two })), {
+      step: 'Warning: “Accueil” covered at 810 px (1 of 1 line); “Blog” covered at 810 px (1 of 1 line).',
       client:
-        'Warning: the texts “Accueil” and “Blog” are fully hidden by another element at 768 px. ' +
+        'Warning: the texts “Accueil” and “Blog” are fully hidden by another element at 810 px. ' +
         'Check the result before publishing.',
     })
   })
@@ -334,8 +334,8 @@ describe('frameCheck et coverWarning — chaque occurrence d’une zone répét�
     assert.equal(check.ok, false)
     const at = (viewport: number) =>
       `${viewport} px (occurrence 3 of 3): +96 px on the left, +96 px on the right, negative margin (left, right)`
-    assert.equal(check.detail, [375, 768, 1280].map(at).join('; '))
-    assert.match(check.problem, /^The zone goes out of the frame of its parent at 375 px \(occurrence 3 of 3\), 768 px \(occurrence 3/)
+    assert.equal(check.detail, [375, 810, 1280].map(at).join('; '))
+    assert.match(check.problem, /^The zone goes out of the frame of its parent at 375 px \(occurrence 3 of 3\), 810 px \(occurrence 3/)
     assert.match(check.problem, /The zone repeats on the page: each of its occurrences is checked/)
     // Une seule occurrence : ni numéro ni consigne sur la répétition (R09).
     const single = frameCheck(measuresOf({ 1280: fitted }), measuresOf({ 1280: widened }))
@@ -354,17 +354,17 @@ describe('frameCheck et coverWarning — chaque occurrence d’une zone répét�
     assert.deepEqual(coverWarning(occurrencesOf([plain, plain, plain]), occurrencesOf([plain, plain, covered])), {
       step:
         'Warning: “Citadine, SUV ou utilitaire” (occurrence 3 of 3) covered at 375 px (1 of 1 line), ' +
-        'at 768 px (1 of 1 line) and at 1280 px (1 of 1 line).',
+        'at 810 px (1 of 1 line) and at 1280 px (1 of 1 line).',
       client:
         'Warning: the text “Citadine, SUV ou utilitaire” (occurrence 3 of 3) is fully hidden by another ' +
-        'element at 375, 768 and 1280 px. Check the result before publishing.',
+        'element at 375, 810 and 1280 px. Check the result before publishing.',
     })
   })
 
   it('dit que le relevé est partiel au-delà de 12 occurrences, ou quand un plafond du relevé est atteint', () => {
     const many = coverWarning(occurrencesOf([plain], 15), occurrencesOf([covered], 15))
     assert.match(many?.step ?? '', / Incomplete check \(only the first 12 of 15 occurrences\): other texts may be covered too\.$/)
-    assert.match(many?.client ?? '', /at 375, 768 and 1280 px \(incomplete check\)\. Check the result before publishing\.$/)
+    assert.match(many?.client ?? '', /at 375, 810 and 1280 px \(incomplete check\)\. Check the result before publishing\.$/)
     // Sans texte recouvert, l’étape dit seulement que le relevé est partiel ; pas de phrase au client.
     assert.deepEqual(coverWarning(occurrencesOf([plain], 15), occurrencesOf([plain], 15)), {
       step: 'Warning: covered-text check incomplete (only the first 12 of 15 occurrences): check the result.',
@@ -380,7 +380,7 @@ describe('frameCheck et coverWarning — chaque occurrence d’une zone répét�
 })
 
 describe('linesCheck', () => {
-  // Le même texte à 768 et 1280 px : seules les lignes à 375 px comptent.
+  // Le même texte à 810 et 1280 px : seules les lignes à 375 px comptent.
   const at375 = (text: string, lines: number) =>
     measuresOf({ 375: rawZone({ texts: [rawText({ text, rects: lineRects(lines) })] }) })
 
@@ -443,10 +443,10 @@ describe('contrastCheck', () => {
     assert.equal(result?.id, 'contrast')
     assert.equal(result?.label, 'Texts always legible (WCAG contrast)')
     assert.equal(result?.ok, false)
-    assert.equal(result?.detail, '“24 septembre 2026”: 3.75 → 3.07 at 375, 768, 1280 px')
+    assert.equal(result?.detail, '“24 septembre 2026”: 3.75 → 3.07 at 375, 810, 1280 px')
     assert.equal(
       result?.problem,
-      'The text “24 septembre 2026” becomes less legible: contrast 3.75 → 3.07 at 375, 768, 1280 px (minimum 4.5). Choose design system colors that keep the contrast, or do not change this point and tell the client.',
+      'The text “24 septembre 2026” becomes less legible: contrast 3.75 → 3.07 at 375, 810, 1280 px (minimum 4.5). Choose design system colors that keep the contrast, or do not change this point and tell the client.',
     )
   })
 
@@ -463,7 +463,7 @@ describe('contrastCheck', () => {
   it('refuse un texte lisible qui passe sous le seuil (6,96 → 4,4)', () => {
     const result = contrastCheck(text(BRUME, NUIT, 16), text('rgb(126, 126, 126)', NUIT, 16), false)
     assert.equal(result?.ok, false)
-    assert.equal(result?.detail, '“24 septembre 2026”: 6.96 → 4.4 at 375, 768, 1280 px')
+    assert.equal(result?.detail, '“24 septembre 2026”: 6.96 → 4.4 at 375, 810, 1280 px')
   })
 
   it('ignore un fond inconnu avant comme après, et ne contrôle pas un logotype sous le seuil WCAG', () => {
@@ -485,12 +485,12 @@ describe('contrastCheck', () => {
         assert.equal(result?.label, exempt ? 'Logo always visible on its background' : 'Texts always legible (WCAG contrast)')
         assert.equal(
           result?.detail,
-          '“24 septembre 2026”: color not measurable after the change (contrast 3.8 before) at 375, 768, 1280 px',
+          '“24 septembre 2026”: color not measurable after the change (contrast 3.8 before) at 375, 810, 1280 px',
           label,
         )
         assert.match(
           result?.problem ?? '',
-          /^The color of the text “24 septembre 2026” is no longer measurable after the change \(contrast 3.8 before, at 375, 768, 1280 px\): /,
+          /^The color of the text “24 septembre 2026” is no longer measurable after the change \(contrast 3.8 before, at 375, 810, 1280 px\): /,
           label,
         )
         assert.match(result?.problem ?? '', /relative color with from/, label)
@@ -502,7 +502,7 @@ describe('contrastCheck', () => {
     assert.equal(photo?.ok, false)
     assert.equal(
       photo?.detail,
-      '“24 septembre 2026”: color not measurable after the change (contrast 3.75 before) at 375, 768, 1280 px',
+      '“24 septembre 2026”: color not measurable after the change (contrast 3.75 before) at 375, 810, 1280 px',
     )
     // Inconnu avant : rien à comparer, comme avant.
     assert.equal(contrastCheck(text(relative[0], NUIT), text(relative[0], NUIT), true), null)
@@ -516,10 +516,10 @@ describe('contrastCheck', () => {
     assert.equal(hidden?.id, 'contrast')
     assert.equal(hidden?.ok, false)
     assert.equal(hidden?.label, 'Logo always visible on its background')
-    assert.equal(hidden?.detail, '“24 septembre 2026”: 3.8 → 1 at 375, 768, 1280 px')
+    assert.equal(hidden?.detail, '“24 septembre 2026”: 3.8 → 1 at 375, 810, 1280 px')
     assert.match(
       hidden?.problem ?? '',
-      /^The text “24 septembre 2026” blends into its background: contrast 3.8 → 1 at 375, 768, 1280 px \(minimum 1.5 for a logotype/,
+      /^The text “24 septembre 2026” blends into its background: contrast 3.8 → 1 at 375, 810, 1280 px \(minimum 1.5 for a logotype/,
     )
     // Déjà sous le plancher et inchangé : rien de nouveau.
     assert.equal(contrastCheck(text(NUIT, NUIT), text(NUIT, NUIT), true), null)
@@ -546,7 +546,7 @@ describe('contrastCheck — occurrences, mots mis en avant ajoutés, couleur tra
       false,
     )
     assert.equal(result?.ok, false)
-    assert.equal(result?.detail, '“24 septembre 2026” (occurrence 3 of 3): 3.75 → 3.07 at 375, 768, 1280 px')
+    assert.equal(result?.detail, '“24 septembre 2026” (occurrence 3 of 3): 3.75 → 3.07 at 375, 810, 1280 px')
     assert.match(
       String(result?.problem),
       /^The text “24 septembre 2026” \(occurrence 3 of 3\) becomes less legible: contrast 3.75 → 3.07/,
@@ -559,7 +559,7 @@ describe('contrastCheck — occurrences, mots mis en avant ajoutés, couleur tra
       occurrencesOf([card(NUIT_CLAIRE), card(NUIT_CLAIRE), card(NUIT_CLAIRE)]),
       false,
     )
-    assert.equal(result?.detail, '“24 septembre 2026” (occurrences 1, 2 and 3 of 3): 3.75 → 3.07 at 375, 768, 1280 px')
+    assert.equal(result?.detail, '“24 septembre 2026” (occurrences 1, 2 and 3 of 3): 3.75 → 3.07 at 375, 810, 1280 px')
   })
 
   it('compare chaque occurrence à elle-même, pas à l’occurrence choisie', () => {
@@ -573,7 +573,7 @@ describe('contrastCheck — occurrences, mots mis en avant ajoutés, couleur tra
     const before = measuresOf({}, rawZone({ texts: [title] }))
     const night = contrastCheck(before, measuresOf({}, rawZone({ texts: [title, accent(NUIT)] })), false)
     assert.equal(night?.ok, false)
-    assert.equal(night?.detail, '“sans surprise”: 17.06 → 1 at 375, 768, 1280 px')
+    assert.equal(night?.detail, '“sans surprise”: 17.06 → 1 at 375, 810, 1280 px')
     // Rose sur Nuit (3,8) : sous le seuil d’un texte de 16 px, au-dessus de celui d’un grand titre.
     assert.equal(contrastCheck(before, measuresOf({}, rawZone({ texts: [title, accent(ROSE)] })), false)?.ok, false)
     const large = measuresOf({}, rawZone({ texts: [{ ...title, fontSize: 40 }] }))
@@ -590,7 +590,7 @@ describe('contrastCheck — occurrences, mots mis en avant ajoutés, couleur tra
       false,
     )
     assert.equal(result?.ok, false)
-    assert.equal(result?.detail, '“Texte”: 17.06 → 1 at 375, 768, 1280 px')
+    assert.equal(result?.detail, '“Texte”: 17.06 → 1 at 375, 810, 1280 px')
   })
 })
 
@@ -624,10 +624,10 @@ describe('contrastCheck — états forcés : survol, clic, focus, et leurs combi
       false,
     )
     assert.equal(result?.ok, false)
-    assert.equal(result?.detail, '“Accueil” on hover: 17.06 → 1 at 375, 768, 1280 px')
+    assert.equal(result?.detail, '“Accueil” on hover: 17.06 → 1 at 375, 810, 1280 px')
     assert.equal(
       result?.problem,
-      'The text “Accueil” becomes less legible on hover: contrast 17.06 → 1 at 375, 768, 1280 px (minimum 4.5). ' +
+      'The text “Accueil” becomes less legible on hover: contrast 17.06 → 1 at 375, 810, 1280 px (minimum 4.5). ' +
         'Choose design system colors that keep the contrast, or do not change this point and tell the client. ' +
         'The :hover, :active, :focus-visible and :focus states are measured like the resting state, alone and combined: each ' +
         'text must stay legible on its background in them.',
@@ -640,7 +640,7 @@ describe('contrastCheck — états forcés : survol, clic, focus, et leurs combi
       link([{ kind: 'hover', hover: 1, color: ROSE }], ROSE),
       false,
     )
-    assert.equal(same?.detail, '“Accueil”: 17.06 → 3.8 at 375, 768, 1280 px')
+    assert.equal(same?.detail, '“Accueil”: 17.06 → 3.8 at 375, 810, 1280 px')
     assert.doesNotMatch(String(same?.problem), /states/)
     const worse = contrastCheck(
       link([{ kind: 'hover', hover: 1, color: TEXTE }]),
@@ -649,7 +649,7 @@ describe('contrastCheck — états forcés : survol, clic, focus, et leurs combi
     )
     assert.equal(
       worse?.detail,
-      '“Accueil”: 17.06 → 3.8 at 375, 768, 1280 px; “Accueil” on hover: 17.06 → 1 at 375, 768, 1280 px',
+      '“Accueil”: 17.06 → 3.8 at 375, 810, 1280 px; “Accueil” on hover: 17.06 → 1 at 375, 810, 1280 px',
     )
   })
 
@@ -668,7 +668,7 @@ describe('contrastCheck — états forcés : survol, clic, focus, et leurs combi
         link([{ kind, hover, focus, color: NUIT }]),
         false,
       )
-      assert.equal(result?.detail, `“Accueil” ${words}: 17.06 → 1 at 375, 768, 1280 px`, kind)
+      assert.equal(result?.detail, `“Accueil” ${words}: 17.06 → 1 at 375, 810, 1280 px`, kind)
     }
   })
 
@@ -678,7 +678,7 @@ describe('contrastCheck — états forcés : survol, clic, focus, et leurs combi
       link([{ kind: 'active-focus-visible', hover: 1, focus: 1, color: NUIT }]),
       false,
     )
-    assert.equal(alone?.detail, '“Accueil” during a click, with keyboard focus: 17.06 → 1 at 375, 768, 1280 px')
+    assert.equal(alone?.detail, '“Accueil” during a click, with keyboard focus: 17.06 → 1 at 375, 810, 1280 px')
     const components: [StateKind, number | null, number | null, string][] = [
       ['active', 1, null, 'while clicked'],
       ['focus-visible', null, 1, 'on keyboard focus'],
@@ -691,7 +691,7 @@ describe('contrastCheck — états forcés : survol, clic, focus, et leurs combi
         { kind: 'active-focus-visible', hover: 1, focus: 1, color },
       ]
       const result = contrastCheck(link(states(TEXTE)), link(states(NUIT)), false)
-      assert.equal(result?.detail, `“Accueil” ${words}: 17.06 → 1 at 375, 768, 1280 px`, kind)
+      assert.equal(result?.detail, `“Accueil” ${words}: 17.06 → 1 at 375, 810, 1280 px`, kind)
     }
   })
 
@@ -707,7 +707,7 @@ describe('contrastCheck — états forcés : survol, clic, focus, et leurs combi
     const result = contrastCheck(link(states(TEXTE)), link(states(NUIT)), false)
     assert.equal(
       result?.detail,
-      '“Accueil” on hover: 17.06 → 1 at 375, 768, 1280 px; “Accueil” while clicked: 17.06 → 1 at 375, 768, 1280 px',
+      '“Accueil” on hover: 17.06 → 1 at 375, 810, 1280 px; “Accueil” while clicked: 17.06 → 1 at 375, 810, 1280 px',
     )
     // Une combinaison pire que ses états simples est nommée.
     const worse = contrastCheck(
@@ -721,8 +721,8 @@ describe('contrastCheck — états forcés : survol, clic, focus, et leurs combi
     )
     assert.equal(
       worse?.detail,
-      '“Accueil” on hover: 17.06 → 3.8 at 375, 768, 1280 px; ' +
-        '“Accueil” on hover, with focus after a click: 17.06 → 1 at 375, 768, 1280 px',
+      '“Accueil” on hover: 17.06 → 3.8 at 375, 810, 1280 px; ' +
+        '“Accueil” on hover, with focus after a click: 17.06 → 1 at 375, 810, 1280 px',
     )
   })
 
@@ -744,7 +744,7 @@ describe('contrastCheck — états forcés : survol, clic, focus, et leurs combi
     assert.equal(
       contrastCheck(nav(TEXTE), nav(NUIT), false)?.detail,
       ['“Accueil” on hover', '“Accueil” while clicked', '“Blog” on hover', '“Blog” while clicked']
-        .map((name) => `${name}: 17.06 → 1 at 375, 768, 1280 px`)
+        .map((name) => `${name}: 17.06 → 1 at 375, 810, 1280 px`)
         .join('; '),
     )
   })
@@ -762,7 +762,7 @@ describe('contrastCheck — états forcés : survol, clic, focus, et leurs combi
       link([{ kind: 'hover-focus', hover: 1, focus: 1, color: ROSE }]),
       false,
     )
-    assert.equal(other?.detail, '“Accueil” on hover, with focus after a click: 17.06 → 3.8 at 375, 768, 1280 px')
+    assert.equal(other?.detail, '“Accueil” on hover, with focus after a click: 17.06 → 3.8 at 375, 810, 1280 px')
     const same = contrastCheck(
       link([{ kind: 'hover-focus', hover: 1, focus: 1, color: ROSE }]),
       link([{ kind: 'hover-focus', hover: 1, focus: 1, color: ROSE }]),
@@ -784,7 +784,7 @@ describe('contrastCheck — états forcés : survol, clic, focus, et leurs combi
     assert.equal(rose?.ok, true)
     // Focus clavier absent avant : comparé au repos.
     const focus = contrastCheck(link([]), link([{ kind: 'focus-visible', focus: 1, color: NUIT }]), false)
-    assert.equal(focus?.detail, '“Accueil” on keyboard focus: 17.06 → 1 at 375, 768, 1280 px')
+    assert.equal(focus?.detail, '“Accueil” on keyboard focus: 17.06 → 1 at 375, 810, 1280 px')
   })
 
   it('un fond inconnu dans un état, avant comme après, n’est pas compté ; les autres textes restent contrôlés', () => {
@@ -806,7 +806,7 @@ describe('contrastCheck — états forcés : survol, clic, focus, et leurs combi
       assert.equal(result?.ok, false, String(exempt))
       assert.equal(
         result?.detail,
-        '“Accueil” on hover: color not measurable after the change (contrast 17.06 before) at 375, 768, 1280 px',
+        '“Accueil” on hover: color not measurable after the change (contrast 17.06 before) at 375, 810, 1280 px',
       )
       assert.match(result?.problem ?? '', /^The color of the text “Accueil” on hover is no longer measurable after the change/)
     }
@@ -824,7 +824,7 @@ describe('contrastCheck — états forcés : survol, clic, focus, et leurs combi
     )
     assert.equal(
       rest?.detail,
-      '“Accueil”: color not measurable after the change (contrast 17.06 before) at 375, 768, 1280 px',
+      '“Accueil”: color not measurable after the change (contrast 17.06 before) at 375, 810, 1280 px',
     )
   })
 
@@ -843,7 +843,7 @@ describe('contrastCheck — états forcés : survol, clic, focus, et leurs combi
       true,
     )
     assert.equal(night?.ok, false)
-    assert.equal(night?.detail, '“Accueil” on hover: 17.06 → 1 at 375, 768, 1280 px')
+    assert.equal(night?.detail, '“Accueil” on hover: 17.06 → 1 at 375, 810, 1280 px')
   })
 })
 
@@ -864,7 +864,7 @@ describe('contrastCheck — tous les textes visibles, au-delà des 10 relevés e
   it('refuse un texte au-delà du 10e devenu illisible au repos (:nth-child(n+11))', () => {
     const result = contrastCheck(article(13), article(13, NUIT, 10), false)
     assert.equal(result?.ok, false)
-    assert.equal(result?.detail, [11, 12, 13].map((n) => `“Paragraphe ${n}”: 17.06 → 1 at 375, 768, 1280 px`).join('; '))
+    assert.equal(result?.detail, [11, 12, 13].map((n) => `“Paragraphe ${n}”: 17.06 → 1 at 375, 810, 1280 px`).join('; '))
   })
 
   it('refuse un relevé partiel (plus de MAX_PAINTS textes visibles) au lieu de le dire lisible', () => {
@@ -873,7 +873,7 @@ describe('contrastCheck — tous les textes visibles, au-delà des 10 relevés e
     const long = article(MAX_PAINTS, TEXTE, 0, 450)
     const result = contrastCheck(long, long, false)
     assert.equal(result?.ok, false)
-    assert.equal(result?.detail, 'Partial reading: 450 visible texts, only the first 400 are measured at 375, 768, 1280 px')
+    assert.equal(result?.detail, 'Partial reading: 450 visible texts, only the first 400 are measured at 375, 810, 1280 px')
     assert.equal(
       result?.problem,
       'The zone has 450 visible texts: the contrast is only measured on the first 400, so it cannot be ' +
@@ -891,7 +891,7 @@ describe('contrastCheck — tous les textes visibles, au-delà des 10 relevés e
 
   it('ne cite que les 6 premières baisses, puis leur nombre', () => {
     const result = contrastCheck(article(13), article(13, NUIT), false)
-    const cited = Array.from({ length: 6 }, (_, n) => `“Paragraphe ${n + 1}”: 17.06 → 1 at 375, 768, 1280 px`)
+    const cited = Array.from({ length: 6 }, (_, n) => `“Paragraphe ${n + 1}”: 17.06 → 1 at 375, 810, 1280 px`)
     assert.equal(result?.detail, `${cited.join('; ')}; and 7 other texts`)
     assert.match(String(result?.problem), /And 7 other texts of the zone also become less legible\.$/)
     assert.equal(String(result?.problem).match(/The text “/g)?.length, 6)
@@ -915,7 +915,7 @@ describe('contrastCheck — chaque occurrence de la zone, au-delà des 12 relev�
     const after = occurrencesOf(Array.from({ length: 14 }, (_, rank) => card(rank >= 12 ? NUIT_CLAIRE : BRUME)))
     const result = contrastCheck(before, after, false)
     assert.equal(result?.ok, false)
-    assert.equal(result?.detail, '“24 septembre 2026” (occurrences 13 and 14 of 14): 5.71 → 1 at 375, 768, 1280 px')
+    assert.equal(result?.detail, '“24 septembre 2026” (occurrences 13 and 14 of 14): 5.71 → 1 at 375, 810, 1280 px')
   })
 
   it('refuse un relevé qui ne couvre pas toutes les occurrences de la zone, au lieu de le dire lisible', () => {
@@ -925,7 +925,7 @@ describe('contrastCheck — chaque occurrence de la zone, au-delà des 12 relev�
     )
     const result = contrastCheck(twelve, twelve, false)
     assert.equal(result?.ok, false)
-    assert.equal(result?.detail, 'Partial reading: 14 occurrences of the zone, only 12 are measured at 375, 768, 1280 px')
+    assert.equal(result?.detail, 'Partial reading: 14 occurrences of the zone, only 12 are measured at 375, 810, 1280 px')
     assert.equal(
       result?.problem,
       'The zone repeats 14 times on the page: the contrast is only measured on 12 of them, so it cannot ' +

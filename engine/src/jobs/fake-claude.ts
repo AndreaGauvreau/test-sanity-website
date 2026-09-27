@@ -20,10 +20,11 @@ import type { JobRunAgent } from './types'
  *   budget : plafond de budget du SDK dépassé (coût gardé, retour arrière) ;
  *   auto   : text si « T Text » est coché et qu'un champ Sanity est modifiable, sinon css.
  * 2e essai (session reprise après un refus des contrôles) : ne change plus rien et le dit — la demande échoue proprement.
- * Coût simulé : 0,02 $ par appel (budget : 1,52 $), passé au journal aiUsage comme un vrai.
+ * Coût simulé : 0,02 $ par appel (budget : 1,52 $), visible dans le fil de l'éditeur (plafond, affichage) mais JAMAIS
+ * écrit dans le journal aiUsage : rien n'a été consommé (`recordUsage` de service.ts, `deps.fakeClaude`).
  */
 
-/** Coût d'un appel simulé (dollars) : petit, pour ne pas fausser B5 en développement. */
+/** Coût d'un appel simulé (dollars) : petit ; montré dans l'éditeur seulement, jamais dans B5 (aucun aiUsage). */
 export const FAKE_CALL_USD = 0.02
 
 /** Règles de la zone telles que le prompt les donne : « Rules of “Title” in the CSS Module: .title, .x (and their… ». */

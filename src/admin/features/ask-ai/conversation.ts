@@ -17,7 +17,11 @@ const STORAGE_VERSION = 1
 
 export const INTERRUPTED_MESSAGE = 'The answer was interrupted. Ask again.'
 
-export type AskTurnUsage = Pick<Usage, 'model' | 'inputTokens' | 'outputTokens' | 'costUsd' | 'costKind'>
+/**
+ * Consommation d'une réponse. `access` : `subscription` → coût inclus dans l'abonnement Claude, affiché « Included »
+ * (absent d'une conversation gardée avant ce champ : facturé).
+ */
+export type AskTurnUsage = Pick<Usage, 'model' | 'inputTokens' | 'outputTokens' | 'costUsd' | 'costKind'> & Partial<Pick<Usage, 'access'>>
 
 export type AskTurn = {
   id: string
@@ -112,7 +116,14 @@ function sanitizeTurn(value: unknown): AskTurn | null {
   const u = t.usage as Partial<AskTurnUsage> | undefined
   const usage: AskTurnUsage | undefined =
     u && isNum(u.inputTokens) && isNum(u.outputTokens) && isNum(u.costUsd)
-      ? { model: typeof u.model === 'string' ? u.model : '', inputTokens: u.inputTokens, outputTokens: u.outputTokens, costUsd: u.costUsd, costKind: u.costKind === 'estimated' ? 'estimated' : 'billed' }
+      ? {
+          model: typeof u.model === 'string' ? u.model : '',
+          inputTokens: u.inputTokens,
+          outputTokens: u.outputTokens,
+          costUsd: u.costUsd,
+          costKind: u.costKind === 'estimated' ? 'estimated' : 'billed',
+          ...(u.access === 'api-key' || u.access === 'subscription' || u.access === 'none' ? { access: u.access } : {}),
+        }
       : undefined
   return { id: t.id, question, status: 'answered', answer: t.answer.slice(0, 2000), links, refusedChange: t.refusedChange === true, ...(usage ? { usage } : {}) }
 }

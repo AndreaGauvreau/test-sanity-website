@@ -198,6 +198,12 @@ export function CompositesAIEditor() {
           <Cell label="estimated cost">
             <ModelUsage usage={{ model: 'claude-haiku-4-5', inputTokens: 1_204_000, outputTokens: 40_000, costUsd: 4.8, costKind: 'estimated' }} />
           </Cell>
+          <Cell label="Claude subscription (not billed) · billed + subscription">
+            <div className={styles.row}>
+              <ModelUsage size="small" usage={{ model: 'claude-opus-5-5', inputTokens: 120_000, outputTokens: 2_800, costUsd: 0.39, access: 'subscription' }} />
+              <ModelUsage size="small" usage={{ model: 'claude-opus-5-5', inputTokens: 129_000, outputTokens: 2_900, costUsd: 0.1, includedUsd: 0.3 }} />
+            </div>
+          </Cell>
           <Cell label="model only · usage only">
             <div className={styles.row}>
               <ModelUsage model="claude-fable-5-1" />

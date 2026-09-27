@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'vitest'
+import { EDITOR_VIEWPORTS, VIEWPORT_WIDTHS } from '../../../src/admin/core/contracts'
 import { designSystem } from '../claude/fixtures'
 import { EngineError } from '../server/errors'
 import { createEngineLock } from './lock'
@@ -37,6 +38,14 @@ describe('parseRequestShape / checkRequestAgainst', () => {
     assert.equal(refused({ ...REQUEST, targets: [{ zone: 'hero.title', index: 0, doc: 'drafts.x' }] }), 'Select 1 to 8 elements.')
     assert.equal(refused({ ...REQUEST, changeId: '../x' }), 'Invalid change.')
     assert.equal(refused(null), 'Invalid request.')
+  })
+
+  it('formats de l’aperçu : ceux du contrat (EDITOR_VIEWPORTS) ; 768, l’ancien Tablet, refusé dans une NOUVELLE demande', () => {
+    for (const viewport of VIEWPORT_WIDTHS) assert.equal(parseRequestShape({ ...REQUEST, viewport }).viewport, viewport)
+    assert.equal(parseRequestShape({ ...REQUEST, viewport: EDITOR_VIEWPORTS.tablet }).viewport, 810)
+    for (const viewport of [768, 1024, '810', null]) {
+      assert.throws(() => parseRequestShape({ ...REQUEST, viewport }), (error) => error instanceof EngineError && error.status === 400 && error.message === 'Invalid screen size.', String(viewport))
+    }
   })
 
   it('chemins de page', () => {

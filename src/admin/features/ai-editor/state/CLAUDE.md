@@ -1,7 +1,7 @@
 # ai-editor/state — LLM context
 
 > Propriétaire : editor-sidebar (créé par l'orchestrateur, extensions ADDITIVES seulement) · Figma : D1-D3, G1, G2 ·
-> Mis à jour : 2026-09-27 (vague 3)
+> Mis à jour : 2026-09-28 (formats de l'aperçu du contrat, largeur relue ramenée à son format)
 
 ## Utilité
 
@@ -18,7 +18,8 @@ Aucune donnée sensible, aucun appel réseau : il ne fait que porter l'état ent
 
 ## Contrats
 
-- État : `pageId`, `path`, `mode` ('select' | 'view'), `viewport` (1280 | 768 | 375), `selection` (`ElementTarget[]`,
+- État : `pageId`, `path`, `mode` ('select' | 'view'), `viewport` (`Viewport` du contrat, `EDITOR_VIEWPORTS` : 1280 | 810
+  | 375, toujours un format actuel), `selection` (`ElementTarget[]`,
   8 max), `job` (`EditJob | null`), `pending` (`PendingChange | null`), `bridgeReady`, `previewNonce` (d'origine) ;
   ajouts editor-sidebar : `backHref` (écran d'origine, chemin `/admin…`), `preview` (`EditorState.preview` du moteur),
   `decisions` (Validate / Cancel enregistrés par la sidebar), `deciding` ('validate' | 'cancel' | null).
@@ -36,6 +37,9 @@ Aucune donnée sensible, aucun appel réseau : il ne fait que porter l'état ent
 
 - `setMode`, `select`, `removeTarget`, `clearSelection`, `setSelection` ne font rien quand `isLocked` (G2 « pendant que
   Claude travaille »). `setViewport` n'est jamais bloqué.
+- `viewport` passe par `viewportOf` (contrat) à la création (`createEditorStore({ viewport })`, Desktop par défaut) et dans
+  `setViewport` : une largeur relue d'une version précédente (768, le Tablet d'avant le 2026-09-28) devient Tablet (810),
+  jamais une valeur que la barre d'outils ne connaît pas.
 - `select(target)` remplace la sélection ; `select(target, true)` (Maj + clic) ajoute ou retire l'élément ; 8 max
   (`setSelection` tronque aussi à 8). Deux cibles sont égales si zone, index, key et doc sont égaux.
 - `refreshPreview()` incrémente `previewNonce` : l'aperçu se recharge (texte Sanity changé ou remis en l'état).
@@ -78,7 +82,8 @@ Aucune donnée sensible, aucun appel réseau : il ne fait que porter l'état ent
 ## Tests
 
 Pas de fichier propre. Couvert par `sidebar/EditorSidebar.test.tsx` (sélection, verrou, decisions, previewNonce,
-pending, backHref) et `canvas/EditorCanvas.test.tsx` (barre flottante par `decisions`). Commande :
+pending, backHref), `canvas/EditorCanvas.test.tsx` (barre flottante par `decisions`) et `canvas/logic.test.ts` (largeur
+768 relue → Tablet, à la création et par `setViewport`, même verrouillé). Commande :
 `npx vitest run src/admin/features/ai-editor`.
 
 ## Décisions et « À trancher »

@@ -90,4 +90,12 @@ describe('persistance de session', () => {
     expect(turns[0].links).toEqual([{ label: 'Open Media', href: '/admin/media' }])
     expect(turns[0].usage).toBeUndefined()
   })
+
+  it('accès à Claude de la réponse gardé (abonnement → « Included ») ; absent ou inconnu → rien (facturé)', () => {
+    const turn = (id: string, access?: unknown) => ({ id, question: 'Q', status: 'answered', answer: 'A', links: [], usage: { ...usage, access } })
+    const raw = JSON.stringify({ v: 1, userId: 'u', turns: [turn('a', 'subscription'), turn('b'), turn('c', 'forged')] })
+    const turns = readStoredTurns(raw, 'u')
+    expect(turns.map((t) => t.usage?.access)).toEqual(['subscription', undefined, undefined])
+    expect(turns[1].usage && 'access' in turns[1].usage).toBe(false)
+  })
 })

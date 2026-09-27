@@ -1,6 +1,6 @@
 # features/usage — LLM context
 
-> Propriétaire : code-usage · Figma : B5 (docs/admin/figma/screens/B5.md), fiches AIUsage, ModelUsage · Mis à jour : 2026-09-28 (carte AI settings)
+> Propriétaire : code-usage · Figma : B5 (docs/admin/figma/screens/B5.md), fiches AIUsage, ModelUsage · Mis à jour : 2026-09-28 (carte AI settings ; coût facturé / inclus dans l'abonnement Claude)
 > Possède aussi : `src/app/admin/(shell)/settings/usage/` (page, loading). Données : `src/admin/core/usage/` (même propriétaire).
 
 ## Utilité
@@ -35,15 +35,26 @@ de solde, de plafond ni d'alerte.
   `priceOf` de `core/contracts/pricing.ts` (même table que le coût estimé du moteur) ; libellés : `modelLabel`.
 
 ## Comportement
-- AI usage : totaux Input tokens / Output tokens / Cost, une ligne par fonctionnalité avec son modèle (ModelUsage),
-  note « Billed on the site's own Claude API account. Kuartz doesn't resell AI. ». Vide : « No AI usage in this period. ».
-- Since launch : coût total, « 4.9M input · 560k output tokens · online since Sep 2, 2026 » (date de mise en ligne du
+- Coût FACTURÉ / INCLUS (partout dans B5) : une demande passée par l'abonnement Claude (`access: 'subscription'`, moteur
+  local) n'est pas facturée ; son coût (prix de l'API) n'est JAMAIS additionné à « Cost » ni à « Since launch ». Ancien
+  document sans `access` : facturé, comme avant.
+- AI usage : totaux Input tokens / Output tokens (tout) / Cost (facturé seulement) ; s'il y a de l'abonnement, une ligne
+  sous les totaux « ≈ $0.30 at API prices — included in your Claude subscription » ; une ligne par fonctionnalité avec
+  son modèle (ModelUsage : « $4.30 », « Included », « $0.10 + included ») ; note selon le cas (`aiUsageNote` du kit) :
+  facturé « Billed on the site's own Claude API account. Kuartz doesn't resell AI. », abonnement seul « Used through
+  your Claude subscription on the local engine: not billed. Kuartz doesn't resell AI. », mélange « Cost is billed on
+  the site's own Claude API account; use through your Claude subscription isn't. Kuartz doesn't resell AI. ».
+  Vide : « No AI usage in this period. ».
+- Since launch : coût FACTURÉ total, « 4.9M input · 560k output tokens · online since Sep 2, 2026 » (date de mise en ligne du
   manifeste, `launchedAt`) ; sans `launchedAt` (ou invalide) : « … · since Sep 10, 2026 » (première demande). Sans
   demande : « $0.00 » et « No AI requests yet. » (« No AI requests yet · online since … » si la mise en ligne est connue).
-  Une date seule (« 2026-09-02 ») est lue en UTC (jamais décalée d'un jour par le fuseau du serveur).
+  Une date seule (« 2026-09-02 ») est lue en UTC (jamais décalée d'un jour par le fuseau du serveur). Part abonnement :
+  seconde ligne « ≈ $0.30 at API prices — included in your Claude subscription » (text/secondary).
 - Recent requests (période choisie, plus récente en haut) : When · Who (avatar bleu Kuartz / vert client) · Feature (Tag
   info « AI editor », neutre « Ask AI ») · Request (`AiUsageDoc.request`, ≤ 120 car., écrit par le moteur ; repli
-  « Edit on / » / « Question » pour les demandes journalisées sans ce champ ; « · Failed » etc. si rien n'a changé) · Model · Input · Output · Cost (« ~$0.50 » + « (estimated) » lu si le coût est estimé). Vide : « No AI usage in this period. ».
+  « Edit on / » / « Question » pour les demandes journalisées sans ce champ ; « · Failed » etc. si rien n'a changé) · Model · Input · Output · Cost (« ~$0.50 » + « (estimated) » lu si le coût est estimé ;
+  abonnement : « Included » + « ≈ $0.18 » en secondaire (Caption, text/muted), infobulle « ≈ $0.18 at API prices —
+  included in your Claude subscription », phrase lue « included in your Claude subscription (≈ $0.18 at API prices) »). Vide : « No AI usage in this period. ».
   Plus de lignes que la limite : « Showing 50 of N requests » + « Show more » (+50, 500 au plus).
 - Chargement : `loading.tsx` (cartes à « — ») ; changement de période : carte AI usage en chargement. Erreur Sanity : message dans l'écran.
 - Claude connection (Kuartz et client ; l'editor ne la voit pas) : en-tête « Claude connection » + « Local engine » /
@@ -104,8 +115,11 @@ table unique, Save désactivé sans changement, envoi, « Saved », erreur lisib
 liste), placement sous Claude connection et absence sans `aiSettings` (UsageScreen) ; carte Claude connection (local / production, abonnement,
 clé envoyée une fois et jamais affichée, sk-ant-oat refusé avant envoi, échec du test, clé de l'environnement, moteur
 injoignable) ; formats (fuseaux, années, « online since » avec ou sans
-`launchedAt`), rendu (cartes, tableau, statut, coût estimé, état vide, Show more, changement de période → URL). À la main : `/admin/settings/usage` en kuartz et client
-(le dataset development n'a pas de `aiUsage` : état vide).
+`launchedAt`), rendu (cartes, tableau, statut, coût estimé, état vide, Show more, changement de période → URL), coût
+facturé / inclus (mélange : Cost et Since launch = facturé, ligne « included », note ; abonnement seul : $0.00 +
+« Included » ; cellule Cost « Included » + « ≈ $0.18 » + phrase lue ; anciens documents sans `access` inchangés). À la
+main : `/admin/settings/usage` en kuartz et client (dataset development au 28/09 : 5 documents du faux Claude facturés
+0,02 $ — antérieurs à la correction du moteur, à retirer avec l'utilisatrice — et 2 demandes par l'abonnement).
 
 ## Décisions et « À trancher »
 - Question 12 : journal = un document Sanity privé par demande (orchestrateur).
@@ -116,8 +130,12 @@ injoignable) ; formats (fuseaux, années, « online since » avec ou sans
 - Carte Claude connection placée entre les deux cartes du haut et Recent requests (pas de maquette : composants du kit).
 - Carte AI settings (2026-09-28, demande de l'utilisatrice) juste sous Claude connection, même droit ; choix appliqué à la
   demande SUIVANTE de l'éditeur (le moteur relit ses réglages au départ de chaque demande) ; Ask AI non concerné.
-- « Since launch » : le COÛT reste le cumul de toutes les demandes (y compris avant la mise en ligne) ; seule la date
-  affichée vient de `launchedAt` (FOLLOWUPS #33).
+- « Since launch » : le COÛT reste le cumul de toutes les demandes FACTURÉES (y compris avant la mise en ligne) ; seule
+  la date affichée vient de `launchedAt` (FOLLOWUPS #33).
+- Abonnement Claude (2026-09-28, constat de l'orchestrateur sur le dataset development) : le contrat disait déjà que son
+  coût n'est pas facturé (`Usage.access`) ; B5 l'additionnait au facturé sous la note « Billed on … ». Désormais
+  « Cost » / « Since launch » = facturé seulement, part incluse montrée à part (« ≈ $X at API prices — included in your
+  Claude subscription »), cellule « Included ». Pas de changement de schéma Sanity (`access` est dans chaque document).
 
 ## Demandes de contrat
 - Aucune (contrats `AiUsageDoc.request` et `AdminConfig.site.launchedAt` faits). Reste chez les autres : écriture de

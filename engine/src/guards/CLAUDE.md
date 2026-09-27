@@ -1,6 +1,6 @@
 # Garde-fous du moteur IA (`engine/src/guards`) — LLM context
 
-> Propriétaire : engine-guards · Figma : aucun écran (moteur) ; les contrôles s'affichent en D2/D3/G2 (« Checks: contrast ✓ ») · Mis à jour : 2026-09-27
+> Propriétaire : engine-guards · Figma : aucun écran (moteur) ; les contrôles s'affichent en D2/D3/G2 (« Checks: contrast ✓ ») · Mis à jour : 2026-09-28 (largeurs relevées = formats de l'éditeur, contrat)
 
 ## Utilité
 
@@ -29,16 +29,19 @@ version du dernier commit (`git cat-file`), la liste d'un dossier fouillé par G
   `mcp__kuartz__*`, `lintChanges` (CSS + TSX + type de fichier), `lintContextFor` (contexte commun hook / après l'essai),
   `outOfScope`.
 - `run.ts` — `runStaticChecks` et `runRenderChecks` : les deux temps de `job.ts > runChecks` du POC, même ordre, mêmes textes
-  (traduits en anglais).
+  (traduits en anglais) ; libellé du débordement tiré du contrat (« No overflow at 375, 810 and 1280 px »).
 - `report.ts` — contrôles montrés au client (contrat `CheckResult`, libellés anglais) : `publicChecks`, `retryProblems`, `CHECK_LABELS`.
-- `preview.ts` — interface injectable `Preview`, `chromePreview(settings)`, `PREVIEW_VIEWPORTS` (375, 768, 1280).
+- `preview.ts` — interface injectable `Preview`, `chromePreview(settings)`, `PREVIEW_VIEWPORTS` (= `MEASURED_VIEWPORTS` du
+  contrat : 375, 810, 1280, les formats de la barre d'outils ; Tablet = point de rupture tablette du site).
 - `visual.ts` — captures Playwright, `READ_ZONE` (relevé dans la page), états forcés (CDP `CSS.forcePseudoState`), valeurs témoins, `compareZones`, `startVisualSession`, `previewUrl`, `MODULE_HASH`.
 - `measure.ts` — relevé brut → mesures (`toZoneMeasure`), plafonds (`MAX_*`), `describeMeasures` (sortie de l'outil measure, en anglais), `lineSummary` (journal, en anglais).
-- `checks.ts` — `frameCheck`, `coverWarning`, `linesCheck`, `contrastCheck`, `unverifiableCheck`, `reachCheck` (type `RawCheck`).
+- `checks.ts` — `frameCheck`, `coverWarning`, `linesCheck`, `contrastCheck`, `unverifiableCheck`, `reachCheck` (type `RawCheck`) ;
+  `linesCheck` compte les lignes au format Mobile du contrat (`EDITOR_VIEWPORTS.mobile`, 375).
 - `contrast.ts` — couleurs, luminance, ratio WCAG, seuil (4,5 / 3 grand texte), fond réel avec dégradés ; `formatRatio`
   (point décimal : « 3.07 », pour les textes anglais) ; `colorTone` (« clair » / « sombre », API interne traduite par
   le prompt d'engine-claude).
-- `measure-fixtures.ts` — fabriques de relevés pour les tests (pas un test).
+- `measure-fixtures.ts` — fabriques de relevés pour les tests (pas un test) ; `measuresOf` / `occurrencesOf` relèvent aux
+  largeurs du contrat (`MEASURED_VIEWPORTS` : 375, 810, 1280).
 - Tests : `css-policy`, `css-lint`, `tsx-lint`, `guards`, `contrast`, `measure`, `checks`, `visual`, `visual-page` (portés), `conduit`, `run`, `index`, `edit-guard` (nouveaux).
 - `fixtures/lyondrive/` — le site du POC (CSS, composants en `.tsx.txt`, zones.json converti au contrat, tokens.json, RULES.md) ; `fixtures/lyondrive-options.ts` (points de rupture 48/64rem, nommage `group-key`) ; `fixtures/reference-1.json` (31 fichiers du passage de référence).
 - `fixtures/conduit/` — copie ANCIENNE de Conduit (tokens.json sans `space` ni `breakpoint`, zones.json de test, trois
@@ -48,7 +51,8 @@ version du dernier commit (`git cat-file`), la liste d'un dossier fouillé par G
 ## Contrats
 
 - Entrées : `ZoneDef`, `ZonesFile`, `TokensFile`, `ControlDef` (`src/admin/core/contracts/zones.ts`) ; `Scope`, `CheckId`,
-  `CheckResult` (`contracts/engine.ts`). `ToolAccess` (types.ts, interne au moteur) porte le contexte du lint (`lint`). Fichiers du site lus dans le clone : `src/styles/tokens.json`,
+  `CheckResult`, formats de l'aperçu `EDITOR_VIEWPORTS` / `MEASURED_VIEWPORTS` / `MEASURED_VIEWPORTS_TEXT` (largeurs
+  relevées, jamais recopiées) (`contracts/engine.ts`). `ToolAccess` (types.ts, interne au moteur) porte le contexte du lint (`lint`). Fichiers du site lus dans le clone : `src/styles/tokens.json`,
   `src/editor/zones.json`, `src/styles/tokens.css` (facultatif), `src/editor/RULES.md` (facultatif), CSS de
   `src/components` et `src/app/(site)` (points de rupture en repli).
 - Dépend de : `../claude/quote` (`quoteData`, une seule neutralisation des textes cités pour tout le moteur). Les tests
@@ -183,8 +187,8 @@ ouvrir une session par cible (coûteux : 3 largeurs × capture) avec `alsoChange
 
 ## Forces
 
-- 26 corrections du POC relues de manière adverse, portées sans changer leur logique ; 330 tests unitaires et 68 tests
-  dans Chrome (`visual-page.test.ts`) verts. Le hook juge le fichier futur de chaque Edit avec le même lint que l'étape
+- 26 corrections du POC relues de manière adverse, portées sans changer leur logique ; 339 tests unitaires (2026-09-28)
+  et 68 tests dans Chrome (`visual-page.test.ts`) verts. Le hook juge le fichier futur de chaque Edit avec le même lint que l'étape
   statique : rien d'interdit n'atteint le disque, donc ni l'aperçu `next dev` ni la mesure (SEC-07). Liste blanche sur le fichier entier (CSS par postcss, TSX par l'AST) : un
   diff maquillé (deux lignes, commentaire, `:global(body)`, échappement Unicode) ne passe pas.
 - Politique entièrement dérivée du design system chargé : aucun nom de token ni point de rupture en dur ; un design system
@@ -280,7 +284,8 @@ ouvrir une session par cible (coûteux : 3 largeurs × capture) avec `alsoChange
 - Couvert : politique (sondes de la critique, passage de référence), lint CSS/TSX (non-régression sur 31 fichiers de
   référence), hook, mesures, contrôles, contraste, états forcés et valeurs témoins dans Chrome, design system Conduit RÉEL
   (`conduit.test.ts`, `run.test.ts` : tokens.json, zones.json et CSS du dépôt), multi-zones, `previewUrl`, `MODULE_HASH`,
-  API publique, cohérence avec engine-claude (noms d'outils, `HARDCODED_POLICY`).
+  API publique (dont `PREVIEW_VIEWPORTS` = largeurs du contrat, gelées), cohérence avec engine-claude (noms d'outils,
+  `HARDCODED_POLICY`), libellé du débordement aux largeurs du contrat (`run.test.ts`).
 - `ds.cssValues` (FOLLOWUPS #37, `conduit.test.ts`) : vrai tokens.css (palette en hex, rôles en `var()` bruts), mêmes
   clés que `declaredProperties` et mêmes valeurs que `cssCustomValues` d'engine-claude, toutes les couleurs de
   tokens.json résolues par `resolveCssValue` ; dernière déclaration gagnante, `!important` retiré, feuille illisible ou
@@ -311,6 +316,11 @@ ouvrir une session par cible (coûteux : 3 largeurs × capture) avec `alsoChange
 - AI-08 (2026-09-27) : Markdown et chemins cachés jamais lus ; Grep restreint au code dans un dossier qui en contient
   (Glob, qui ne rend que des noms, reste libre).
 - AI-09 (2026-09-27) : les tests de Conduit lisent le vrai site ; `fixtures/conduit` gardé pour le banc d'engine-core.
+- Largeurs relevées (2026-09-28) : les formats de la barre d'outils de l'éditeur (contrat `EDITOR_VIEWPORTS`, croissants :
+  375, 810, 1280) au lieu de 375, 768, 1280 : à 768, Conduit est encore en mise en page mobile, et la tablette
+  (810–1023 px) n'était jamais contrôlée. Tests portés passés de 768 à 810 là où 768 représentait la largeur tablette
+  relevée ; les fixtures LyonDrive (`fixtures/lyondrive/`, RULES.md compris) et le test `countRows` du pied de page
+  gardent 768 : c'est le point de rupture (48rem) de CE site.
 
 ## Demandes de contrat
 

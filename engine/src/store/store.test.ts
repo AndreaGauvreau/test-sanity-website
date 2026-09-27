@@ -98,6 +98,21 @@ describe('openEngineStore', () => {
     assert.equal(store.editor.thread('/').length, 50)
   })
 
+  it('relit tel quel un editor.json d’avant le 2026-09-28 (demande en Tablet 768) : demande et fil, fichier non réécrit', async () => {
+    // Le magasin ne valide pas les demandes relues (seules les NOUVELLES passent par parseRequestShape) : l'ancienne
+    // largeur reste dans l'historique, l'admin l'affiche en Tablet (`viewportOf` du contrat).
+    const legacy = job('job_legacy00768', 'rejected')
+    Object.assign(legacy.job.request, { viewport: 768 })
+    const file = path.join(dir, 'editor.json')
+    const raw = JSON.stringify({ version: 1, jobs: { [legacy.job.id]: legacy }, changes: {}, threads: { '/': [{ type: 'job', jobId: legacy.job.id }] } }, null, 2)
+    await writeFile(file, raw)
+    const store = await openEngineStore(dir)
+    assert.equal(store.editor.job('job_legacy00768')?.job.request.viewport, 768)
+    assert.deepEqual(store.editor.thread('/').map((entry) => (entry.type === 'job' ? entry.job.request.viewport : entry.type)), [768])
+    assert.deepEqual(store.editor.activeJobs(), [])
+    assert.equal(await readFile(file, 'utf8'), raw)
+  })
+
   it('publications : numéro suivant, état libre pour engine-publish', async () => {
     const store = await openEngineStore(dir)
     assert.equal(store.publications.nextNumber(), 1)

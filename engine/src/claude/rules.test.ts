@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { beforeAll, describe, it } from 'vitest'
+import { EDITOR_VIEWPORTS, MEASURED_VIEWPORTS_TEXT } from '../../../src/admin/core/contracts/engine'
 import { checkValue, isExemptable, type TokenRole } from '../guards/css-policy'
 import { loadDesignSystem, RULES_FILE, type DesignSystem } from '../guards/design-system'
 import { designSystem } from './fixtures'
@@ -92,6 +93,21 @@ describe('RULES.md — contenu et injection dans le prompt système', () => {
     for (const phrase of ["the `className` of an existing element", 'LyonDrive', 'percentages', 'texte-plus-long']) {
       assert.ok(!rules.includes(phrase), `« ${phrase} » encore dans les règles`)
     }
+  })
+
+  it('formats de l’éditeur : largeurs du contrat (EDITOR_VIEWPORTS), celles de measure ; plus l’ancien Tablet à 768 px', () => {
+    const { mobile, tablet, desktop } = EDITOR_VIEWPORTS
+    const fix = 'recopier les largeurs de EDITOR_VIEWPORTS (src/admin/core/contracts/engine.ts) dans RULES.md'
+    assert.ok(rules.includes(`\`measure\` tool returns the rendering of the draft, at ${MEASURED_VIEWPORTS_TEXT} px`), `largeurs de measure : ${fix}`)
+    // Tablet = point de rupture tablette du site (viewports.test.ts le vérifie contre tokens.json), écrit en rem.
+    assert.ok(
+      rules.includes(`Mobile ${mobile} px, Tablet ${tablet} px (the \`${tablet / 16}rem\` breakpoint) and Desktop ${desktop} px`),
+      `formats de l’éditeur : ${fix}`,
+    )
+    // Une ligne gagnée se compte au format Mobile, partout.
+    const lineWidths = [...rules.matchAll(/(?:gains? a line|line gained) at (\d+) px/g)].map((match) => Number(match[1]))
+    assert.ok(lineWidths.length >= 2 && lineWidths.every((width) => width === mobile), `ligne gagnée hors du format Mobile : ${lineWidths}`)
+    assert.ok(!/\b768\b/.test(rules), 'l’ancien format Tablet (768 px) est encore cité')
   })
 })
 

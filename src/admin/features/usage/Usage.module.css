@@ -58,6 +58,35 @@
   color: var(--k-text-muted);
 }
 
+/* Cellule Cost d'une demande passée par l'abonnement Claude : « Included » + prix API équivalent en secondaire. */
+.included {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.includedLabel {
+  color: var(--k-text-secondary);
+}
+
+.includedPrice {
+  color: var(--k-text-muted);
+  font: var(--k-text-caption);
+  letter-spacing: var(--k-text-caption-tracking);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Carte Since launch : indice sur sa ligne, puis la part incluse dans l'abonnement (plus lisible que l'indice). */
+.hintLine {
+  display: block;
+}
+
+.hintIncluded {
+  display: block;
+  margin-top: var(--k-space-4);
+  color: var(--k-text-secondary);
+}
+
 .empty {
   margin: 0;
   padding: var(--k-space-24) var(--k-space-20) var(--k-space-32);

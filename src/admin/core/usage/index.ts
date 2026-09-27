@@ -38,10 +38,13 @@ export {
   type UsageTotals,
 } from './aggregate'
 
-/** Champs lus (jamais le document entier). `request` est lu s'il existe (demande de contrat : texte de la demande). */
+/**
+ * Champs lus (jamais le document entier). `request` est lu s'il existe (demande de contrat : texte de la demande) ;
+ * `access` sépare le coût facturé (clé API) de la part incluse dans l'abonnement Claude.
+ */
 const PROJECTION = `{
   _id, feature, createdAt, model, inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens, costUsd, costKind,
-  status, page, request, "user": user{ id, name, role }
+  access, status, page, request, "user": user{ id, name, role }
 }`
 
 /** Documents publiés du journal (jamais `drafts.aiUsage.*`), depuis `$since` s'il est donné. */

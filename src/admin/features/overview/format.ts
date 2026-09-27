@@ -1,4 +1,4 @@
-import { formatCost, formatTokens, type PublishStatus } from '@/admin/core/contracts'
+import { formatCost, formatIncluded, formatTokens, type PublishStatus } from '@/admin/core/contracts'
 
 /**
  * Textes des cartes de B1 (Figma 359:696 et LLM context B1 « ÉTATS ET CAS LIMITES »). PUR.
@@ -104,15 +104,25 @@ export function publishFingerprint(status: Pick<PublishStatus, 'state' | 'lastPu
   return `${status.state}|${status.lastPublishedAt ?? ''}|${status.pending.total}`
 }
 
-export type UsageTotals = { inputTokens: number; outputTokens: number; costUsd: number }
+/**
+ * Totaux du mois (`UsageSummary.totals` de core/usage) : `costUsd` = coût FACTURÉ seulement (clé API) ; `includedUsd`
+ * = demandes passées par l'abonnement Claude (prix de l'API, non facturées).
+ */
+export type UsageTotals = { inputTokens: number; outputTokens: number; costUsd: number; includedUsd?: number }
 
-/** AI usage this month : « $4.80 · 1.2M input · 147k output tokens » ; aucune demande : « $0.00 · 0 input · 0 output tokens ». */
+/**
+ * AI usage this month : « $4.80 · 1.2M input · 147k output tokens » (coût facturé, mêmes chiffres que B5) ; avec
+ * l'abonnement Claude : « … output tokens · ≈ $0.30 at API prices — included in your Claude subscription » ; aucune
+ * demande : « $0.00 · 0 input · 0 output tokens ».
+ */
 export function usageCard(totals: UsageTotals | null | 'unavailable'): CardModel {
   if (totals === 'unavailable') return { value: '—', hint: { text: 'Usage isn’t available yet.' }, tone: 'muted' }
   const t = totals ?? { inputTokens: 0, outputTokens: 0, costUsd: 0 }
+  const tokens = `${formatTokens(t.inputTokens)} input · ${formatTokens(t.outputTokens)} output tokens`
+  const included = t.includedUsd ?? 0
   return {
     value: formatCost(t.costUsd),
-    hint: { text: `${formatTokens(t.inputTokens)} input · ${formatTokens(t.outputTokens)} output tokens` },
+    hint: { text: included > 0 ? `${tokens} · ${formatIncluded(included)}` : tokens },
     tone: 'default',
   }
 }

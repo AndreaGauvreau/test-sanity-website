@@ -7,6 +7,7 @@ import path from 'node:path'
 import { PassThrough } from 'node:stream'
 import { afterEach, describe, it } from 'vitest'
 import type { EditJob, EditorState, EngineHealth } from '../../src/admin/core/contracts'
+import { EDITOR_VIEWPORTS } from '../../src/admin/core/contracts/engine'
 import { verifyPreviewToken } from '../../src/admin/core/engine/preview-token'
 import { createFakeAgent, fakeScenarios } from './claude'
 import { EngineConfigError } from './config'
@@ -49,9 +50,11 @@ function fakeSpawn() {
   return { spawn, children }
 }
 
-async function boot(extraEnv: Record<string, string> = {}, extra: EngineOverrides = {}) {
+/** `prepare` : appelé sur l'espace de travail AVANT le démarrage (ex. magasin laissé par une version précédente). */
+async function boot(extraEnv: Record<string, string> = {}, extra: EngineOverrides = {}, prepare?: (workspace: string) => Promise<void>) {
   const ws = await makeWorkspace()
   cleanup = () => rm(ws.workspace, { recursive: true, force: true })
+  await prepare?.(ws.workspace)
   const env = {
     ENGINE_MODE: 'local',
     ENGINE_PORT: '4943',
@@ -98,6 +101,52 @@ async function boot(extraEnv: Record<string, string> = {}, extra: EngineOverride
     return { status: response.status, json: await response.json() }
   }
   return { ws, call, spawn, lines, agent, probeCookies }
+}
+
+/**
+ * `data/editor.json` tel que l'a laissé l'éditeur avant le 2026-09-28 (forme du vrai magasin) : une demande faite en
+ * Tablet quand ce format valait 768 px, refusée par Claude (« 768 px, sous le point de rupture de 810 px »), sa
+ * modification annulée, et son entrée dans le fil de « / ».
+ */
+function legacyEditorData(jobId: string, changeId: string) {
+  const at = '2026-09-28T06:40:00.000Z'
+  const targets = [{ zone: 'hero.lede', index: 0, label: 'Hero · Lede' }]
+  return {
+    version: 1,
+    jobs: {
+      [jobId]: {
+        job: {
+          id: jobId,
+          changeId,
+          kind: 'request',
+          request: { page: '/', targets, scope: ['style'], note: 'The tablet version looks wrong.', viewport: 768 },
+          requestedBy: CLIENT,
+          createdAt: at,
+          status: 'rejected',
+          steps: [
+            { at, kind: 'info', label: 'Capturing the page / before the change (375, 768 and 1280 px)…' },
+            { at, kind: 'info', label: 'Claude changed nothing.' },
+          ],
+          summary: [],
+          checks: [],
+          texts: [],
+          hardcoded: [],
+          attempts: 1,
+          startedAt: at,
+          message: 'You were looking at the page at 768 px, just below the 810 px tablet step.',
+          finishedAt: at,
+        },
+        internal: { headBefore: null, sessionId: null, textsDirty: false },
+      },
+    },
+    changes: {
+      [changeId]: {
+        change: { id: changeId, page: '/', targets, status: 'cancelled', jobIds: [jobId], adjustments: 0, summary: [], checks: [], createdAt: at, createdBy: CLIENT },
+        internal: { baseCommit: 'abc1234', commits: [] },
+      },
+    },
+    threads: { '/': [{ type: 'job', jobId }] },
+  }
 }
 
 describe('startEngine', () => {
@@ -158,6 +207,37 @@ describe('startEngine', () => {
     assert.deepEqual([health.ok, health.claude.access], [false, 'none'])
     const refused = await call('POST', '/editor/requests', editRequest())
     assert.deepEqual([refused.status, refused.json.error.code], [503, 'unavailable'])
+  })
+
+  it('magasin d’une version précédente (demande en Tablet 768) : démarre, relit état, fil et demande ; nouvelle demande en Tablet 810, 768 refusé', async () => {
+    const jobId = 'job_legacytablet768'
+    const changeId = 'chg_legacytablet768'
+    const { call } = await boot({}, {}, async (workspace) => {
+      await writeFile(path.join(workspace, 'data', 'editor.json'), JSON.stringify(legacyEditorData(jobId, changeId), null, 2))
+    })
+    await engine!.context.preview.waitReady(2_000)
+    // Relue telle quelle : l'historique garde la largeur d'alors (l'admin l'affiche en Tablet, `viewportOf`).
+    const state = await call('GET', '/editor/state?page=/')
+    assert.equal(state.status, 200)
+    const { thread, active, pending } = state.json as EditorState
+    assert.deepEqual(
+      thread.map((entry) => (entry.type === 'job' ? [entry.job.id, entry.job.status, entry.job.request.viewport] : [entry.type])),
+      [[jobId, 'rejected', 768]],
+    )
+    assert.deepEqual([active, pending], [null, null])
+    const legacy = await call('GET', `/editor/jobs/${jobId}`)
+    assert.deepEqual([legacy.status, (legacy.json as EditJob).request.viewport], [200, 768])
+    // Nouvelle demande : seulement les formats actuels du contrat.
+    const old = await call('POST', '/editor/requests', { ...editRequest(), viewport: 768 })
+    assert.deepEqual([old.status, old.json.error.message], [400, 'Invalid screen size.'])
+    const created = await call('POST', '/editor/requests', { ...editRequest(), viewport: EDITOR_VIEWPORTS.tablet })
+    assert.equal(created.status, 201)
+    await engine!.context.editor.idle()
+    const done = (await call('GET', `/editor/jobs/${(created.json as EditJob).id}`)).json as EditJob
+    assert.equal(done.request.viewport, EDITOR_VIEWPORTS.tablet)
+    assert.ok(done.steps.some((step) => step.label === 'Capturing the page / before the change (375, 810 and 1280 px)…'))
+    const after = (await call('GET', '/editor/state?page=/')).json as EditorState
+    assert.deepEqual(after.thread.flatMap((entry) => (entry.type === 'job' ? [entry.job.request.viewport] : [])), [768, EDITOR_VIEWPORTS.tablet])
   })
 
   it('clé API enregistrée depuis l’admin : santé, éditeur et Ask AI la voient SANS redémarrage ; jamais renvoyée', async () => {
@@ -248,7 +328,8 @@ describe('startEngine', () => {
 
   it('FOLLOWUPS #12 : ENGINE_FAKE_CLAUDE=css — sans clé Claude, avertissement bruyant (journal, /health, modèle), demande menée au bout', async () => {
     const lines: string[] = []
-    const { call } = await boot({ ANTHROPIC_API_KEY: '', ENGINE_FAKE_CLAUDE: 'css' }, { runAgent: undefined, log: (line) => lines.push(line) })
+    const sanity = conduitSanity()
+    const { ws, call } = await boot({ ANTHROPIC_API_KEY: '', ENGINE_FAKE_CLAUDE: 'css' }, { runAgent: undefined, log: (line) => lines.push(line), sanity })
     assert.ok(lines.some((line) => line.includes('⚠⚠⚠ ENGINE_FAKE_CLAUDE=css')))
     await engine!.context.preview.waitReady(2_000)
     const health = (await call('GET', '/health')).json as EngineHealth & { fakeClaude?: string; warnings?: string[] }
@@ -262,6 +343,11 @@ describe('startEngine', () => {
     assert.ok(done.steps.some((step) => step.kind === 'warn' && /FAKE Claude \(css\)/.test(step.label)))
     const state = (await call('GET', '/editor/state?page=/')).json as EditorState
     assert.match(state.model.label, /Fake Claude \(css\)/)
+    // Journal de consommation exact : rien n'a été consommé → aucun aiUsage dans Sanity ni dans le secours local.
+    assert.ok(done.usage && done.usage.costUsd > 0, 'coût simulé gardé dans la demande')
+    assert.deepEqual(Object.keys(sanity.docs).filter((id) => id.startsWith('aiUsage.')), [])
+    assert.equal(existsSync(path.join(ws.workspace, 'data', 'usage-pending.jsonl')), false)
+    assert.ok(lines.some((line) => line.includes(`usage not recorded for ${job.id}: fake Claude (css)`)))
   })
 
   it('SEC-08 : domaines du site lus dans <ENGINE_SOURCE_REPO>/src/admin.config.ts et passés au cycle de l’éditeur', async () => {

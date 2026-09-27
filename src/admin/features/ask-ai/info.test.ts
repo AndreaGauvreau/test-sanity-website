@@ -26,8 +26,17 @@ describe('loadAskAiInfo (server action du panneau)', () => {
       health: async () => MOCK_HEALTH,
       monthTotals: async () => ({ inputTokens: 1_200_000, outputTokens: 147_000, costUsd: 4.8 }),
     })
-    expect(info).toEqual({ ok: true, userId: 'dev-client', model: 'claude-haiku-4-5-20251001', month: { inputTokens: 1_200_000, outputTokens: 147_000, costUsd: 4.8 } })
+    expect(info).toEqual({ ok: true, userId: 'dev-client', model: 'claude-haiku-4-5-20251001', month: { inputTokens: 1_200_000, outputTokens: 147_000, costUsd: 4.8, includedUsd: 0 } })
     expect(JSON.stringify(info)).not.toContain('sk-user-token')
+  })
+
+  it('totaux du mois : coût facturé et part incluse dans l’abonnement Claude transmis séparément', async () => {
+    const info = await loadAskAiInfo({
+      requireSession: async () => SESSION,
+      health: async () => MOCK_HEALTH,
+      monthTotals: async () => ({ inputTokens: 142_000, outputTokens: 3_100, costUsd: 0.1, includedUsd: 0.3 }),
+    })
+    expect(info.ok && info.month).toEqual({ inputTokens: 142_000, outputTokens: 3_100, costUsd: 0.1, includedUsd: 0.3 })
   })
 
   it('moteur injoignable ou journal illisible : panneau utilisable sans modèle ni pied', async () => {

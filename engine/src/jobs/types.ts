@@ -21,7 +21,10 @@ import type { PublishLock } from './lock'
  */
 export type JobRunAgent = (run: AgentRun, limits: { maxBudgetUsd: number; model: string; effort: AgentSettings['effort'] }) => Promise<AgentResult>
 
-/** Port de consommation (implémenté par engine-publish : document `aiUsage`), appelé à la fin de CHAQUE demande. */
+/**
+ * Port de consommation (implémenté par engine-publish : document `aiUsage`), appelé à la fin de CHAQUE demande servie
+ * par le vrai Claude (jamais avec le faux Claude, `fakeClaude`).
+ */
 export type UsageRecorder = { record(input: { job: EditJob; change: PendingChange | null }): Promise<void> }
 
 export type EditorDeps = {
@@ -60,7 +63,8 @@ export type EditorDeps = {
   listPages?: (repoDir: string) => Promise<string[]>
   /**
    * Faux Claude actif (ENGINE_FAKE_CLAUDE, mode local) : son scénario, affiché dans le journal de chaque demande et dans
-   * le libellé du modèle de l'éditeur. null / absent : vrai Claude.
+   * le libellé du modèle de l'éditeur. Ses demandes ne passent JAMAIS au port `usage` (aucun document aiUsage : rien
+   * n'a été consommé). null / absent : vrai Claude.
    */
   fakeClaude?: string | null
   /**

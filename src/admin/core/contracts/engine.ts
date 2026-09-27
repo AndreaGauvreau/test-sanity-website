@@ -58,12 +58,18 @@ export type Usage = {
   outputTokens: number
   cacheReadTokens: number
   cacheWriteTokens: number
+  /** Coût au prix de l'API (dollars), que la demande soit facturée ou non (voir `access`). */
   costUsd: number
   /**
    * billed : coût rapporté par l'API ; estimated : calculé d'après les jetons vus (appel interrompu) ;
    * Avec l'abonnement (développement), le coût reste calculé mais n'est pas facturé : voir `access`.
    */
   costKind: 'billed' | 'estimated'
+  /**
+   * Accès à Claude utilisé par la demande (figé à son départ). `subscription` (moteur local) : coût NON facturé,
+   * « inclus » dans l'abonnement — l'admin ne l'ajoute jamais au coût facturé (`costSplit`, format.ts). Tout autre
+   * valeur, ou un ancien document sans ce champ : facturé.
+   */
   access: ClaudeAccess
   durationMs: number
   turns?: number
@@ -242,8 +248,53 @@ export function aiSettingsProblem(input: unknown): string | null {
 // ─── Éditeur IA (D1-D3, G1, G2) ──────────────────────────────────────────────
 
 export type Scope = 'style' | 'text'
-/** Desktop / Tablet / Mobile de la barre d'outils. */
-export type Viewport = 1280 | 768 | 375
+
+/**
+ * Formats de l'aperçu de l'éditeur IA (barre d'outils Desktop / Tablet / Mobile) : largeur CSS de l'iframe, en px.
+ * SOURCE UNIQUE : la barre d'outils (canvas), la validation des demandes (moteur et moteur simulé), les largeurs
+ * mesurées et capturées par les garde-fous et les textes pour Claude (prompt, outil measure, journal, contrôles) en
+ * dérivent ; `src/editor/RULES.md` les recopie (vérifié par `engine/src/claude/rules.test.ts`).
+ * Tablet = point de rupture tablette du SITE (`breakpoint-tablet` de `src/styles/tokens.json`, 50.625rem = 810 px pour
+ * Conduit), et non le 768 du Figma D1 : à 768 px, Conduit est encore en mise en page mobile. Mobile reste sous ce point
+ * de rupture, Desktop au-delà de `breakpoint-desktop` (64rem = 1024 px). Vérifié par `viewports.test.ts` : un site qui
+ * change ses points de rupture le fait échouer.
+ */
+export const EDITOR_VIEWPORTS = Object.freeze({ desktop: 1280, tablet: 810, mobile: 375 } as const)
+
+/** Nom d'un format de l'aperçu : 'desktop' | 'tablet' | 'mobile'. */
+export type ViewportName = keyof typeof EDITOR_VIEWPORTS
+
+/** Largeur d'un format de l'aperçu (Desktop / Tablet / Mobile de la barre d'outils) : 1280 | 810 | 375. */
+export type Viewport = (typeof EDITOR_VIEWPORTS)[ViewportName]
+
+/** Les formats dans l'ordre de la barre d'outils : Desktop, Tablet, Mobile. */
+export const VIEWPORT_NAMES: readonly ViewportName[] = Object.freeze(Object.keys(EDITOR_VIEWPORTS) as ViewportName[])
+
+/** Leurs largeurs, dans le même ordre (1280, 810, 375) : les seules valeurs acceptées dans une nouvelle demande. */
+export const VIEWPORT_WIDTHS: readonly Viewport[] = Object.freeze(VIEWPORT_NAMES.map((name) => EDITOR_VIEWPORTS[name]))
+
+/** Les mêmes largeurs, croissantes (375, 810, 1280) : celles que mesurent et capturent les garde-fous du moteur. */
+export const MEASURED_VIEWPORTS: readonly Viewport[] = Object.freeze([...VIEWPORT_WIDTHS].sort((a, b) => a - b))
+
+/** « 375, 810 and 1280 » : les largeurs mesurées, dans les textes anglais (prompt, outil measure, journal, contrôles). */
+export const MEASURED_VIEWPORTS_TEXT = `${MEASURED_VIEWPORTS.slice(0, -1).join(', ')} and ${MEASURED_VIEWPORTS.at(-1)}`
+
+/** Largeur d'un format actuel de l'aperçu. */
+export function isViewport(value: unknown): value is Viewport {
+  return typeof value === 'number' && (VIEWPORT_WIDTHS as readonly number[]).includes(value)
+}
+
+/**
+ * Format à afficher pour une largeur RELUE (état de l'éditeur, demande enregistrée, fil) : un format actuel reste
+ * lui-même ; la largeur d'une version précédente prend le format le plus proche (768, le Tablet d'avant le 2026-09-28,
+ * → Tablet) ; toute autre valeur → Desktop, le format par défaut. Ne sert qu'à relire : une NOUVELLE demande n'est
+ * acceptée qu'avec une largeur de `VIEWPORT_WIDTHS` (moteur et moteur simulé).
+ */
+export function viewportOf(value: unknown): Viewport {
+  if (isViewport(value)) return value
+  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) return EDITOR_VIEWPORTS.desktop
+  return VIEWPORT_WIDTHS.reduce((best, width) => (Math.abs(width - value) < Math.abs(best - value) ? width : best))
+}
 
 /** Élément choisi dans l'aperçu (mode Select). */
 export type ElementTarget = {
@@ -267,6 +318,10 @@ export type EditRequest = {
   scope: Scope[]
   /** 1 à 600 caractères. */
   note: string
+  /**
+   * Format de l'aperçu au moment de la demande (`VIEWPORT_WIDTHS`). Une demande enregistrée par une version précédente
+   * peut porter 768 (ancien Tablet) : l'afficher avec `viewportOf`.
+   */
   viewport: Viewport
   /** Ajustement de la modification en attente (D3 « Adjust this change… ») : son id. */
   changeId?: string
@@ -532,7 +587,9 @@ export type AskResponse = {
 
 /**
  * Document Sanity PRIVÉ (id avec un point → illisible sans jeton, même en dataset public), écrit par le moteur
- * pour chaque demande IA terminée. Lu par B5 et par le pied de Ask AI.
+ * pour chaque demande IA terminée qui a VRAIMENT consommé (jamais pour le faux Claude `ENGINE_FAKE_CLAUDE`, ni sans
+ * appel à Claude). Lu par B5, B1 et le pied de Ask AI ; `access` sépare le coût facturé de la part incluse dans
+ * l'abonnement Claude (`costSplit`, format.ts).
  */
 export type AiUsageDoc = {
   _id: `aiUsage.${string}`

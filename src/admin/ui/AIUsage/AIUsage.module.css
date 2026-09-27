@@ -32,11 +32,27 @@
   width: 150px;
 }
 
+/* Totaux + part incluse dans l'abonnement Claude (ligne sous les totaux, seulement s'il y en a une). */
+.summary {
+  display: flex;
+  flex-direction: column;
+  gap: var(--k-space-6);
+  min-width: 0;
+}
+
 .totals {
   display: flex;
   flex-wrap: wrap;
   gap: var(--k-space-24);
   margin: 0;
+}
+
+/* « ≈ $0.30 at API prices — included in your Claude subscription » : Body Small, text/secondary (jamais un coût). */
+.included {
+  margin: 0;
+  color: var(--k-text-secondary);
+  font: var(--k-text-body-small);
+  letter-spacing: var(--k-text-body-small-tracking);
 }
 
 .total {

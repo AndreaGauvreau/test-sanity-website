@@ -1,7 +1,7 @@
 'use client'
 
 import type { HTMLAttributes, ReactNode, Ref } from 'react'
-import { formatCost, formatTokens } from '@/admin/core/contracts/format'
+import { formatCost, formatIncluded, formatTokens } from '@/admin/core/contracts/format'
 import { Icon } from '../icons'
 import { ModelUsage, type ModelUsageValue } from '../ModelUsage'
 import { Select } from '../Select'
@@ -24,16 +24,35 @@ export type AIUsageFeature = {
   usage: ModelUsageValue
 }
 
+/**
+ * Totaux d'une période. `costUsd` = coût FACTURÉ seulement (compte API du site) ; `includedUsd` = demandes passées par
+ * l'abonnement Claude (moteur local), au prix de l'API, non facturées — montrées à part, jamais additionnées.
+ */
+export type AIUsageTotals = { inputTokens: number; outputTokens: number; costUsd: number; includedUsd?: number }
+
+/** Note de bas de carte selon ce qui a été consommé : facturé, abonnement seulement, ou les deux. */
+export const AI_USAGE_NOTES = {
+  billed: "Billed on the site's own Claude API account. Kuartz doesn't resell AI.",
+  included: "Used through your Claude subscription on the local engine: not billed. Kuartz doesn't resell AI.",
+  mixed: "Cost is billed on the site's own Claude API account; use through your Claude subscription isn't. Kuartz doesn't resell AI.",
+} as const
+
+/** Note par défaut de la carte (facturé tant que rien n'est passé par l'abonnement, chargement compris). */
+export function aiUsageNote(totals: Pick<AIUsageTotals, 'costUsd' | 'includedUsd'> | null): string {
+  if (!totals || !((totals.includedUsd ?? 0) > 0)) return AI_USAGE_NOTES.billed
+  return totals.costUsd > 0 ? AI_USAGE_NOTES.mixed : AI_USAGE_NOTES.included
+}
+
 export type AIUsageProps = Omit<HTMLAttributes<HTMLElement>, 'children' | 'title'> & {
   title?: ReactNode
   period?: AIUsagePeriod
   defaultPeriod?: AIUsagePeriod
   onPeriodChange?: (period: AIUsagePeriod) => void
   /** Totaux de la période (null pendant le chargement). */
-  totals: { inputTokens: number; outputTokens: number; costUsd: number } | null
+  totals: AIUsageTotals | null
   /** Détail par fonctionnalité avec le modèle (Model usage). */
   features?: readonly AIUsageFeature[]
-  /** Note de bas de carte (Caption, text/muted). `null` pour la masquer. */
+  /** Note de bas de carte (Caption, text/muted). Défaut : `aiUsageNote(totals)`. `null` pour la masquer. */
   note?: ReactNode
   loading?: boolean
   ref?: Ref<HTMLElement>
@@ -41,8 +60,9 @@ export type AIUsageProps = Omit<HTMLAttributes<HTMLElement>, 'children' | 'title
 
 /**
  * Consommation IA du compte Claude du site (Figma « AI usage » 352:1557) : 384 px dans Figma, fluide ici ;
- * en-tête (icône ai, titre Label, période en Select 150 px), totaux Heading 2 (input, output, coût),
- * détail par fonctionnalité (Model usage) et note. Chiffres formatés par le contrat (formatTokens, formatCost).
+ * en-tête (icône ai, titre Label, période en Select 150 px), totaux Heading 2 (input, output, coût FACTURÉ), part
+ * incluse dans l'abonnement Claude sur sa propre ligne (« ≈ $0.30 at API prices — included in your Claude
+ * subscription »), détail par fonctionnalité (Model usage) et note. Chiffres formatés par le contrat.
  */
 export function AIUsage({
   title = 'AI usage',
@@ -51,7 +71,7 @@ export function AIUsage({
   onPeriodChange,
   totals,
   features = [],
-  note = "Billed on the site's own Claude API account. Kuartz doesn't resell AI.",
+  note,
   loading,
   className,
   ref,
@@ -60,6 +80,8 @@ export function AIUsage({
   const [period, setPeriod] = useControllableState<AIUsagePeriod>(periodProp, defaultPeriod, onPeriodChange)
   const busy = loading || totals == null
   const value = (text: string) => (busy ? '—' : text)
+  const included = !busy ? (totals?.includedUsd ?? 0) : 0
+  const shownNote = note === undefined ? aiUsageNote(busy ? null : totals) : note
 
   return (
     <section ref={ref} aria-busy={busy || undefined} className={cx(styles.card, className)} {...rest}>
@@ -76,20 +98,23 @@ export function AIUsage({
           className={styles.period}
         />
       </div>
-      <dl className={styles.totals}>
-        <div className={styles.total}>
-          <dt className={styles.totalLabel}>Input tokens</dt>
-          <dd className={styles.totalValue}>{value(formatTokens(totals?.inputTokens ?? 0))}</dd>
-        </div>
-        <div className={styles.total}>
-          <dt className={styles.totalLabel}>Output tokens</dt>
-          <dd className={styles.totalValue}>{value(formatTokens(totals?.outputTokens ?? 0))}</dd>
-        </div>
-        <div className={styles.total}>
-          <dt className={styles.totalLabel}>Cost</dt>
-          <dd className={styles.totalValue}>{value(formatCost(totals?.costUsd ?? 0))}</dd>
-        </div>
-      </dl>
+      <div className={styles.summary}>
+        <dl className={styles.totals}>
+          <div className={styles.total}>
+            <dt className={styles.totalLabel}>Input tokens</dt>
+            <dd className={styles.totalValue}>{value(formatTokens(totals?.inputTokens ?? 0))}</dd>
+          </div>
+          <div className={styles.total}>
+            <dt className={styles.totalLabel}>Output tokens</dt>
+            <dd className={styles.totalValue}>{value(formatTokens(totals?.outputTokens ?? 0))}</dd>
+          </div>
+          <div className={styles.total}>
+            <dt className={styles.totalLabel}>Cost</dt>
+            <dd className={styles.totalValue}>{value(formatCost(totals?.costUsd ?? 0))}</dd>
+          </div>
+        </dl>
+        {included > 0 ? <p className={styles.included}>{formatIncluded(included)}</p> : null}
+      </div>
       {!busy ? (
         features.length > 0 ? (
           <ul className={styles.byFeature} aria-label="Usage by feature">
@@ -104,7 +129,7 @@ export function AIUsage({
           <p className={cx(styles.byFeature, styles.empty)}>No AI usage in this period.</p>
         )
       ) : null}
-      {note != null ? <p className={styles.note}>{note}</p> : null}
+      {shownNote != null ? <p className={styles.note}>{shownNote}</p> : null}
     </section>
   )
 }

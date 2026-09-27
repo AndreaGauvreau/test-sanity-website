@@ -1,6 +1,6 @@
 # Ask AI (panneau, G4) — LLM context
 
-> Propriétaire : ask-ai · Figma : G4 (docs/admin/figma/states/G4.md), composant « Ask AI panel » 340:1586, Model usage · Mis à jour : 2026-09-27 (vague 3b-2 : FOLLOWUPS #41)
+> Propriétaire : ask-ai · Figma : G4 (docs/admin/figma/states/G4.md), composant « Ask AI panel » 340:1586, Model usage · Mis à jour : 2026-09-28 (coût facturé / inclus dans l'abonnement Claude)
 > Possède aussi : `src/admin/core/engine/mock/ask.ts` (moteur simulé) et `engine/src/ask/` (service du moteur, voir son CLAUDE.md).
 
 ## Utilité
@@ -44,12 +44,16 @@ n'accepte pas de fichiers.
   moteur ne répond pas) + ✕ « Close Ask AI ». Sous-titre « Questions only — it doesn’t change anything. ».
 - Fil (`role="log"`, `aria-live="polite"`) : question (Message adjustment), réponse (Body text/secondary), liens (Button
   ghost small + ↗, next/link, SEULEMENT des chemins `/admin…` vérifiés), consommation (`ModelUsage` small sans modèle,
-  « 2.1k input · 240 output · $0.003 »). Attente : « Thinking… » ; erreur : Callout error + « Try again » (même question, même place).
+  « 2.1k input · 240 output · $0.003 » ; réponse passée par l'abonnement Claude, `usage.access === 'subscription'` :
+  « … · Included », lu « included in your Claude subscription (≈ $0.003 at API prices) » ; `access` gardé en
+  sessionStorage, absent d'une ancienne conversation = facturé). Attente : « Thinking… » ; erreur : Callout error + « Try again » (même question, même place).
 - Champ « Ask about this site… » (textarea 1 ligne → 120 px, 1 000 caractères) ; **⌘ ↵ / Ctrl ↵ envoie** ; Entrée seule
   = retour à la ligne (le Figma dit ⌘ ↵) ; bouton envoyer bleu (Icon button primary) comme le Figma, sans effet si le
   champ est vide ; une question à la fois (la suivante peut être tapée pendant l'attente).
 - Pied « This month: 1.2M input · 147k output · $4.80 » (toute l'IA du site, `getUsageSummary('month').totals`, relu après
-  chaque réponse) + « Usage ↗ » (`/admin/settings/usage`). Journal illisible : pied sans texte, bouton gardé.
+  chaque réponse ; coût FACTURÉ seulement, mêmes chiffres que B5 : abonnement Claude seul « … · Included », mélange
+  « … · $0.10 + included », détail dans l'infobulle `title`, `formatUsageLine`) + « Usage ↗ » (`/admin/settings/usage`).
+  Journal illisible : pied sans texte, bouton gardé. `AskAiTotals.includedUsd` = part de l'abonnement (0 sans elle).
 - ✕ ou Échap ferment (Échap : si le panneau est la couche du dessus de la pile du kit et que l'événement n'a pas déjà été
   traité — édition sur place, menu, modale passent avant) ; le focus revient au déclencheur. « Ask AI » alors que le panneau
   est ouvert : focus ramené dans le champ.
@@ -100,7 +104,8 @@ n'accepte pas de fichiers.
 - Déplacer le panneau : `.host` de `AskAiProvider.module.css` (garder `transform-origin` du côté du bouton).
 
 ## Tests
-`npx vitest run src/admin/features/ask-ai src/admin/core/engine/mock/ask.test.ts` (6 fichiers, 32 tests).
+`npx vitest run src/admin/features/ask-ai src/admin/core/engine/mock/ask.test.ts` (6 fichiers, 36 tests, dont coût
+facturé / inclus : réponse et pied « Included », mélange, `access` relu du sessionStorage, totaux transmis séparés).
 À la main (ENGINE_MOCK=1, session de dev) : http://127.0.0.1:4040/admin/pages/home → « Ask AI » ; « Where is the hero image
 used? » (⌘ ↵), « Change the hero title to “Docks, solved.” » (refus), « [mock:error] » (erreur + Try again),
 « [mock:slow] » (attente 4 s) ; recharger (conversation gardée) ; Échap ; rôle client (`POST /admin/api/auth/dev-role`) :

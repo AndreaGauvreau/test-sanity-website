@@ -1,12 +1,12 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import type { EditJob, PendingChange } from '@/admin/core/contracts'
+import { EDITOR_VIEWPORTS, type EditJob, type PendingChange, type Viewport } from '@/admin/core/contracts'
 import { bridgeMessage } from '@/admin/editor-bridge/protocol'
 import { createEditorStore } from '../state/store'
 import { resolveEditorPage } from '../page/resolve'
 import { connectPreview } from './channel'
 import { previewKey, previewTokenExpired, previewTokenExpiry, resolvePreview } from './preview-url'
-import { computeFrame, floatingMaxWidth } from './scale'
+import { computeFrame, floatingMaxWidth, VIEWPORTS } from './scale'
 import { bridgeViewFrom } from './view'
 
 describe('computeFrame — mise à l’échelle de l’aperçu', () => {
@@ -20,7 +20,7 @@ describe('computeFrame — mise à l’échelle de l’aperçu', () => {
   })
 
   it('n’agrandit jamais : Tablet et Mobile gardent leur largeur réelle', () => {
-    expect(computeFrame({ width: 1080, height: 860 }, 768)).toEqual({ scale: 1, width: 768, height: 860, iframeWidth: 768, iframeHeight: 860 })
+    expect(computeFrame({ width: 1080, height: 860 }, 810)).toEqual({ scale: 1, width: 810, height: 860, iframeWidth: 810, iframeHeight: 860 })
     expect(computeFrame({ width: 1080, height: 860 }, 375).width).toBe(375)
   })
 
@@ -35,6 +35,29 @@ describe('computeFrame — mise à l’échelle de l’aperçu', () => {
 
   it('petite place : Mobile réduit aussi', () => {
     expect(computeFrame({ width: 300, height: 600 }, 375).scale).toBeCloseTo(0.8)
+  })
+})
+
+describe('formats de la barre d’outils (contrat EDITOR_VIEWPORTS)', () => {
+  it('Desktop, Tablet, Mobile dans cet ordre, aux largeurs du contrat : Tablet = point de rupture tablette du site', () => {
+    expect(VIEWPORTS.map((v) => [v.label, v.value, v.icon])).toEqual([
+      ['Desktop', EDITOR_VIEWPORTS.desktop, 'desktop'],
+      ['Tablet', EDITOR_VIEWPORTS.tablet, 'tablet'],
+      ['Mobile', EDITOR_VIEWPORTS.mobile, 'mobile'],
+    ])
+    expect(VIEWPORTS.map((v) => v.value)).toEqual([1280, 810, 375])
+  })
+
+  it('magasin : une largeur relue d’une version précédente (768, l’ancien Tablet) devient Tablet, jamais bloquée', () => {
+    const legacy = 768 as Viewport
+    const store = createEditorStore({ pageId: 'home', path: '/', viewport: legacy })
+    expect(store.get().viewport).toBe(EDITOR_VIEWPORTS.tablet)
+    expect(createEditorStore({ pageId: 'home', path: '/' }).get().viewport).toBe(EDITOR_VIEWPORTS.desktop)
+    store.setViewport(EDITOR_VIEWPORTS.mobile)
+    store.setJob({ id: 'j1', status: 'running', request: { targets: [] } } as unknown as EditJob)
+    store.setViewport(legacy)
+    expect(store.get().viewport).toBe(EDITOR_VIEWPORTS.tablet)
+    expect(computeFrame({ width: 1080, height: 860 }, store.get().viewport).iframeWidth).toBe(810)
   })
 })
 

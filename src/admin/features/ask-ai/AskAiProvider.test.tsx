@@ -82,6 +82,44 @@ afterEach(() => {
   MotionGlobalConfig.skipAnimations = false
 })
 
+describe('Ask AI — coût facturé / abonnement Claude', () => {
+  it('abonnement : « Included » dans la réponse et le pied (détail au prix de l’API), jamais présenté comme facturé', async () => {
+    const s = services({
+      getInfo: vi.fn<AskAiServices['getInfo']>(async () => ({
+        ok: true,
+        userId: 'dev-client',
+        model: 'claude-haiku-4-5-20251001',
+        month: { inputTokens: 142_000, outputTokens: 3_100, costUsd: 0, includedUsd: 0.3 },
+      })),
+      ask: vi.fn<AskAiServices['ask']>(async () => ({ ...ANSWER, usage: { ...USAGE, access: 'subscription' as const } })),
+    })
+    const { user } = renderAsk(s)
+    const { dialog, input } = await openPanel(user)
+    const footer = within(dialog).getByText('This month: 142k input · 3.1k output · Included')
+    expect(footer.getAttribute('title')).toBe('This month: 142k input · 3.1k output · included in your Claude subscription (≈ $0.30 at API prices)')
+    await user.type(input, 'Where is the hero image used?')
+    await user.keyboard('{Meta>}{Enter}{/Meta}')
+    await within(dialog).findByText(ANSWER.answer)
+    expect(within(dialog).getByText('Included')).toBeTruthy()
+    expect(within(dialog).getByText('2.1k input · 240 output · included in your Claude subscription (≈ $0.003 at API prices)')).toBeTruthy()
+    expect(within(dialog).queryByText('2.1k input · 240 output · $0.003')).toBeNull()
+  })
+
+  it('mélange sur le mois : coût facturé + « included »', async () => {
+    const s = services({
+      getInfo: vi.fn<AskAiServices['getInfo']>(async () => ({
+        ok: true,
+        userId: 'dev-client',
+        model: 'claude-haiku-4-5-20251001',
+        month: { inputTokens: 142_000, outputTokens: 3_100, costUsd: 0.1, includedUsd: 0.3 },
+      })),
+    })
+    const { user } = renderAsk(s)
+    const { dialog } = await openPanel(user)
+    expect(within(dialog).getByText('This month: 142k input · 3.1k output · $0.10 + included')).toBeTruthy()
+  })
+})
+
 describe('Ask AI — panneau', () => {
   it('s’ouvre depuis useAskAi().open, en-tête du Figma, focus dans le champ', async () => {
     const { user } = renderAsk()

@@ -1,6 +1,6 @@
 import path from 'node:path'
 import type { EditJob, JobStatus, StepKind, TextChange } from '../../../src/admin/core/contracts'
-import { modelLabel } from '../../../src/admin/core/contracts'
+import { MEASURED_VIEWPORTS_TEXT, modelLabel } from '../../../src/admin/core/contracts'
 import {
   accessKind,
   acceptsLongerText,
@@ -133,11 +133,14 @@ export async function runEditJob(ctx: RunContext): Promise<void> {
   // SEC-08 : seules adresses gardées dans ce que lit le client (questions, message final, journal de Claude).
   const allowedDomains = [...(deps.siteDomains ?? [])]
   const toClient = (text: string) => clientMessage(text, allowedDomains)
+  // Accès à Claude de CETTE demande, figé à son départ (il peut être changé dans l'admin pendant qu'elle tourne) : c'est
+  // lui qui dit si son coût est facturé (clé API) ou inclus dans l'abonnement (`Usage.access`, B5).
+  let accessUsed: ReturnType<typeof accessKind> = 'none'
 
   const finish = async (status: JobStatus, data: Partial<EditJob> = {}) => {
     const usage =
       cost.turns > 0 || cost.banked.cost > 0 || cost.session.cost > 0
-        ? toUsage(cost, { model: settings.model, access: accessKind(deps.access.ok ? deps.access.access : null), durationMs: Date.now() - started })
+        ? toUsage(cost, { model: settings.model, access: accessUsed, durationMs: Date.now() - started })
         : undefined
     await patch((stored) => {
       Object.assign(stored.job, data)
@@ -180,6 +183,7 @@ export async function runEditJob(ctx: RunContext): Promise<void> {
       return await finish('failed', { error: FAILED_MESSAGE })
     }
     const access = deps.access.access
+    accessUsed = accessKind(access)
     if (deps.fakeClaude) step('warn', `FAKE Claude (${deps.fakeClaude}): scripted local test, no real call.`)
     else step('info', `Claude ${modelLabel(settings.model)} takes the request${access.kind === 'subscription' ? ' (local test, subscription)' : ''}.`)
 
@@ -289,7 +293,8 @@ export async function runEditJob(ctx: RunContext): Promise<void> {
 
     // ─── Captures d'avant ─────────────────────────────────────────────────────
     const first = request.targets[0]
-    step('info', `Capturing the page ${request.page} before the change (375, 768 and 1280 px)…`)
+    // Largeurs capturées : formats de l'éditeur (contrat EDITOR_VIEWPORTS, celles de PREVIEW_VIEWPORTS) : 375, 810, 1280.
+    step('info', `Capturing the page ${request.page} before the change (${MEASURED_VIEWPORTS_TEXT} px)…`)
     try {
       session = await deps.preview.open(request.page, first.zone, first.index)
     } catch (error) {

@@ -1,3 +1,4 @@
+import { MEASURED_VIEWPORTS } from '../../../src/admin/core/contracts/engine'
 import {
   toZoneMeasure,
   type LineRect,
@@ -83,22 +84,25 @@ export function rawState(partial: Pick<RawState, 'kind'> & Partial<RawState>): R
   return { hover: null, focus: null, texts, total: texts.length, ...partial }
 }
 
-/** Mesures à 375, 768 et 1280 px : le relevé donné pour une largeur, sinon `fallback` (null = introuvable). */
+/**
+ * Mesures aux largeurs relevées par l’aperçu (formats de l’éditeur, contrat : 375, 810 et 1280 px) : le relevé donné
+ * pour une largeur, sinon `fallback` (null = introuvable).
+ */
 export function measuresOf(
   byViewport: Partial<Record<number, RawZone | null>>,
   fallback: RawZone | null = rawZone(),
 ): ZoneMeasure[] {
-  return [375, 768, 1280].map((viewport) =>
+  return MEASURED_VIEWPORTS.map((viewport) =>
     toZoneMeasure(viewport, viewport in byViewport ? (byViewport[viewport] ?? null) : fallback),
   )
 }
 
 /**
- * Relevés de chaque occurrence d’une zone répétée à 375, 768 et 1280 px, dans l’ordre des largeurs puis des rangs :
+ * Relevés de chaque occurrence d’une zone répétée à 375, 810 et 1280 px, dans l’ordre des largeurs puis des rangs :
  * `byRank[rang]` (null = introuvable) ; leur nombre sur la page vaut `total` (par défaut, celui de `byRank`).
  */
 export function occurrencesOf(byRank: (RawZone | null)[], total = byRank.length): ZoneMeasure[] {
-  return [375, 768, 1280].flatMap((viewport) =>
+  return MEASURED_VIEWPORTS.flatMap((viewport) =>
     byRank.map((raw, rank) => toZoneMeasure(viewport, raw && { ...raw, occurrences: total }, rank)),
   )
 }

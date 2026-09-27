@@ -1,3 +1,4 @@
+import { MEASURED_VIEWPORTS } from '../../../src/admin/core/contracts/engine'
 import { startVisualSession, type VisualSession, type VisualSettings } from './visual'
 
 /**
@@ -8,8 +9,11 @@ import { startVisualSession, type VisualSession, type VisualSettings } from './v
  * (finally), même après une erreur.
  */
 
-/** Largeurs relevées : mobile, tablette, ordinateur (celles de la barre d'outils de l'éditeur). Gelée. */
-export const PREVIEW_VIEWPORTS: readonly number[] = Object.freeze([375, 768, 1280])
+/**
+ * Largeurs relevées : mobile, tablette, ordinateur, celles de la barre d'outils de l'éditeur (contrat `EDITOR_VIEWPORTS`,
+ * croissantes : 375, 810, 1280 ; Tablet = point de rupture tablette du site). Gelée.
+ */
+export const PREVIEW_VIEWPORTS: readonly number[] = MEASURED_VIEWPORTS
 
 /** Réglages de l'aperçu (voir VisualSettings) ; `viewports` vaut PREVIEW_VIEWPORTS par défaut. */
 export type PreviewSettings = Omit<VisualSettings, 'viewports'> & { viewports?: readonly number[] }

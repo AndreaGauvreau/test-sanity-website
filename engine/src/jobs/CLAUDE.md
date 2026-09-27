@@ -1,6 +1,6 @@
 # File et cycle d'une demande (`engine/src/jobs`) — LLM context
 
-> Propriétaire : engine-core · Figma : D1-D3, G1, G2 (états de la sidebar) · Mis à jour : 2026-09-27 (journal en fond, résumé final)
+> Propriétaire : engine-core · Figma : D1-D3, G1, G2 (états de la sidebar) · Mis à jour : 2026-09-28 (aucun aiUsage pour le faux Claude, accès figé au départ)
 
 ## Utilité
 Le cœur de l'éditeur IA : la file (UNE demande à la fois, toutes personnes confondues), le cycle complet d'une demande
@@ -11,7 +11,7 @@ après un redémarrage, et le verrou partagé avec la publication. Pas de route 
 ## Fichiers
 - `service.ts` — `createEditorService(deps)` : request, job, answer, stop, validate, cancel, state, shot, recover, shutdown, blocker, validatedDesign, idle.
 - `run.ts` — `runEditJob(ctx)` : le cycle d'une demande ; `MAX_ATTEMPTS = 2` ; `timeoutMessage`.
-- `request.ts` — `parseRequestShape` (zod, contrat EditRequest), `checkRequestAgainst` (zones.json), `isPagePath`, `ID_PATTERN`, `zoneLabel`.
+- `request.ts` — `parseRequestShape` (zod, contrat EditRequest ; format de l'aperçu = `VIEWPORT_WIDTHS` du contrat), `checkRequestAgainst` (zones.json), `isPagePath`, `ID_PATTERN`, `zoneLabel`.
 - `lock.ts` — `createEngineLock()` : `PublishLock` (lu par l'éditeur) + `runPublish` / `acquirePublish` (engine-publish), `EditorGate`.
 - `summary.ts` — `describeChanges` : résumé client calculé d'après les fichiers entiers (postcss) et les textes écrits ;
   `mergeSummary` : résumé cumulé d'une modification à l'état FINAL (clé = élément + nature + lieu + propriété).
@@ -25,7 +25,9 @@ après un redémarrage, et le verrou partagé avec la publication. Pas de route 
   Claude et le hook refusent un old_string ambigu) — utilisés aussi par engine-publish et ask-ai.
 - Tests : `service.test.ts` (cycle complet), `run.test.ts` (measure bloqué SEC-07, AI-07), `wiring.test.ts` (branchements
   FOLLOWUPS #36 : lint dans le hook du vrai cycle, domaines du site), `fake-claude.test.ts` (dont ENGINE_FAKE_CLAUDE sous
-  pré-validation), `units.test.ts`, `conduit.test.ts` (fumée sur le vrai design system).
+  pré-validation, et aucun aiUsage pour le faux Claude), `units.test.ts` (dont les formats de l'aperçu : contrat accepté,
+  768 refusé), `conduit.test.ts` (fumée sur le vrai design system). Magasin d'une version précédente (demande à 768) au
+  démarrage : `../main.test.ts`.
 
 ## Contrats
 - Entrées : `EditRequest`, `Answer` (contrat), `EngineUser` signé. Sorties : `EditJob`, `PendingChange`, `EditorState`
@@ -38,7 +40,8 @@ après un redémarrage, et le verrou partagé avec la publication. Pas de route 
   `Preview`, `ToolAccess`), `git/`, `store/`, `content/`. Manifeste du site (`<ENGINE_SOURCE_REPO>/src/admin.config.ts`,
   `site.domain` et `site.url`) lu au démarrage par `loadSiteDomains` → `EditorDeps.siteDomains`.
 - Ports : `UsageRecorder.record({ job, change })` appelé à la fin de CHAQUE demande (sans `usage` si Claude n'a pas
-  tourné), en TÂCHE DE FOND SUIVIE (copie figée, erreur journalisée ; `idle()` l'attend, `shutdown` aussi dans son délai) :
+  tourné) — JAMAIS quand le faux Claude est actif (`deps.fakeClaude` : rien de consommé, aucun aiUsage, une ligne
+  « usage not recorded for <id>: fake Claude (…) » au journal) —, en TÂCHE DE FOND SUIVIE (copie figée, erreur journalisée ; `idle()` l'attend, `shutdown` aussi dans son délai) :
   la demande est libérée (`running = null`) sans attendre l'écriture aiUsage dans Sanity ; `pendingTotal()` (« Validated — added to Publish (N changes) ») ; `PublishLock.isPublishing()`.
 
 ## Comportement
@@ -46,12 +49,14 @@ après un redémarrage, et le verrou partagé avec la publication. Pas de route 
 publication en cours → 409 `publishing` ; demande en file/en cours/en attente → 409 `busy` ; modification working ou
 to-validate → 409 `awaiting_validation` (sauf ajustement de CETTE modification, `changeId`, même page) ; pas d'accès
 Claude ou aperçu pas prêt → 503 `unavailable` ; texte Sanity demandé sans jeton d'écriture → 503 ; zone inconnue, note
-vide ou > 600, > 8 éléments, périmètre impossible → 400. Le libellé d'un élément vient de zones.json.
+vide ou > 600, > 8 éléments, périmètre impossible → 400 ; format de l'aperçu hors contrat (`EDITOR_VIEWPORTS` : 1280, 810,
+375 ; 768, l'ancien Tablet, compris) → 400 « Invalid screen size. ». Le libellé d'un élément vient de zones.json.
 
 **Cycle** (`run.ts`) : running → design system relu dans le clone (échec = failed) → copie sale nettoyée (étape warn) →
 tête notée → champs Sanity résolus (`resolveTextFields` + `editableFields`), valeurs lues et **instantané enregistré dans
 le magasin AVANT toute écriture** → périmètre des outils `toolAccess = { ...toolAccessFor(…), lint: lintContextFor({ ds,
-scope, zones, hardcoded }) }` (voir « Pré-validation ») → captures d'avant (`preview.open(page, 1er élément)` ; échec = failed sans Claude) →
+scope, zones, hardcoded }) }` (voir « Pré-validation ») → captures d'avant (`preview.open(page, 1er élément)`, aux largeurs
+du contrat : étape « Capturing the page / before the change (375, 810 and 1280 px)… » ; échec = failed sans Claude) →
 essai 1 (`buildPrompt` avec rendu d'avant, pages PUBLIQUES — échec de lecture : étape warn + journal, la demande
 continue sans liste, AI-07 —, textes de la page) → Stop ? retour arrière, `stopped` ; échec du SDK ?
 retour arrière, `failed` (jamais de 2e essai sur `fatal`) ; rien de changé ? `rejected` (textes remis) → contrôles
@@ -64,6 +69,9 @@ et essai 2 dans la session reprise (`buildRetryPrompt(retryProblems)`), sauf si 
 **Coût** : `addCall(state, result, resumedSessionId)` (une session reprise rapporte le cumul : jamais additionné deux
 fois) ; budget passé au SDK = min(`EDITOR_MAX_BUDGET_USD`, plafond de la demande − déjà dépensé) ; plus de 2e essai si
 le cumul atteint `maxRequestUsd`. `EditJob.usage` = `toUsage` ; `PendingChange.usage` = somme de ses demandes.
+`Usage.access` = l'accès à Claude FIGÉ au départ de la demande (`accessUsed`, run.ts), jamais relu à la fin : un
+changement d'accès dans B5 pendant qu'elle tourne ne la fait pas passer de l'abonnement (inclus) à la clé API
+(facturé), ni l'inverse.
 
 **Modification en attente** : créée avec la demande (`working`) ; demande `done` → `to-validate` (résumé cumulé à l'état
 FINAL par `mergeSummary` : la ligne d'un ajustement remplace celle de la même propriété du même élément ; contrôles de la
@@ -91,7 +99,9 @@ l'admin voit encore running/waiting et le sondage montrera `stopped`).
 **Reprise au démarrage** (`recover`, piège 7 du POC corrigé) : demandes queued/running/waiting → textes restaurés
 d'après l'instantané (champs écrits, sinon tous), commit orphelin retiré (`reset --hard headBefore`), copie de travail
 nettoyée, `failed` « Interrupted: the AI engine restarted… » ; restauration impossible → `restoreFailed`, retentée au
-prochain démarrage ; modification restée `working` → `to-validate` ou `cancelled`.
+prochain démarrage ; modification restée `working` → `to-validate` ou `cancelled`. Les demandes enregistrées ne sont
+jamais revalidées (seule une NOUVELLE demande passe par `parseRequestShape`) : celles d'avant le 2026-09-28, faites en
+Tablet à 768, se relisent telles quelles (état, fil, GET /editor/jobs/:id ; l'admin les affiche en Tablet, `viewportOf`).
 
 **Pré-validation dans le hook (SEC-07, FOLLOWUPS #36)** : `toolAccess.lint` porte le contexte du lint de la demande
 (zones de la demande, périmètre, politique du design system, tableau `hardcoded` VIVANT : les valeurs accordées par le

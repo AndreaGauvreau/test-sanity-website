@@ -1,18 +1,25 @@
 import type { HTMLAttributes, Ref } from 'react'
-import type { Usage } from '@/admin/core/contracts/engine'
-import { formatCost, formatTokens, formatUsageLine, modelLabel } from '@/admin/core/contracts/format'
+import type { ClaudeAccess, Usage } from '@/admin/core/contracts/engine'
+import { costSplit, formatCostShort, formatTokens, formatUsageLine, modelLabel } from '@/admin/core/contracts/format'
 import { Icon } from '../icons'
 import { cx } from '../utils/cx'
 import styles from './ModelUsage.module.css'
 
 export type ModelUsageSize = 'default' | 'small'
 
-/** Consommation affichée : le strict nécessaire d'un `Usage` du contrat. */
+/**
+ * Consommation affichée : le strict nécessaire d'un `Usage` du contrat. Coût sous l'une des deux formes de `CostValue`
+ * (contrat, format.ts) : UNE demande (`costUsd` + `access`) ou un CUMUL déjà séparé (`costUsd` facturé + `includedUsd`).
+ */
 export type ModelUsageValue = Pick<Usage, 'inputTokens' | 'outputTokens' | 'costUsd'> & {
   /** Id du modèle (« claude-sonnet-5 ») ou libellé déjà lisible. */
   model?: string
-  /** estimated : coût calculé d'après les jetons vus (préfixé « ~ »). */
+  /** estimated : coût facturé calculé d'après les jetons vus (préfixé « ~ »). */
   costKind?: Usage['costKind']
+  /** Accès d'UNE demande : `subscription` → coût inclus dans l'abonnement Claude, affiché « Included ». */
+  access?: ClaudeAccess | null
+  /** Cumul : part incluse dans l'abonnement Claude (prix de l'API) ; `costUsd` n'est alors que la part facturée. */
+  includedUsd?: number
 }
 
 export type ModelUsageProps = Omit<HTMLAttributes<HTMLSpanElement>, 'children'> & {
@@ -31,8 +38,9 @@ export type ModelUsageProps = Omit<HTMLAttributes<HTMLSpanElement>, 'children'> 
 
 /**
  * Modèle + consommation (Figma « Model usage » 427:1565) : logo Claude (brand/claude) + nom du modèle
- * (modelLabel), puis « 18.2k input · 1.1k output · $0.07 » (formatTokens / formatCost du contrat).
- * Composant pur (utilisable côté serveur).
+ * (modelLabel), puis « 18.2k input · 1.1k output · $0.07 » (formatTokens / formatCostShort du contrat). Un coût passé
+ * par l'abonnement Claude (non facturé) s'affiche « Included » (« $0.10 + included » s'il s'ajoute à du facturé) ; le
+ * montant au prix de l'API est dans l'infobulle et la ligne lue (`formatUsageLine`). Composant pur (côté serveur aussi).
  */
 export function ModelUsage({
   usage,
@@ -46,8 +54,8 @@ export function ModelUsage({
 }: ModelUsageProps) {
   const model = modelProp ?? usage?.model
   const label = model ? modelLabel(model) : null
-  const estimated = usage?.costKind === 'estimated'
-  const line = usage ? `${formatUsageLine(usage)}${estimated ? ' (estimated)' : ''}` : undefined
+  const line = usage ? formatUsageLine(usage) : undefined
+  const included = usage ? costSplit(usage).includedUsd > 0 : false
   return (
     <span ref={ref} data-size={size} className={cx(styles.root, styles[size], className)} {...rest}>
       {showModel && label ? (
@@ -65,9 +73,8 @@ export function ModelUsage({
             <span className={styles.sep}>·</span>
             <span className={styles.tokens}>{formatTokens(usage.outputTokens)} output</span>
             <span className={styles.sep}>·</span>
-            <span className={styles.cost}>
-              {estimated ? '~' : ''}
-              {formatCost(usage.costUsd)}
+            <span className={styles.cost} data-included={included || undefined}>
+              {formatCostShort(usage)}
             </span>
           </span>
         </span>

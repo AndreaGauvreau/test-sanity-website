@@ -1,4 +1,5 @@
 import type { EditRequest, SanityTextBinding, ZoneDef } from '../../../src/admin/core/contracts'
+import { EDITOR_VIEWPORTS, MEASURED_VIEWPORTS_TEXT } from '../../../src/admin/core/contracts/engine'
 import { colorTone, contrastRatio } from '../guards/contrast'
 import { tokenVarName } from '../guards/css-policy'
 import type { DesignSystem } from '../guards/design-system'
@@ -33,11 +34,16 @@ export type PromptDesignSystem = Pick<DesignSystem, 'tokens' | 'zones' | 'breakp
 
 const SITE_FOLDERS = SITE_DIRS.map((dir) => `"${dir}"`).join(', ')
 
+// Largeurs citées, tirées des formats de l'éditeur (contrat EDITOR_VIEWPORTS), jamais recopiées : « 375, 810 and 1280 »
+// (celles que mesure l'outil measure ; Tablet = point de rupture tablette du site) ; une ligne gagnée compte à 375 px.
+const WIDTHS = MEASURED_VIEWPORTS_TEXT
+const MOBILE = EDITOR_VIEWPORTS.mobile
+
 /** Les 4 phrases fixes du prompt système (traduction fidèle du POC, dossiers du site de Conduit). */
 export const SYSTEM_SENTENCES: readonly string[] = Object.freeze([
   'You are run by the site’s visual editor. The client only reads the questions you ask with ask_client and your final message: never ask a question in your text or in your final message, and never cite an amount or an example figure there.',
   'Always write in English, including your messages during the task.',
-  `Available tools: Read, Edit, Glob, Grep (for Glob/Grep, always pass path with one of the site folders: ${SITE_FOLDERS}), measure (real rendering of the element in the draft preview, at 375, 768 and 1280 px: lines, size, color, background and contrast of each text), ask_client (question to the client, with options), and set_text when the text comes from Sanity.`,
+  `Available tools: Read, Edit, Glob, Grep (for Glob/Grep, always pass path with one of the site folders: ${SITE_FOLDERS}), measure (real rendering of the element in the draft preview, at ${WIDTHS} px: lines, size, color, background and contrast of each text), ask_client (question to the client, with options), and set_text when the text comes from Sanity.`,
   'You cannot see the page. Never state a visual result (number of lines, rendered size or color) without measuring it with measure. Only write “now” for what changed, only warn about a measured risk, and only quote a text you have read.',
 ])
 
@@ -455,7 +461,7 @@ Client’s note: ${note}`,
      · neutral: leave this point unchanged;
      · discouraged: the exact hard-coded value (hardcoded field), saying that it leaves the design system and will be harder to maintain. Never a font outside the design system, url(), @import or a web address, not even as 🔴: no external resource.
    - Information only the client knows is missing (price, hours, number, address), or the requested text contradicts what the element does (a link that goes elsewhere, an offer absent from the site): ask with ask_client before any set_text; never invent a fact. For missing information, no option proposes a value: the client gives it as a free answer; options: do not add it (neutral) and, if useful, a wording without that fact.
-3. If the request sets a visible result (number of lines per screen, size, alignment…), check it with measure after your changes and adjust until it is reached at 375, 768 and 1280 px. If it is impossible with the tokens, ask the question (same three options). If the width depends on a container outside the zone, change nothing and explain it. No line gained at 375 px without the client’s consent: after any set_text that lengthens the text, measure and announce the lines before → after; if a text gains a line at 375 px, shorten it or ask with ask_client (any option whose text gains a line carries effect “longer-text”).
+3. If the request sets a visible result (number of lines per screen, size, alignment…), check it with measure after your changes and adjust until it is reached at ${WIDTHS} px. If it is impossible with the tokens, ask the question (same three options). If the width depends on a container outside the zone, change nothing and explain it. No line gained at ${MOBILE} px without the client’s consent: after any set_text that lengthens the text, measure and announce the lines before → after; if a text gains a line at ${MOBILE} px, shorten it or ask with ask_client (any option whose text gains a line carries effect “longer-text”).
 4. Only apply what the scope allows and what the client chose.
 5. End with a message to the client, in English, in plain text (no Markdown: no bold, no bullets), without jargon or file or class names: what is done (with the measured result when useful, for example “2 lines on desktop and tablet, 3 on mobile”), then what is not done and why. Do not mention your attempts or the automatic checks. If part of the request needs a developer (adding, removing or moving an element, changing a link, making a number clickable, styling a few words), say it simply; to reword an existing text, it is “T Text”; to change the appearance, “🖌 Style”. Cite the information your rewrite removes. No question in this message.`)
   return sections.join('\n\n')

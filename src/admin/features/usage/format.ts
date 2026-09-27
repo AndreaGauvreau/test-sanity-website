@@ -45,7 +45,7 @@ const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/
  * de la première demande (« since Sep 10, 2026 »). Sans demande : « No AI requests yet. » (+ la mise en ligne si connue).
  */
 export function sinceLaunchHint(
-  allTime: Pick<UsageSummary, 'requests' | 'totals' | 'since'>,
+  allTime: Pick<UsageSummary, 'requests' | 'since'> & { totals: Pick<UsageSummary['totals'], 'inputTokens' | 'outputTokens'> },
   launchedAt?: string,
   timeZone?: string,
 ): string {

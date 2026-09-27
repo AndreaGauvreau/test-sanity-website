@@ -67,6 +67,12 @@ describe('cartes de B1', () => {
     expect(usageCard(null)).toMatchObject({ value: '$0.00', hint: { text: '0 input · 0 output tokens' } })
     expect(usageCard('unavailable').tone).toBe('muted')
   })
+  it('AI usage this month avec l’abonnement Claude : coût FACTURÉ seulement (comme B5), part incluse dans l’indice', () => {
+    const card = usageCard({ inputTokens: 245_000, outputTokens: 4_000, costUsd: 0.1, includedUsd: 0.3 })
+    expect(card.value).toBe('$0.10')
+    expect(hintText(card.hint, NOW)).toBe('245k input · 4k output tokens · ≈ $0.30 at API prices — included in your Claude subscription')
+    expect(usageCard({ inputTokens: 1_000, outputTokens: 10, costUsd: 0.2, includedUsd: 0 }).hint).toEqual({ text: '1k input · 10 output tokens' })
+  })
   it('empreinte de publication (rafraîchissement)', () => {
     expect(publishFingerprint(null)).toBe('none')
     expect(publishFingerprint(status())).toBe('pending|2026-09-27T14:25:00Z|3')

@@ -1,7 +1,7 @@
 import { z } from 'zod'
 
-import type { AiUsageDoc, Usage } from '@/admin/core/contracts/engine'
-import { modelLabel } from '@/admin/core/contracts/format'
+import type { AiUsageDoc, ClaudeAccess, Usage } from '@/admin/core/contracts/engine'
+import { isIncluded, modelLabel } from '@/admin/core/contracts/format'
 import { ADMIN_ROLES, type AdminRole } from '@/admin/core/contracts/roles'
 
 /**
@@ -9,6 +9,11 @@ import { ADMIN_ROLES, type AdminRole } from '@/admin/core/contracts/roles'
  * PUR : aucun import Next ni Sanity, testé avec des jeux de données en mémoire (jamais dans Sanity).
  *
  * Règles du Figma (B5) : des jetons et des dollars, jamais de « crédits », ni solde, ni plafond, ni alerte.
+ *
+ * Coût FACTURÉ / INCLUS : une demande passée par l'abonnement Claude (`access: 'subscription'`, moteur local) n'est pas
+ * facturée. Dans un cumul (totaux, fonctionnalité, modèle), `costUsd` est la part FACTURÉE seulement (clé API, ou ancien
+ * document sans `access`) et `includedUsd` la part incluse (prix de l'API) : tout ce qui lit `costUsd` d'un cumul
+ * (« Cost », « Since launch », B1, pied de Ask AI) n'affiche donc que le facturé. Les jetons, eux, comptent tout.
  */
 
 export type UsagePeriod = 'month' | '3-months' | 'all-time'
@@ -32,17 +37,28 @@ export const USAGE_FEATURE_LABELS: Readonly<Record<UsageFeature, string>> = {
 /** Ordre d'affichage des fonctionnalités (Figma : AI editor puis Ask AI). */
 const FEATURE_ORDER: readonly UsageFeature[] = ['editor', 'ask']
 
-export type UsageTotals = { inputTokens: number; outputTokens: number; costUsd: number }
+export type UsageTotals = {
+  inputTokens: number
+  outputTokens: number
+  /** Coût FACTURÉ (clé API) : ce qu'affichent « Cost », « Since launch », B1 et le pied de Ask AI. */
+  costUsd: number
+  /** Demandes passées par l'abonnement Claude : coût au prix de l'API, inclus, jamais facturé (0 sans elles). */
+  includedUsd: number
+}
 
 /**
- * Cumul d'un groupe (fonctionnalité ou modèle). Compatible avec `ModelUsageValue` du kit.
+ * Cumul d'un groupe (fonctionnalité ou modèle). Compatible avec `ModelUsageValue` du kit (forme « cumul » de
+ * `CostValue` : `costUsd` facturé + `includedUsd`).
  * `model` : pour une fonctionnalité, le modèle de sa demande la plus RÉCENTE de la période (celui qu'elle utilise
- * aujourd'hui) ; pour un modèle, lui-même.
+ * aujourd'hui) ; pour un modèle, lui-même. `costKind` : `estimated` dès qu'une demande FACTURÉE l'est.
  */
-export type UsageAggregate = Pick<
-  Usage,
-  'model' | 'inputTokens' | 'outputTokens' | 'cacheReadTokens' | 'cacheWriteTokens' | 'costUsd' | 'costKind'
-> & { requests: number }
+export type UsageAggregate = Pick<Usage, 'model' | 'inputTokens' | 'outputTokens' | 'cacheReadTokens' | 'cacheWriteTokens' | 'costKind'> & {
+  /** Part facturée (clé API). */
+  costUsd: number
+  /** Part incluse dans l'abonnement Claude (prix de l'API, non facturée). */
+  includedUsd: number
+  requests: number
+}
 
 export type UsageSummary = {
   period: UsagePeriod
@@ -72,8 +88,11 @@ export type UsageRow = {
   modelLabel: string
   inputTokens: number
   outputTokens: number
+  /** Coût de la demande au prix de l'API ; facturé ou non selon `access` (`isIncluded` du contrat). */
   costUsd: number
   costKind: Usage['costKind']
+  /** Accès à Claude de la demande ; absent pour un ancien document (compté comme facturé). */
+  access?: ClaudeAccess
 }
 
 // ─── Lecture défensive ─────────────────────────────────────────────────────────────────────
@@ -95,6 +114,8 @@ const usageDocSchema = z.object({
   cacheWriteTokens: count,
   costUsd: count,
   costKind: z.enum(['billed', 'estimated']).catch('billed'),
+  // Absent (ancien document) ou inconnu : facturé, comme avant la séparation facturé / inclus.
+  access: z.enum(['api-key', 'subscription', 'none']).optional().catch(undefined),
   status: z.string().max(40).catch('unknown'),
   page: z.string().max(200).optional().catch(undefined),
   request: z.string().optional().catch(undefined),
@@ -152,7 +173,7 @@ export function roundCost(usd: number): number {
 }
 
 function emptyAggregate(model: string): UsageAggregate {
-  return { model, inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0, costUsd: 0, costKind: 'billed', requests: 0 }
+  return { model, inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0, costUsd: 0, includedUsd: 0, costKind: 'billed', requests: 0 }
 }
 
 function add(acc: UsageAggregate, doc: UsageDoc): void {
@@ -160,8 +181,12 @@ function add(acc: UsageAggregate, doc: UsageDoc): void {
   acc.outputTokens += doc.outputTokens
   acc.cacheReadTokens += doc.cacheReadTokens
   acc.cacheWriteTokens += doc.cacheWriteTokens
-  acc.costUsd += doc.costUsd
-  if (doc.costKind === 'estimated') acc.costKind = 'estimated'
+  // Abonnement Claude : jamais ajouté au coût facturé.
+  if (isIncluded(doc)) acc.includedUsd += doc.costUsd
+  else {
+    acc.costUsd += doc.costUsd
+    if (doc.costKind === 'estimated') acc.costKind = 'estimated'
+  }
   acc.requests += 1
 }
 
@@ -173,6 +198,7 @@ function finish(acc: UsageAggregate): UsageAggregate {
     cacheReadTokens: Math.round(acc.cacheReadTokens),
     cacheWriteTokens: Math.round(acc.cacheWriteTokens),
     costUsd: roundCost(acc.costUsd),
+    includedUsd: roundCost(acc.includedUsd),
   }
 }
 
@@ -183,7 +209,8 @@ function byNewest(a: UsageDoc, b: UsageDoc): number {
 
 /**
  * Résumé d'une période : totaux, par fonctionnalité (AI editor, Ask AI : seulement celles qui ont servi, dans cet
- * ordre), par modèle (du plus coûteux au moins coûteux), nombre de demandes. Les documents hors période sont ignorés.
+ * ordre), par modèle (du plus coûteux au moins coûteux, au prix de l'API : facturé + inclus), nombre de demandes. Les
+ * documents hors période sont ignorés. Coûts séparés facturé (`costUsd`) / inclus dans l'abonnement (`includedUsd`).
  */
 export function summarizeUsage(docs: readonly UsageDoc[], period: UsagePeriod, now: Date): UsageSummary {
   const start = periodStart(period, now)
@@ -205,7 +232,7 @@ export function summarizeUsage(docs: readonly UsageDoc[], period: UsagePeriod, n
   const done = finish(totals)
   return {
     period,
-    totals: { inputTokens: done.inputTokens, outputTokens: done.outputTokens, costUsd: done.costUsd },
+    totals: { inputTokens: done.inputTokens, outputTokens: done.outputTokens, costUsd: done.costUsd, includedUsd: done.includedUsd },
     byFeature: FEATURE_ORDER.filter((f) => features.has(f)).map((feature) => ({
       feature,
       label: USAGE_FEATURE_LABELS[feature],
@@ -213,7 +240,7 @@ export function summarizeUsage(docs: readonly UsageDoc[], period: UsagePeriod, n
     })),
     byModel: [...models.values()]
       .map(finish)
-      .sort((a, b) => b.costUsd - a.costUsd || b.requests - a.requests || a.model.localeCompare(b.model))
+      .sort((a, b) => b.costUsd + b.includedUsd - (a.costUsd + a.includedUsd) || b.requests - a.requests || a.model.localeCompare(b.model))
       .map((usage) => ({ model: usage.model, label: modelLabel(usage.model), usage })),
     requests: done.requests,
     ...(since ? { since } : {}),
@@ -250,6 +277,7 @@ export function usageRows(docs: readonly UsageDoc[], period: UsagePeriod, now: D
         outputTokens: Math.round(doc.outputTokens),
         costUsd: roundCost(doc.costUsd),
         costKind: doc.costKind,
+        ...(doc.access ? { access: doc.access } : {}),
       }
     }),
   }

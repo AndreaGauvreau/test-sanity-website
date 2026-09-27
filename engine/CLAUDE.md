@@ -16,7 +16,8 @@ Ne fait pas : retour arrière Vercel en local (501), mode hébergé (non constru
 ## Fichiers (racine du moteur)
 - `src/main.ts` — `startEngine(env, overrides?)` : câblage complet (dont domaines du site pour l'éditeur, SEC-08), `MODULES`, arrêt ; lancé seul par `npm run engine`.
 - `src/config.ts` — `readEngineConfig` : validation zod de `engine/.env.local`, chemins sûrs, clé d'identité, faux Claude, `ENGINE_VERSION`.
-- `src/main.test.ts`, `src/config.test.ts` — moteur entier démarré sans réseau ; refus de configuration.
+- `src/main.test.ts`, `src/config.test.ts` — moteur entier démarré sans réseau (dont un magasin d'une version précédente :
+  demande faite en Tablet à 768, relue telle quelle) ; refus de configuration.
 
 ## Carte des modules
 | Dossier | Propriétaire | Rôle |
@@ -69,7 +70,9 @@ vrai cycle (vrai hook AVEC pré-validation : chaque Edit, `old_string`/`new_stri
 fichier futur par le lint avant l'écriture ; vrai git, vrai brouillon Sanity, vrai aperçu), sans aucun appel à Claude ; marche même
 sans clé Claude. Avertissement bruyant : `⚠⚠⚠` au démarrage, `/health` → `fakeClaude` + `warnings` (champs additifs,
 `ok` ne dépend plus de la clé), étape `warn` « FAKE Claude (…) » dans chaque demande, libellé du modèle « Fake Claude
-(…) — no real call ». Ask AI n'est PAS simulé. Coût simulé : 0,02 $ par appel (budget : 1,52 $), écrit dans `aiUsage`.
+(…) — no real call ». Ask AI n'est PAS simulé. Coût simulé : 0,02 $ par appel (budget : 1,52 $), gardé dans la demande
+(fil de l'éditeur, plafond) mais JAMAIS écrit dans `aiUsage` : rien n'a été consommé (`recordUsage` de
+`jobs/service.ts` ignore toute demande quand `deps.fakeClaude` est posé, ligne « usage not recorded … fake Claude »).
 Parcours : `css` (couleur du texte de la zone), `text` (premier champ Sanity), `ask` (question puis la réponse du
 client est appliquée), `fail`, `budget` ; `auto` = text si « T Text » est coché, sinon css.
 
@@ -120,7 +123,9 @@ client est appliquée), `fail`, `budget` ; `auto` = text si « T Text » est coc
 - Le proxy de l'aperçu (auth-core) n'accepte plus le secret racine, même en cookie : tout accès du moteur à 4042 passe
   par `createPreviewCredential` (content/visible.ts). Un clone pas encore synchronisé fait tourner l'ANCIEN proxy.
 - `npm run engine` ne recharge pas à chaud : un changement de code ou de `.env.local` demande un redémarrage à la main
-  (seuls l'accès à Claude et les réglages de l'IA réglés dans l'admin s'appliquent sans redémarrage).
+  (seuls l'accès à Claude et les réglages de l'IA réglés dans l'admin s'appliquent sans redémarrage). L'admin (next dev),
+  lui, se recharge : après un changement du contrat, les deux divergent jusqu'au redémarrage (ex. formats de l'aperçu du
+  2026-09-28 : un moteur resté sur l'ancien code refuse Tablet 810, « Invalid screen size. »).
 
 ## Comment modifier
 - Nouvelle variable : `SCHEMA` et `EngineConfig` de `config.ts` (message avec le NOM seulement) + test dans

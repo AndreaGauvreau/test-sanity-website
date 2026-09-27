@@ -237,6 +237,12 @@ export function createEditorService(deps: EditorDeps): EditorService {
   function recordUsage(id: string, changeId: string) {
     const recorder = deps.usage
     if (!recorder) return
+    // Faux Claude (ENGINE_FAKE_CLAUDE, mode local) : aucun appel, rien de consommé → AUCUN document aiUsage. Son coût
+    // simulé reste dans la demande (fil de l'éditeur, marqué « Fake Claude ») mais ne fausse jamais B5, B1 ni Ask AI.
+    if (deps.fakeClaude) {
+      if (store.job(id)?.job.usage) log(`[engine] usage not recorded for ${id}: fake Claude (${deps.fakeClaude}), no real call`)
+      return
+    }
     // Copie figée : la modification peut être validée pendant l'écriture.
     const input = structuredClone({ job: store.job(id)!.job, change: store.change(changeId)?.change ?? null })
     const task: Promise<void> = Promise.resolve()

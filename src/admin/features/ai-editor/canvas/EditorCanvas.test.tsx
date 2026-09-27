@@ -3,7 +3,7 @@ import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { MotionGlobalConfig } from 'motion/react'
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import type { EditJob, PendingChange } from '@/admin/core/contracts'
+import type { EditJob, PendingChange, Viewport } from '@/admin/core/contracts'
 import { bridgeMessage } from '@/admin/editor-bridge/protocol'
 import { EditorStoreProvider, useEditorStore } from '../state/context'
 import type { EditorStore } from '../state/store'
@@ -171,6 +171,10 @@ describe('EditorCanvas — sélection depuis le pont', () => {
     expect((screen.getByRole('radio', { name: 'View' }) as HTMLButtonElement).disabled).toBe(true)
     fireEvent.click(screen.getByRole('radio', { name: 'Mobile' }))
     expect(store.get().viewport).toBe(375)
+    // Tablet : l'iframe prend la largeur du point de rupture tablette du site (810), le site y passe en mise en page tablette.
+    fireEvent.click(screen.getByRole('radio', { name: 'Tablet' }))
+    expect(store.get().viewport).toBe(810)
+    expect(document.querySelector('iframe')!.style.width).toBe('810px')
   })
 })
 
@@ -317,7 +321,15 @@ describe('EditorToolbar', () => {
     fireEvent.click(screen.getByRole('radio', { name: 'View' }))
     expect(onMode).toHaveBeenCalledWith('view')
     fireEvent.click(screen.getByRole('radio', { name: 'Tablet' }))
-    expect(onViewport).toHaveBeenCalledWith(768)
+    // Tablet = point de rupture tablette du site (contrat EDITOR_VIEWPORTS), plus le 768 du Figma.
+    expect(onViewport).toHaveBeenCalledWith(810)
     expect(screen.getByRole('radio', { name: 'Desktop' }).getAttribute('aria-checked')).toBe('true')
+  })
+
+  it('une largeur relue d’une version précédente (768) s’affiche en Tablet, joignable au clavier', () => {
+    render(<EditorToolbar mode="select" viewport={768 as Viewport} locked={false} onModeChange={vi.fn()} onViewportChange={vi.fn()} />)
+    const tablet = screen.getByRole('radio', { name: 'Tablet' })
+    expect(tablet.getAttribute('aria-checked')).toBe('true')
+    expect(tablet.getAttribute('tabindex')).toBe('0')
   })
 })

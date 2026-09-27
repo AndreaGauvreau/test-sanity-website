@@ -2,6 +2,7 @@ import { z } from 'zod'
 import adminConfig from '../../../../admin.config'
 import zonesFile from '../../../../editor/zones.json'
 import { sumUsage } from '../../contracts/format'
+import { MEASURED_VIEWPORTS, VIEWPORT_WIDTHS } from '../../contracts/engine'
 import type {
   Answer,
   ChangeSummaryItem,
@@ -71,7 +72,8 @@ export const EditRequestSchema = z.object({
     .string()
     .regex(NO_CONTROL, 'Invalid characters.')
     .refine((s) => visible(s) >= 1 && visible(s) <= 600, 'The request must be 1 to 600 characters.'),
-  viewport: z.union([z.literal(1280), z.literal(768), z.literal(375)]),
+  // Formats actuels du contrat seulement (EDITOR_VIEWPORTS), message du vrai moteur.
+  viewport: z.literal(VIEWPORT_WIDTHS, 'Invalid screen size.'),
   changeId: z.string().min(1).max(128).regex(SAFE_ID).optional(),
 })
 
@@ -496,7 +498,7 @@ export function createEditorMock(
           if (req.scope.includes('text') && job.kind === 'request') step(job, at, 'text', '“solved” in bold (Sanity draft)')
         },
       },
-      { at: 900, run: (at) => step(job, at, 'measure', 'Measuring at 375 · 768 · 1280 px') },
+      { at: 900, run: (at) => step(job, at, 'measure', `Measuring at ${MEASURED_VIEWPORTS.join(' · ')} px`) },
       { at: 1800, run: (at) => step(job, at, 'check', 'Running the checks') },
       {
         at: 2700,

@@ -282,6 +282,11 @@ export function CompositesDataDisplay() {
           />
           <AIUsage style={{ width: 384 }} totals={null} loading />
           <AIUsage style={{ width: 384 }} defaultPeriod="all-time" totals={{ inputTokens: 0, outputTokens: 0, costUsd: 0 }} />
+          <AIUsage
+            style={{ width: 384 }}
+            totals={{ inputTokens: 245_000, outputTokens: 4_000, costUsd: 0.1, includedUsd: 0.3 }}
+            features={[{ label: 'AI editor', usage: { model: 'claude-opus-5-5', inputTokens: 245_000, outputTokens: 4_000, costUsd: 0.1, includedUsd: 0.3 } }]}
+          />
         </div>
       </Item>
 

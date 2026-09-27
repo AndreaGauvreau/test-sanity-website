@@ -59,6 +59,18 @@ describe('scénarios du faux Claude', () => {
     assert.match(await readFile(path.join(bench.repoDir, HERO_CSS), 'utf8'), /\.lede \{[^}]*color: var\(--color-text-accent\);/)
   })
 
+  it('journal de consommation : AUCUN aiUsage (rien consommé), le coût simulé reste dans la demande', async () => {
+    for (const scenario of ['css', 'budget'] as const) {
+      const { job, bench: current } = await run(scenario)
+      const done = await current.until(job.id, ['done', 'failed', 'rejected'])
+      await current.service.idle()
+      assert.ok(done.usage && done.usage.costUsd > 0, scenario)
+      assert.equal(current.usage.length, 0, `${scenario} : aucune demande du faux Claude au journal`)
+      await current.cleanup()
+      bench = null
+    }
+  })
+
   it('fail et budget : échec propre, rien n’est changé', async () => {
     for (const scenario of ['fail', 'budget'] as const) {
       const { job, bench: current } = await run(scenario)

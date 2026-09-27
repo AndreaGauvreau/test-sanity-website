@@ -162,6 +162,26 @@ describe('cycle d’une demande (style)', () => {
     }
   })
 
+  it('coût : l’accès de la demande est figé à son départ (abonnement) même s’il change pendant qu’elle tourne ; journal écrit', async () => {
+    let kind: 'subscription' | 'api-key' = 'subscription'
+    const access = {
+      ok: true as const,
+      get access() {
+        return kind === 'subscription' ? { kind: 'subscription' as const, secret: 'sk-ant-oat01-test' } : { kind: 'api-key' as const, secret: 'sk-test' }
+      },
+    }
+    // L'accès passe à la clé API (B5 · Claude connection) pendant que Claude travaille.
+    bench = await makeBench([DARKER], { access, runAgent: (run, agent) => ((kind = 'api-key'), agent(run)) })
+    const job = await bench.until((await start(bench)).id, ['done', 'failed'])
+    assert.equal(job.status, 'done', JSON.stringify(job.steps))
+    assert.equal(job.usage?.access, 'subscription')
+    await bench.service.idle()
+    assert.deepEqual(
+      bench.usage.map((recorded) => recorded.usage?.access),
+      ['subscription'],
+    )
+  })
+
   it('le hook refuse un composant en 🖌 seul : aucun fichier touché, rejected', async () => {
     bench = await makeBench([{ steps: [{ kind: 'edit', file: HERO_TSX, find: 'section', replace: 'div' }], message: 'Done.' }])
     const job = await bench.until((await start(bench)).id, ['done', 'failed', 'rejected'])

@@ -1,6 +1,6 @@
 'use client'
 
-import type { Viewport } from '@/admin/core/contracts'
+import { viewportOf, type Viewport } from '@/admin/core/contracts/engine'
 import { SegmentedControl } from '@/admin/ui'
 import type { EditorMode } from '../state/store'
 import { VIEWPORTS } from './scale'
@@ -23,6 +23,7 @@ export type EditorToolbarProps = {
 /**
  * Barre d'outils flottante de l'aperçu (Figma « Editor toolbar » 340:1486) : View (œil) · Select (curseur) |
  * Desktop · Tablet · Mobile, en icônes avec infobulle. `locked` : seul le groupe des formats reste actif.
+ * Une largeur d'une version précédente (768, l'ancien Tablet) s'affiche sur son format actuel (`viewportOf`).
  */
 export function EditorToolbar({ mode, viewport, locked, onModeChange, onViewportChange }: EditorToolbarProps) {
   return (
@@ -38,8 +39,8 @@ export function EditorToolbar({ mode, viewport, locked, onModeChange, onViewport
       <SegmentedControl<string>
         aria-label="Screen size"
         items={VIEWPORTS.map((v) => ({ value: String(v.value), label: v.label, icon: v.icon }))}
-        value={String(viewport)}
-        onValueChange={(value) => onViewportChange(Number(value) as Viewport)}
+        value={String(viewportOf(viewport))}
+        onValueChange={(value) => onViewportChange(viewportOf(Number(value)))}
       />
     </div>
   )

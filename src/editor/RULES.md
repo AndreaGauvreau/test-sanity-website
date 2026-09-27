@@ -62,13 +62,14 @@ These limits are checked automatically: a text changed in Style mode, a style ch
 
 ## Responsive
 - The site is mobile-first. The only allowed breakpoints are the `breakpoint` tokens (810, 1024, 1280 and 1440 px), written as values because a media query cannot read a CSS variable: `@media (min-width: 50.625rem)`, `@media (min-width: 64rem)`, `@media (min-width: 80rem)` and `@media (min-width: 90rem)` (the request repeats them). No `@container`, no `max-width` query.
+- The editor's screen formats are Mobile 375 px, Tablet 810 px (the `50.625rem` breakpoint) and Desktop 1280 px, the widths `measure` uses: a request about tablet concerns the rendering from `50.625rem` up to `64rem`.
 - No fixed width or height, no `position: absolute`/`fixed`, no `!important`.
 - Only add a media query if the client asks for a different rendering per screen (a number of lines per format, hiding on mobile…), whatever the property. Otherwise, one value for every screen: text styles and section spacing are already fluid (`clamp()`).
 - Hiding a zone per screen: only if the request says the zone can be hidden, mobile-first (`display: none` in the zone's base rule, shown again in one of the allowed breakpoints), and always telling the client. Never the navigation or the main button; never through `visibility`, `opacity`, a zero width or a color identical to the background.
 - The zone stays within the frame of its parent: if the width depends on a container outside the zone, change nothing and explain it.
 
 ## Check the rendering
-- You cannot see the page. The request gives the current rendering (before any change) and the `measure` tool returns the rendering of the draft, at 375, 768 and 1280 px: lines, size, color, background and contrast of each text, grid, alignment, margins inside the parent, visual order of the elements.
+- You cannot see the page. The request gives the current rendering (before any change) and the `measure` tool returns the rendering of the draft, at 375, 810 and 1280 px: lines, size, color, background and contrast of each text, grid, alignment, margins inside the parent, visual order of the elements.
 - If the requested result is already reached, say so without changing anything.
 - If the request sets a visible result (number of lines, size, alignment…), measure after your changes and adjust until it is reached.
 - Only announce what is measured: only write "now" for what changed, only warn about a measured risk, only quote a text you have read.

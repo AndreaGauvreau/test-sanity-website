@@ -2,6 +2,7 @@
 
 import { useSyncExternalStore } from 'react'
 import type { EditJob, ElementTarget, PendingChange, Viewport } from '@/admin/core/contracts'
+import { viewportOf } from '@/admin/core/contracts/engine'
 
 /**
  * État partagé de l'éditeur IA plein écran (D1-D3) entre la sidebar Claude (editor-sidebar) et l'aperçu
@@ -25,6 +26,7 @@ export type EditorState = {
   pageId: string
   path: string
   mode: EditorMode
+  /** Format de l'aperçu (contrat `EDITOR_VIEWPORTS`), toujours un format ACTUEL : voir `setViewport`. */
   viewport: Viewport
   /** Éléments choisis, dans l'ordre du clic. La demande vaut pour tous. */
   selection: ElementTarget[]
@@ -73,7 +75,6 @@ function sameTarget(a: ElementTarget, b: ElementTarget): boolean {
 export function createEditorStore(initial: Pick<EditorState, 'pageId' | 'path'> & Partial<EditorState>) {
   let state: EditorState = {
     mode: 'select',
-    viewport: 1280,
     selection: [],
     job: null,
     pending: null,
@@ -84,6 +85,8 @@ export function createEditorStore(initial: Pick<EditorState, 'pageId' | 'path'> 
     decisions: null,
     deciding: null,
     ...initial,
+    // Desktop par défaut ; une largeur d'une version précédente (768, l'ancien Tablet) devient son format actuel.
+    viewport: viewportOf(initial.viewport),
   }
   const listeners = new Set<() => void>()
   const set = (patch: Partial<EditorState>) => {
@@ -102,8 +105,9 @@ export function createEditorStore(initial: Pick<EditorState, 'pageId' | 'path'> 
     setMode(mode: EditorMode) {
       if (!isLocked(state)) set({ mode })
     },
+    /** Jamais bloqué. Largeur relue d'une version précédente (768) → format actuel (`viewportOf` : Tablet). */
     setViewport(viewport: Viewport) {
-      set({ viewport })
+      set({ viewport: viewportOf(viewport) })
     },
     /** Clic : remplace la sélection ; Maj + clic (additive) : ajoute ou retire l'élément. Max 8 éléments. */
     select(target: ElementTarget, additive = false) {

@@ -1,4 +1,4 @@
-import type { Scope } from '../../../src/admin/core/contracts/engine'
+import { MEASURED_VIEWPORTS_TEXT, type Scope } from '../../../src/admin/core/contracts/engine'
 import { contrastCheck, coverWarning, frameCheck, linesCheck, reachCheck, unverifiableCheck, type CoverWarning, type RawCheck } from './checks'
 import type { DesignSystem } from './design-system'
 import { lintChanges, lintContextFor, outOfScope } from './guards'
@@ -124,7 +124,7 @@ export type RenderCheckResult = {
   verdict: VisualVerdict
 }
 
-/** Zones changées « id (375, 768 px) » d'un détail d'isolation, sans celles de `ignored`. */
+/** Zones changées « id (375, 810 px) » d'un détail d'isolation, sans celles de `ignored`. */
 function isolationWithout(isolation: VisualVerdict['isolation'], ignored: readonly string[]): VisualVerdict['isolation'] {
   if (!ignored.length) return isolation
   const zones = isolation.zones.filter((id) => !ignored.includes(id))
@@ -153,7 +153,8 @@ export async function runRenderChecks(input: RenderCheckInput): Promise<RenderCh
     },
     {
       id: 'responsive',
-      label: 'No overflow at 375, 768 and 1280 px',
+      // Largeurs relevées : formats de l'éditeur (contrat EDITOR_VIEWPORTS) → « No overflow at 375, 810 and 1280 px ».
+      label: `No overflow at ${MEASURED_VIEWPORTS_TEXT} px`,
       ok: verdict.responsive.ok,
       detail: verdict.responsive.detail,
       problem: `${verdict.responsive.detail}. The site must stay responsive: shorten the text or avoid fixed widths.`,

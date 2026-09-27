@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import type { EditRequest, ElementTarget } from '../../../src/admin/core/contracts'
+import { VIEWPORT_WIDTHS, type EditRequest, type ElementTarget } from '../../../src/admin/core/contracts'
 import type { DesignSystem } from '../guards/design-system'
 import { badRequest } from '../server/errors'
 
@@ -12,7 +12,6 @@ import { badRequest } from '../server/errors'
 
 export const NOTE_MAX = 600
 export const MAX_TARGETS = 8
-export const VIEWPORTS = [1280, 768, 375] as const
 
 const DOC_ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/
 const KEY = /^[A-Za-z0-9_-]{1,64}$/
@@ -46,7 +45,9 @@ const REQUEST = z.object({
   targets: z.array(TARGET).min(1).max(MAX_TARGETS),
   scope: z.array(z.enum(['style', 'text'])).min(1).max(2),
   note: z.string(),
-  viewport: z.union([z.literal(1280), z.literal(768), z.literal(375)]),
+  // Formats ACTUELS de l'aperçu (contrat EDITOR_VIEWPORTS) : 768, l'ancien Tablet, n'est plus accepté dans une nouvelle
+  // demande ; les demandes enregistrées qui le portent sont relues telles quelles (magasin, fil).
+  viewport: z.literal(VIEWPORT_WIDTHS),
   changeId: z.string().regex(ID_PATTERN).optional(),
 })
 

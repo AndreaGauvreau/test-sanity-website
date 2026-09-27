@@ -41,6 +41,8 @@ describe('systemAppend — 4 phrases fixes + RULES.md', () => {
     has(system, 'Always write in English, including your messages during the task.')
     has(system, 'always pass path with one of the site folders: "src/components"')
     has(system, 'Only write “now” for what changed, only warn about a measured risk, and only quote a text you have read.')
+    // Largeurs de measure tirées des formats de l'éditeur (contrat EDITOR_VIEWPORTS) : Tablet = 810, pas 768.
+    has(system, 'measure (real rendering of the element in the draft preview, at 375, 810 and 1280 px: lines, size')
     assert.ok(system.endsWith(ds.rules!.trim()))
     assert.equal(system.split('\n')[4], '', 'une ligne vide entre les phrases et RULES.md')
   })
@@ -59,6 +61,8 @@ describe('buildPrompt — en-tête, périmètre, précision', () => {
     has(prompt, 'Page where it was selected: / (viewed at 1280 px wide).')
     has(prompt, 'Client’s note: “more air”')
     assert.ok(!prompt.includes('IGNORE ALL RULES'))
+    // Format Tablet : la largeur du point de rupture tablette du site (810), celle que measure relève aussi.
+    has(buildPrompt(ds, { ...request('hero.title', ['style']), viewport: 810 }), '(viewed at 810 px wide)')
   })
 
   it('plusieurs éléments : la demande vaut pour chacun', () => {
@@ -271,7 +275,9 @@ describe('buildPrompt — rendu, page, marche à suivre', () => {
     has(steps, 'ask with ask_client before any set_text; never invent a fact')
     has(steps, 'For missing information, no option proposes a value: the client gives it as a free answer')
     has(steps, 'Never a font outside the design system, url(), @import or a web address, not even as 🔴')
+    has(steps, 'adjust until it is reached at 375, 810 and 1280 px.')
     has(steps, 'No line gained at 375 px without the client’s consent')
+    has(steps, 'if a text gains a line at 375 px, shorten it')
     has(steps, 'effect “longer-text”')
     has(steps, 'If the width depends on a container outside the zone, change nothing and explain it.')
     has(steps, 'End with a message to the client, in English, in plain text')

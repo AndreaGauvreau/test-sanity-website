@@ -143,12 +143,12 @@ describe('describeMeasures', () => {
   it('dit quand le fond est inconnu, et quand la zone est masquée ou introuvable', () => {
     const text = describeMeasures(
       measuresOf(
-        { 375: rawZone({ style: { ...rawZone().style, display: 'none' } }), 768: null },
+        { 375: rawZone({ style: { ...rawZone().style, display: 'none' } }), 810: null },
         rawZone({ texts: [rawText({ layers: [{ color: NUIT, image: 'url("/voiture.jpg")' }] })] }),
       ),
     )
     assert.match(text, /^375 px: element hidden \(display: none or zero size\)\.$/m)
-    assert.match(text, /^768 px: element not found on the page\.$/m)
+    assert.match(text, /^810 px: element not found on the page\.$/m)
     assert.match(text, /on unknown background \(image or gradient\) · contrast unknown \(min\. 4\.5\)$/m)
   })
 
@@ -157,7 +157,7 @@ describe('describeMeasures', () => {
       { 375: rawZone({ style: { ...rawZone().style, display: 'none' } }) },
       rawZone({ texts: [rawText({ rects: lineRects(2) })] }),
     )
-    assert.equal(lineSummary(measures), 'hidden at 375 px, 2 lines at 768 px, 2 lines at 1280 px')
+    assert.equal(lineSummary(measures), 'hidden at 375 px, 2 lines at 810 px, 2 lines at 1280 px')
   })
 
   it('coupe les longs textes', () => {

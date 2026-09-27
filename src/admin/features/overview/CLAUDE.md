@@ -1,6 +1,6 @@
 # features/overview (B1 · Overview) — LLM context
 
-> Propriétaire : settings · Figma : B1 (docs/admin/figma/screens/B1.md, B1.ui.png) · Mis à jour : 2026-09-27
+> Propriétaire : settings · Figma : B1 (docs/admin/figma/screens/B1.md, B1.ui.png) · Mis à jour : 2026-09-28 (carte AI usage : coût facturé seulement)
 
 ## Utilité
 
@@ -35,6 +35,9 @@ Le bouton « ✦ Ask AI » (G4) est dans la sidebar (shell / ask-ai), pas ici.
 - Content (→ E1 Publish) : « 3 changes » + « Unpublished · last publish 5 min ago » ; rien en attente « Up to date » +
   « Last publish 5 min ago ». N = `pending.total` (brouillons Sanity + modifications IA validées).
 - AI usage this month (→ B5) : « $4.80 » + « 1.2M input · 147k output tokens » ; mois vide « $0.00 » + « 0 input · 0 output tokens ».
+  Le coût est le FACTURÉ seulement (`totals.costUsd`, mêmes chiffres que B5) ; demandes passées par l'abonnement Claude
+  (moteur local) : indice « … output tokens · ≈ $0.30 at API prices — included in your Claude subscription »
+  (`totals.includedUsd`, `formatIncluded` du contrat), jamais ajoutées au coût.
 - Team (→ B4, client seulement ; Kuartz / editor : carte non cliquable) : « 4 members » + « 2 from Kuartz » ; session de
   dev : « — » + « Sign in with Sanity to see the team » ; refus Sanity : « Managed in Sanity ».
 - Aperçu : iframe du site public (`adminConfig.site.url`), barre « conduit.com » + « Published site » ; le serveur lit les

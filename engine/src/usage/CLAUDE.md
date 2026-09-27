@@ -1,6 +1,6 @@
 # Journal de consommation IA (`engine/src/usage`) — LLM context
 
-> Propriétaire : engine-publish · Figma : B5 (docs/admin/figma/screens/B5.md), pied de G4 · Mis à jour : 2026-09-27 (corrections vague 3)
+> Propriétaire : engine-publish · Figma : B5 (docs/admin/figma/screens/B5.md), pied de G4 · Mis à jour : 2026-09-28 (faux Claude jamais journalisé, `access` = accès figé de la demande)
 
 ## Utilité
 Écrit UN document Sanity PRIVÉ `aiUsage.<requestId>` (`_type: 'aiUsage'`, champs `AiUsageDoc`) par demande IA
@@ -16,7 +16,8 @@ Sanity `aiUsage` (site-adapter).
 - `journal.test.ts` — documents, `request`, port Ask AI, secours local, rejeu, double échec.
 
 ## Contrats
-- Port `UsageRecorder` d'engine-core : `record({ job, change })`, appelé à la fin de CHAQUE demande de l'éditeur.
+- Port `UsageRecorder` d'engine-core : `record({ job, change })`, appelé à la fin de CHAQUE demande de l'éditeur servie
+  par le vrai Claude (jamais pour le faux Claude : test « FOLLOWUPS #12 » de `engine/src/main.test.ts`, aucun `aiUsage.*`).
 - Document (`AiUsageDoc`, `core/contracts/engine.ts`) : `{ _id: 'aiUsage.<id>', _type: 'aiUsage', feature:
   'editor'|'ask', requestId, status (statut final), page?, request? (≤ 120 caractères), user: { id, name, role }
   (jamais l'e-mail), createdAt (fin de la demande), ...Usage }`.
@@ -31,7 +32,10 @@ Sanity `aiUsage` (site-adapter).
 
 ## Comportement
 `job.usage` absent (Claude n'a pas tourné : refus avant l'appel, aperçu indisponible) → rien n'est écrit (rien
-consommé). Sinon `createIfNotExists` : id déterministe, donc rejouer ne crée jamais de doublon. Échec de Sanity ou pas
+consommé). Faux Claude (`ENGINE_FAKE_CLAUDE`) : le port n'est même pas appelé (filtré par l'éditeur, `recordUsage` de
+`jobs/service.ts`) — aucun document, rien dans le secours local ; Ask AI n'a pas de faux. `access` du document = accès
+de la demande figé à son départ (`subscription` : coût au prix de l'API, NON facturé — l'admin le montre « Included »,
+jamais dans le coût facturé). Sinon `createIfNotExists` : id déterministe, donc rejouer ne crée jamais de doublon. Échec de Sanity ou pas
 de jeton → une ligne JSON ajoutée à `<ENGINE_WORKSPACE>/data/usage-pending.jsonl` (0600) + ligne de journal ; si
 l'ajout échoue aussi, l'erreur remonte (l'éditeur la journalise : « usage not recorded »). Rejeu : au démarrage (en
 arrière-plan, le démarrage n'attend pas Sanity) et après chaque écriture réussie (sans faire attendre l'appelant) ; il

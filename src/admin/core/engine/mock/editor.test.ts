@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import type { EditJob, EditorState, EngineErrorBody, PendingChange } from '../../contracts/engine'
+import { EDITOR_VIEWPORTS, type EditJob, type EditorState, type EngineErrorBody, type PendingChange } from '../../contracts/engine'
 import type { EngineUser } from '../../contracts/session'
 import {
   createEditorMock,
@@ -182,6 +182,15 @@ describe('mock/editor — gardes', () => {
     expect((await request('x', { targets: Array.from({ length: 9 }, () => target) })).status).toBe(400)
     expect((await request('x', { viewport: 1024 })).status).toBe(400)
     expect((await request('x', { targets: [{ ...target, zone: '../etc' }] })).status).toBe(400)
+  })
+
+  it('formats de l’aperçu du contrat (EDITOR_VIEWPORTS), comme le vrai moteur : Tablet 810 accepté, l’ancien 768 refusé', async () => {
+    const { request } = setup()
+    const old = await request('x', { viewport: 768 })
+    expect([old.status, (old.json as EngineErrorBody).error.message]).toEqual([400, 'Invalid screen size.'])
+    const tablet = await request('Tablet layout.', { viewport: EDITOR_VIEWPORTS.tablet })
+    expect(tablet.status).toBe(201)
+    expect((tablet.json as EditJob).request.viewport).toBe(810)
   })
 
   it('400 : réponses invalides (option inconnue, texte libre trop long, les deux à la fois)', async () => {

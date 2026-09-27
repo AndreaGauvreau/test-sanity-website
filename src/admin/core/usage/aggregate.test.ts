@@ -86,7 +86,7 @@ describe('summarizeUsage', () => {
   it('ce mois-ci : totaux, borne basse incluse', () => {
     const s = summarizeUsage(docs, 'month', NOW)
     expect(s.requests).toBe(3)
-    expect(s.totals).toEqual({ inputTokens: 65_800, outputTokens: 4_840, costUsd: 0.263 })
+    expect(s.totals).toEqual({ inputTokens: 65_800, outputTokens: 4_840, costUsd: 0.263, includedUsd: 0 })
     expect(s.since).toBe('2026-09-01T00:00:00.000Z')
   })
 
@@ -120,7 +120,7 @@ describe('summarizeUsage', () => {
 
   it('période vide : totaux à 0, listes vides, pas de « since » pour all-time', () => {
     const s = summarizeUsage([], 'all-time', NOW)
-    expect(s).toEqual({ period: 'all-time', totals: { inputTokens: 0, outputTokens: 0, costUsd: 0 }, byFeature: [], byModel: [], requests: 0 })
+    expect(s).toEqual({ period: 'all-time', totals: { inputTokens: 0, outputTokens: 0, costUsd: 0, includedUsd: 0 }, byFeature: [], byModel: [], requests: 0 })
     expect(summarizeUsage([], 'month', NOW).since).toBe('2026-09-01T00:00:00.000Z')
   })
 
@@ -147,6 +147,59 @@ describe('arrondis', () => {
     expect(s.totals.outputTokens).toBe(99_600)
     expect(formatTokens(s.totals.inputTokens)).toBe('1.2M')
     expect(formatCost(s.totals.costUsd)).toBe('$3.10')
+  })
+})
+
+describe('coût facturé / inclus dans l’abonnement Claude (Usage.access)', () => {
+  // Forme du dataset development au 28/09 : une demande facturée (clé API), deux par l'ABONNEMENT (0,18 $ et 0,12 $ au
+  // prix de l'API, non facturées), une ancienne sans `access` (facturée, comme avant).
+  const raw = [
+    doc({ feature: 'editor', createdAt: '2026-09-26T15:00:00Z', model: 'claude-opus-5-5', inputTokens: 120_000, outputTokens: 2_000, costUsd: 0.18, access: 'subscription', costKind: 'estimated' }),
+    doc({ feature: 'editor', createdAt: '2026-09-26T14:00:00Z', model: 'claude-opus-5-5', inputTokens: 80_000, outputTokens: 800, costUsd: 0.12, access: 'subscription' }),
+    doc({ feature: 'editor', createdAt: '2026-09-25T10:00:00Z', model: 'claude-sonnet-5', inputTokens: 9_000, outputTokens: 100, costUsd: 0.02, access: 'api-key' }),
+    doc({ feature: 'ask', createdAt: '2026-09-24T10:00:00Z', model: 'claude-haiku-4-5', inputTokens: 2_000, outputTokens: 200, costUsd: 0.003 }),
+    doc({ feature: 'ask', createdAt: '2026-09-23T10:00:00Z', model: 'claude-haiku-4-5', costUsd: 0.004, access: 'weird' as never }),
+  ]
+  const docs = parseUsageDocs(raw)
+
+  it('lecture : `access` gardé, absent ou inconnu → facturé', () => {
+    expect(docs.map((d) => d.access)).toEqual(['subscription', 'subscription', 'api-key', undefined, undefined])
+  })
+
+  it('totaux : le coût ne compte QUE le facturé ; la part abonnement est à part ; les jetons comptent tout', () => {
+    const s = summarizeUsage(docs, 'month', NOW)
+    expect(s.totals).toEqual({ inputTokens: 212_000, outputTokens: 3_200, costUsd: 0.027, includedUsd: 0.3 })
+    expect(s.requests).toBe(5)
+  })
+
+  it('par fonctionnalité et par modèle : séparés aussi ; « estimated » seulement pour une demande facturée', () => {
+    const s = summarizeUsage(docs, 'month', NOW)
+    const editor = s.byFeature.find((f) => f.feature === 'editor')!.usage
+    expect([editor.costUsd, editor.includedUsd, editor.costKind, editor.requests]).toEqual([0.02, 0.3, 'billed', 3])
+    expect(s.byFeature.find((f) => f.feature === 'ask')!.usage).toMatchObject({ costUsd: 0.007, includedUsd: 0 })
+    // Du plus coûteux au moins coûteux au prix de l'API (facturé + inclus).
+    expect(s.byModel.map((m) => [m.label, m.usage.costUsd, m.usage.includedUsd])).toEqual([
+      ['Opus 5.5', 0, 0.3],
+      ['Sonnet 5', 0.02, 0],
+      ['Haiku 4.5', 0.007, 0],
+    ])
+  })
+
+  it('abonnement seulement : coût facturé nul', () => {
+    const only = summarizeUsage(parseUsageDocs(raw.slice(0, 2)), 'all-time', NOW)
+    expect(only.totals).toMatchObject({ costUsd: 0, includedUsd: 0.3 })
+  })
+
+  it('lignes : coût de la demande au prix de l’API et son accès (absent pour un ancien document)', () => {
+    const { items } = usageRows(docs, 'month', NOW, 10)
+    expect(items.map((r) => [r.costUsd, r.access])).toEqual([
+      [0.18, 'subscription'],
+      [0.12, 'subscription'],
+      [0.02, 'api-key'],
+      [0.003, undefined],
+      [0.004, undefined],
+    ])
+    expect('access' in items[3]).toBe(false)
   })
 })
 

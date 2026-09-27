@@ -41,13 +41,20 @@ describe('getUsageSummary', () => {
     clientFetch.mockResolvedValue(DOCS.slice(0, 2))
     const summary = await getUsageSummary('month', { now: NOW })
     expect(clientFetch).toHaveBeenCalledWith(USAGE_QUERY, { since: '2026-09-01T00:00:00.000Z' })
-    expect(summary.totals).toEqual({ inputTokens: 1_200_000, outputTokens: 147_000, costUsd: 4.8 })
+    expect(summary.totals).toEqual({ inputTokens: 1_200_000, outputTokens: 147_000, costUsd: 4.8, includedUsd: 0 })
     expect(summary.byFeature.map((f) => f.label)).toEqual(['AI editor', 'Ask AI'])
   })
 
-  it('la requête ne vise que les documents publiés aiUsage.*', () => {
+  it('la requête ne vise que les documents publiés aiUsage.* et lit leur accès à Claude', () => {
     expect(USAGE_QUERY).toContain('_id in path("aiUsage.**")')
     expect(USAGE_QUERY).toContain('_type == "aiUsage"')
+    expect(USAGE_QUERY).toMatch(/\baccess\b/)
+  })
+
+  it('une demande par l’abonnement Claude n’est pas ajoutée au coût facturé', async () => {
+    clientFetch.mockResolvedValue([...DOCS.slice(0, 2), { ...DOCS[0], _id: 'aiUsage.sub', costUsd: 0.18, access: 'subscription' }])
+    const summary = await getUsageSummary('month', { now: NOW })
+    expect(summary.totals).toMatchObject({ costUsd: 4.8, includedUsd: 0.18 })
   })
 
   it('all-time : aucune borne', async () => {

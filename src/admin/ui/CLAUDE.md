@@ -5,7 +5,7 @@
 > et « Composites (ui-composites) ». Les composites sont construits SUR les fondations (Button, IconButton, Icon, Tag,
 > Checkbox, Select, Tooltip, Popover, motion-presets) sans les dupliquer.
 > Figma : Design System « Kuartz — Carte système » (`docs/admin/figma/design-system/`, fiches `components/<Nom>.md` + `.png`)
-> · Galerie : `/admin/kit` · Mis à jour : 2026-09-27
+> · Galerie : `/admin/kit` · Mis à jour : 2026-09-28 (AIUsage / ModelUsage : coût facturé ou inclus dans l'abonnement Claude)
 
 ## Utilité
 
@@ -57,14 +57,15 @@ Pas à ce module : Rich text field (cms-media), Script dialog (code-usage), AI e
   Drawer, FilterPopover, UsageTooltip, SelectionBar, ModelUsage — même découpage que les fondations.
 - Tests des composites : `Modal/Modal.test.tsx`, `Modal/useModalDialog.test.tsx` (focus initial d'une fenêtre montée tard),
   `Drawer/`, `Tabs/`, `Menu/`, `SegmentedControl/`, `StatusSelect/`, `CMSCell/`, `SelectionBar/` (hydratation), `ListItem/`,
-  `TopBar/`, `SectionHeader/`, `ChecklistItem/`, `ToolLink/`.
+  `TopBar/`, `SectionHeader/`, `ChecklistItem/`, `ToolLink/`, `AIUsage/` (coût facturé / abonnement Claude, notes).
 - Galerie : `src/app/admin/kit/sections/Composites.tsx` compose `CompositesDataDisplay.tsx`, `CompositesNavigation.tsx`,
   `CompositesOverlays.tsx` (Overlays + AI editor) ; liens dans `NAV` (KitGallery.tsx).
 
 ## Contrats
 
 - **Entrées** : props seulement. Types du contrat lus : `PublishState`, `PublishStep` (PublishButton, TopBar), `Usage`
-  (`contracts/engine`, ModelUsage) ; formatage `formatCost`, `formatTokens`, `formatUsageLine`, `modelLabel` (`contracts/format`).
+  (`contracts/engine`, ModelUsage) ; formatage `formatCost`, `formatTokens`, `formatUsageLine`, `modelLabel`, et coût
+  facturé / inclus `costSplit`, `formatCostShort`, `formatIncluded` (`contracts/format`).
 - **Sorties** : composants et utilitaires exportés par `@/admin/ui` (catalogues ci-dessous) ; CSS `tokens.css` + `base.css`.
 - **Dépend de** : `motion` (motion/react), `next/font` (fonts.ts seulement). **Utilisé par** : shell (`src/admin/shell`,
   `src/app/admin/layout.tsx`, `(shell)`), features `ai-editor`, `ask-ai`, `cms`, `code`, `general`, `media`, `overview`,
@@ -139,7 +140,7 @@ import '@/admin/ui/base.css'
 | `VersionItem` (pur) | Ligne de version 36 px (bouton) | `label`, `status` live/failed, `tag`, `selected` (aria-current) | VersionItem.md |
 | `DetailRow` (pur) | Libellé / valeur (`<dl>`) | `label`, `value`, `layout` stacked/inline (libellé 120) | DetailRow.md |
 | `StatCard` (pur) | Chiffre clé | `label`, `value`, `hint`, `icon` | StatCard.md |
-| `AIUsage` | Consommation IA par période | `period`/`defaultPeriod`/`onPeriodChange` (`month`, `3-months`, `all-time` ; `AI_USAGE_PERIODS`), `totals {inputTokens, outputTokens, costUsd} \| null`, `features [{label, usage}]`, `note`, `loading` | AIUsage.md |
+| `AIUsage` | Consommation IA par période | `period`/`defaultPeriod`/`onPeriodChange` (`month`, `3-months`, `all-time` ; `AI_USAGE_PERIODS`), `totals {inputTokens, outputTokens, costUsd (FACTURÉ), includedUsd? (abonnement Claude)} \| null` (part incluse sur sa ligne « ≈ $0.30 at API prices — included in your Claude subscription »), `features [{label, usage}]`, `note` (défaut `aiUsageNote(totals)` : facturé / abonnement / mélange, `AI_USAGE_NOTES` ; `null` la masque), `loading` | AIUsage.md |
 | `SearchPreview` (pur) | Aperçu Google (max 560) | `siteName`, `url`, `title`, `description` (2 lignes), `favicon` | SearchPreview.md |
 | `SocialPreview` (pur) | Aperçu OG (max 400) | `domain`, `title`, `description`, `image` (1200/630) | SocialPreview.md |
 | `HeadingRow` (pur) | Ligne de l'arbre des titres | `level` 1-6 (retrait 8 + 16/niveau), `text`, `status` ok/warning, `note`, `as` div/li | HeadingRow.md |
@@ -180,7 +181,7 @@ import '@/admin/ui/base.css'
 
 | Export | Rôle | Props clés | Figma |
 |---|---|---|---|
-| `ModelUsage` (pur) | Modèle + tokens + coût | `usage {model, inputTokens, outputTokens, costUsd, costKind}`, `model`, `size` default/small, `showModel`, `showUsage` ; formaté par `modelLabel`, `formatTokens`, `formatCost`, `formatUsageLine` (contrat) | ModelUsage.md |
+| `ModelUsage` (pur) | Modèle + tokens + coût | `usage {model, inputTokens, outputTokens, costUsd, costKind, access?, includedUsd?}` (une demande : `access: 'subscription'` → « Included » ; un cumul : `costUsd` facturé + `includedUsd` → « $0.10 + included »), `model`, `size` default/small, `showModel`, `showUsage` ; formaté par `modelLabel`, `formatTokens`, `formatCostShort`, `formatUsageLine` (contrat) | ModelUsage.md |
 
 ## Comportement
 
@@ -306,6 +307,8 @@ import '@/admin/ui/base.css'
   clic ou ↓ → focus dans la fenêtre ; survol → s'ouvre sans prendre le focus.
 - SelectionBar : `role="region"` « Selection », compte en `aria-live="polite"`, case « tout » cochée / mixte.
 - ModelUsage : le texte visible est découpé pour la couleur ; la ligne complète (`formatUsageLine`) est lue une fois (texte masqué).
+  Coût passé par l'abonnement Claude : visible « Included », lu « included in your Claude subscription (≈ $0.39 at API
+  prices) » (même texte en infobulle) — jamais présenté comme un coût facturé.
 - TopBar : le texte d'état n'est pas une zone live (PublishButton annonce déjà) ; `statusAction` est rendu dans le groupe d'état
   (`[data-status-action]`, ne rétrécit pas), après Review.
 - ChecklistItem : `<li>` (dans un `<ol>` de l'appelant), état lu avant le titre (« Done: … », texte masqué), `aria-current="step"`
@@ -328,7 +331,8 @@ import '@/admin/ui/base.css'
 - Réutilisation stricte des fondations : Menu et StatusSelect sur Popover, FilterPopover sur Popover + Select, UsageTooltip sur
   Popover + Button, Sidebar sur NavItem / NavSection / Button / IconButton / Avatar / Tag.
 - Tests jsdom / rendu serveur : Modal (+ `useModalDialog`), Drawer, Tabs, Menu, SegmentedControl, StatusSelect, CMSCell,
-  SelectionBar (balisage identique avec ou sans mouvement réduit), ListItem, TopBar, SectionHeader, ChecklistItem, ToolLink.
+  SelectionBar (balisage identique avec ou sans mouvement réduit), ListItem, TopBar, SectionHeader, ChecklistItem, ToolLink,
+  AIUsage (coût facturé seul dans « Cost », ligne de l'abonnement Claude, note selon le cas).
 
 ## Faiblesses et limites connues
 

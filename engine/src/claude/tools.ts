@@ -1,5 +1,6 @@
 import { tool, type createSdkMcpServer } from '@anthropic-ai/claude-agent-sdk'
 import { z } from 'zod'
+import { EDITOR_VIEWPORTS, MEASURED_VIEWPORTS_TEXT } from '../../../src/admin/core/contracts/engine'
 import type { AskTool } from './questions'
 import type { TextTool } from './text'
 
@@ -17,8 +18,12 @@ export type ToolHandlers = { textTool?: TextTool; measureTool?: MeasureTool; ask
 
 export type KuartzTools = NonNullable<Parameters<typeof createSdkMcpServer>[0]['tools']>
 
+// Largeurs citées, tirées des formats de l'éditeur (contrat EDITOR_VIEWPORTS) : fixes d'une demande à l'autre (cache).
+// Mesurées : 375, 810 et 1280 px (Tablet = point de rupture tablette du site) ; une ligne gagnée compte à 375 px.
+const MOBILE = EDITOR_VIEWPORTS.mobile
+
 export const MEASURE_DESCRIPTION =
-  'Measures the selected element as it renders right now in the draft preview, at 375, 768 and 1280 px: ' +
+  `Measures the selected element as it renders right now in the draft preview, at ${MEASURED_VIEWPORTS_TEXT} px: ` +
   'lines, size, weight, color, effective background and WCAG contrast of each text (10 at most), width, ' +
   'grid (columns, rows), alignment, margins inside the parent, visual order of the children. ' +
   'Call it after your changes to check a requested result.'
@@ -39,7 +44,7 @@ export const ASK_CLIENT_DESCRIPTION =
   '(1) when part of the request does not exactly match the design system (color, transparency, size, radius, spacing…); ' +
   '(2) when information only the client knows is missing (price, hours, number, address); ' +
   '(3) when the requested text contradicts what the element does (a link that goes elsewhere, an offer absent from the site); ' +
-  '(4) when a rewritten text would gain a line at 375 px. ' +
+  `(4) when a rewritten text would gain a line at ${MOBILE} px. ` +
   '2 to 4 options per question: tone "recommended" = the closest token variant, or the advised version; ' +
   '"neutral" = leave this point unchanged; "discouraged" = the exact hard-coded value, outside the design system, with ' +
   'hardcoded { property, value } (on this option only): never for font-family, font, opacity, display, position or transform, ' +
@@ -47,14 +52,14 @@ export const ASK_CLIENT_DESCRIPTION =
   'left, inset…), nor for a property the editor does not allow; never url(), @import, a web address, calc() or a negative ' +
   'value (nor min(), max(), clamp() or any other math function). ' +
   'No question, topic or option, whatever its tone, cites url(), @import or a web address. ' +
-  'Any option whose text gains a line at 375 px carries effect "longer-text" and says in its label or description how many ' +
+  `Any option whose text gains a line at ${MOBILE} px carries effect "longer-text" and says in its label or description how many ` +
   'lines the text will take on mobile (never the neutral option, and at least one option without it). ' +
   'A question that breaks these rules is refused: rephrase it. ' +
   'The client can always answer freely. ' +
   'For (2), no option proposes a value: the client gives it as a free answer; options: do not add it (neutral) and, if ' +
   'useful, a wording without that fact. ' +
   'Group your questions in one call, before changing the points concerned and, for (2) and (3), before any set_text. ' +
-  'A line gained at 375 px is seen after set_text and measure: then ask a new question.'
+  `A line gained at ${MOBILE} px is seen after set_text and measure: then ask a new question.`
 
 /** Schéma d'ask_client (zod 4) : bornes reprises du POC, effet `longer-text` du contrat. */
 export const QUESTIONS_SCHEMA = {
@@ -77,7 +82,7 @@ export const QUESTIONS_SCHEMA = {
                 .enum(['longer-text'])
                 .optional()
                 .describe(
-                  'Option whose text gains a line at 375 px (never the neutral option, never every option; its label or description says how many lines the text will take on mobile): the client’s consent is required to apply a longer text.',
+                  `Option whose text gains a line at ${MOBILE} px (never the neutral option, never every option; its label or description says how many lines the text will take on mobile): the client’s consent is required to apply a longer text.`,
                 ),
             }),
           )

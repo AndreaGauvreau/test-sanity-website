@@ -9,7 +9,11 @@ import type { EngineHealth } from '../../core/contracts/engine'
  * modèle, totaux.
  */
 
-export type AskAiTotals = { inputTokens: number; outputTokens: number; costUsd: number }
+/**
+ * Totaux du mois (`UsageSummary.totals` de core/usage) : `costUsd` = FACTURÉ seulement ; `includedUsd` = demandes
+ * passées par l'abonnement Claude (prix de l'API, non facturées).
+ */
+export type AskAiTotals = { inputTokens: number; outputTokens: number; costUsd: number; includedUsd?: number }
 
 export type AskAiInfo =
   | { ok: true; userId: string; model: string | null; month: AskAiTotals | null }
@@ -50,7 +54,12 @@ export async function loadAskAiInfo(deps: AskAiInfoDeps): Promise<AskAiInfo> {
   const model = health.status === 'fulfilled' ? health.value.claude?.askModel || null : null
   const totals =
     month.status === 'fulfilled'
-      ? { inputTokens: month.value.inputTokens, outputTokens: month.value.outputTokens, costUsd: month.value.costUsd }
+      ? {
+          inputTokens: month.value.inputTokens,
+          outputTokens: month.value.outputTokens,
+          costUsd: month.value.costUsd,
+          includedUsd: month.value.includedUsd ?? 0,
+        }
       : null
   return { ok: true, userId: session.user.id, model, month: totals }
 }

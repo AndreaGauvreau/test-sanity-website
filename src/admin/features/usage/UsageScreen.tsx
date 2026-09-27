@@ -1,6 +1,6 @@
 import Link from 'next/link'
 
-import { formatCost, formatTokens } from '@/admin/core/contracts/format'
+import { describeCost, formatCost, formatIncluded, formatTokens, INCLUDED_LABEL, isIncluded } from '@/admin/core/contracts/format'
 import { USAGE_PERIOD_LABELS, type UsagePeriod, type UsageRow, type UsageSummary } from '@/admin/core/usage/aggregate'
 import { Avatar, ContentArea, PageHeader, StatCard, Table, TableCell, TableHeaderCell, TableRow, Tag } from '@/admin/ui'
 
@@ -32,13 +32,44 @@ const META = "AI consumption on the site's own Claude account: model, input and 
 export const EMPTY_USAGE = 'No AI usage in this period.'
 
 /**
+ * Cellule « Cost » d'une demande : son coût facturé (« $0.16 », « ~$0.50 » estimé) ; passée par l'abonnement Claude
+ * (moteur local) : « Included » + prix API équivalent en secondaire, jamais présenté comme un coût facturé.
+ */
+function CostCell({ row }: { row: Pick<UsageRow, 'costUsd' | 'costKind' | 'access'> }) {
+  if (isIncluded(row)) {
+    return (
+      <span className={styles.included} title={formatIncluded(row.costUsd)}>
+        <span aria-hidden="true" className={styles.includedLabel}>
+          {INCLUDED_LABEL}
+        </span>
+        <span aria-hidden="true" className={styles.includedPrice}>
+          ≈ {formatCost(row.costUsd)}
+        </span>
+        <span className="kz-visually-hidden">{describeCost(row)}</span>
+      </span>
+    )
+  }
+  if (row.costKind === 'estimated') {
+    return (
+      <span title="Estimated from the tokens seen">
+        ~{formatCost(row.costUsd)}
+        <span className="kz-visually-hidden"> (estimated)</span>
+      </span>
+    )
+  }
+  return <>{formatCost(row.costUsd)}</>
+}
+
+/**
  * B5 · Site Settings › Usage (Kuartz et client) : carte AI usage (période, totaux, par fonctionnalité avec le
  * modèle), carte Since launch, tableau Recent requests. Server Component : seules les données agrégées (sans
  * jeton, sans e-mail) partent vers la carte client. Jamais de crédits, de plafond ni d'alerte (Figma B5).
+ * Coûts : seul le FACTURÉ (clé API) est additionné ; ce qui est passé par l'abonnement Claude est montré à part.
  */
 export function UsageScreen({ period, summary, allTime, rows, limit, now, launchedAt, claudeConnection, aiSettings }: UsageScreenProps) {
   const nextLimit = Math.min(limit + 50, 500)
   const moreHref = `?${new URLSearchParams({ ...(period !== 'month' ? { period } : {}), limit: String(nextLimit) })}`
+  const sinceLaunch = sinceLaunchHint(allTime, launchedAt)
 
   return (
     <ContentArea gap={24}>
@@ -46,7 +77,22 @@ export function UsageScreen({ period, summary, allTime, rows, limit, now, launch
 
       <div className={styles.cards}>
         <UsagePeriodCard period={period} summary={summary} className={styles.card} />
-        <StatCard icon="history" label="Since launch" value={formatCost(allTime.totals.costUsd)} hint={sinceLaunchHint(allTime, launchedAt)} className={styles.card} />
+        <StatCard
+          icon="history"
+          label="Since launch"
+          value={formatCost(allTime.totals.costUsd)}
+          hint={
+            allTime.totals.includedUsd > 0 ? (
+              <>
+                <span className={styles.hintLine}>{sinceLaunch}</span>
+                <span className={styles.hintIncluded}>{formatIncluded(allTime.totals.includedUsd)}</span>
+              </>
+            ) : (
+              sinceLaunch
+            )
+          }
+          className={styles.card}
+        />
       </div>
 
       {claudeConnection ? <ClaudeConnectionCard adminLocal={claudeConnection.adminLocal} /> : null}
@@ -101,14 +147,7 @@ export function UsageScreen({ period, summary, allTime, rows, limit, now, launch
                       <TableCell>{formatTokens(row.inputTokens)}</TableCell>
                       <TableCell>{formatTokens(row.outputTokens)}</TableCell>
                       <TableCell>
-                        {row.costKind === 'estimated' ? (
-                          <span title="Estimated from the tokens seen">
-                            ~{formatCost(row.costUsd)}
-                            <span className="kz-visually-hidden"> (estimated)</span>
-                          </span>
-                        ) : (
-                          formatCost(row.costUsd)
-                        )}
+                        <CostCell row={row} />
                       </TableCell>
                     </TableRow>
                   )
