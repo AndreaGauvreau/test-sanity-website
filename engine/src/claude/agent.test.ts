@@ -213,7 +213,7 @@ describe('createAgentRunner — lecture du flux', () => {
     const result = await createAgentRunner(SETTINGS, { query })(run())
     assert.equal(result.ok, false)
     assert.equal(result.fatal, true)
-    assert.match(result.error ?? '', /Access refused by Anthropic: check the ANTHROPIC_API_KEY/)
+    assert.match(result.error ?? '', /Access refused by Anthropic: check the API key/)
     assert.equal(result.costKind, 'call')
     assert.equal(result.tokens.input, 100)
     // 100 × 4 + 20 × 20 + 1000 × 0.2 (lecture de cache), par million.
@@ -233,6 +233,26 @@ describe('createAgentRunner — lecture du flux', () => {
     assert.match(String(fatalApiError('rate_limit', OAUTH)), /Usage limit/)
     assert.match(String(fatalApiError('authentication_failed', OAUTH)), /claude setup-token/)
     assert.equal(fatalApiError('overloaded', API_KEY), null)
+  })
+
+  it('connexion de la machine (abonnement sans secret) : marche à suivre /login, limite d’usage fatale', () => {
+    const machine = { kind: 'subscription' as const, secret: null, machineLogin: { storageDir: '' } }
+    assert.match(String(fatalApiError('authentication_failed', machine)), /run claude in a terminal, then \/login/)
+    assert.match(String(fatalApiError('rate_limit', machine)), /Usage limit/)
+  })
+
+  it('env de la connexion de la machine : aucun identifiant, CLAUDE_CONFIG_DIR dédié gardé, trousseau par défaut', () => {
+    const machine = { kind: 'subscription' as const, secret: null, machineLogin: { storageDir: '' } }
+    const base = { PATH: '/usr/bin', HOME: '/home/u', USER: 'u', ANTHROPIC_API_KEY: 'leak', CLAUDE_CODE_OAUTH_TOKEN: 'leak', ENGINE_SECRET: 'leak' }
+    assert.deepEqual(agentEnv(SETTINGS, machine, base), {
+      PATH: '/usr/bin',
+      HOME: '/home/u',
+      USER: 'u',
+      CLAUDE_SECURESTORAGE_CONFIG_DIR: '',
+      CLAUDE_CONFIG_DIR: configDir,
+      CLAUDE_AGENT_SDK_CLIENT_APP: 'kuartz-ai-editor/0.1',
+      MCP_TOOL_TIMEOUT: '960000',
+    })
   })
 
   it('appel interrompu (exception) : coût estimé, dédoublonné par message.id', async () => {

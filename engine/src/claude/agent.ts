@@ -10,7 +10,7 @@ import {
 import { mkdir } from 'node:fs/promises'
 import path from 'node:path'
 import type { StepKind } from '../../../src/admin/core/contracts'
-import type { AgentSettings, ClaudeCredential } from './access'
+import { credentialEnv, type AgentSettings, type ClaudeCredential } from './access'
 import { addTokens, estimateCost, meterUsage, NO_TOKENS, type Tokens, type UsageLike } from './cost'
 import { repoPath } from '../guards/guards'
 import { createGuardHook, type ToolAccess } from './hook'
@@ -90,11 +90,17 @@ export const MIN_RESUME_MS = 60_000
 export const CLIENT_APP = 'kuartz-ai-editor/0.1'
 
 /** Erreurs d'API qu'aucun nouvel essai ne réglera : on arrête tout de suite au lieu d'attendre le délai max. */
-export function fatalApiError(error: SDKAssistantMessageError, access: Pick<ClaudeCredential, 'kind'>): string | null {
-  const credential = access.kind === 'api-key' ? 'the ANTHROPIC_API_KEY' : 'the CLAUDE_CODE_OAUTH_TOKEN (run `claude setup-token` again)'
+export function fatalApiError(
+  error: SDKAssistantMessageError,
+  access: Pick<ClaudeCredential, 'kind'> & { secret?: string | null },
+): string | null {
   switch (error) {
     case 'authentication_failed':
-      return `Access refused by Anthropic: check ${credential} in engine/.env.local.`
+      if (access.kind === 'api-key') return 'Access refused by Anthropic: check the API key (Settings › Usage › Claude connection).'
+      if (access.secret === null) {
+        return 'Access refused by Anthropic: sign in to Claude again on this computer (run claude in a terminal, then /login).'
+      }
+      return 'Access refused by Anthropic: check the CLAUDE_CODE_OAUTH_TOKEN (run `claude setup-token` again) in engine/.env.local.'
     case 'billing_error':
       return access.kind === 'api-key' ? 'The Anthropic account of this API key has no credit left.' : 'Billing problem on your Claude subscription.'
     case 'model_not_found':
@@ -173,7 +179,8 @@ export function agentEnv(
   return {
     PATH: base.PATH,
     HOME: base.HOME,
-    ...(access.kind === 'api-key' ? { ANTHROPIC_API_KEY: access.secret } : { CLAUDE_CODE_OAUTH_TOKEN: access.secret }),
+    // UN identifiant (clé API, jeton, ou connexion de la machine sans secret : voir credentialEnv).
+    ...credentialEnv(access, base),
     CLAUDE_CONFIG_DIR: settings.configDir,
     CLAUDE_AGENT_SDK_CLIENT_APP: CLIENT_APP,
     // Une question au client peut attendre plusieurs minutes.

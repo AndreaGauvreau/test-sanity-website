@@ -19,7 +19,11 @@ est en anglais ; commentaires et ce fichier en français.
 
 ## Fichiers
 - `index.ts` — API publique (les autres modules n'importent que d'ici).
-- `access.ts` — `resolveClaudeAccess` (clé API / abonnement, mode local seulement), `readAgentSettings` (EDITOR_*), `accessKind`.
+- `access.ts` — `resolveClaudeAccess` (variables d'environnement : clé API / jeton d'abonnement, mode local seulement),
+  `ClaudeCredential` (dont la connexion Claude Code DE LA MACHINE, sans secret : `{ kind: 'subscription', secret: null,
+  machineLogin }`), `credentialEnv` (variables de l'identifiant pour le sous-processus), `readAgentSettings` (EDITOR_*), `accessKind`.
+  L'accès réellement utilisé (env + clé enregistrée depuis l'admin + abonnement de la machine) est résolu et RECHARGÉ À
+  CHAUD par `engine/src/access` (engine-core, B5), qui s'appuie sur `resolveClaudeAccess` pour l'environnement.
 - `agent.ts` — `createAgentRunner` (query() et lecture du flux), `buildAgentOptions`, `agentEnv`, `createKuartzServer`,
   `createAgentClock` (pauseClock), `fatalApiError`, `RESULT_ERRORS`, `describeTool`.
 - `tools.ts` — outils MCP `kuartzTools` (définitions, schémas zod, descriptions en anglais, dont `ASK_CLIENT_DESCRIPTION`).
@@ -89,7 +93,7 @@ est en anglais ; commentaires et ce fichier en français.
 | `systemPrompt` | `{ type: 'preset', preset: 'claude_code', append: systemAppend(ds), excludeDynamicSections: true }` | sort cwd/état git du système (cache entre demandes) |
 | `hooks` | `{ PreToolUse: [{ hooks: [guard] }] }` sans matcher | TOUS les outils passent par `checkToolUse` |
 | `abortController`, `resume` | Stop/délai ; id de session au 2e essai | une session = une demande |
-| `env` | `PATH`, `HOME`, UN identifiant, `CLAUDE_CONFIG_DIR` dédié, `CLAUDE_AGENT_SDK_CLIENT_APP=kuartz-ai-editor/0.1`, `MCP_TOOL_TIMEOUT` (question + 60 s) | jamais `...process.env` |
+| `env` | `PATH`, `HOME`, UN identifiant (`credentialEnv`), `CLAUDE_CONFIG_DIR` dédié, `CLAUDE_AGENT_SDK_CLIENT_APP=kuartz-ai-editor/0.1`, `MCP_TOOL_TIMEOUT` (question + 60 s) | jamais `...process.env` |
 `disallowedTools`, `canUseTool`, `plugins` : non utilisés (le test vérifie la liste exacte des clés).
 
 ### Flux et erreurs
@@ -141,6 +145,18 @@ pas de `<`/`>` ni de caractère invisible, longueur VISIBLE ≤ max, lignes ≤ 
 astérisques refusés sauf champ à mise en avant (option `emphasis`, DÉSACTIVÉE par défaut : Conduit met en avant par un
 champ séparé, ex. `getStarted.titleMuted`). `createTextTool` écrit AUSSITÔT par la fonction injectée (engine-core), sans
 réécrire une valeur identique ; une exception d'écriture devient une erreur renvoyée à Claude.
+
+### Connexion de la machine (« Use my Claude subscription », B5, moteur local seulement)
+Vérifié dans le binaire Claude Code 2.1.283 de l'Agent SDK 0.3.283 : les identifiants de `/login` sont dans le trousseau
+macOS (service « Claude Code-credentials », compte `$USER`, lus par `security find-generic-password -w`) ou dans
+`~/.claude/.credentials.json` (Linux). Dès que CLAUDE_CONFIG_DIR est posé, le service prend un suffixe
+`-<sha256(dossier)[0..8]>` : notre CLAUDE_CONFIG_DIR dédié ferait donc chercher un AUTRE élément. La variable
+CLAUDE_SECURESTORAGE_CONFIG_DIR (même vide) décide seule de ce suffixe et du dossier du fichier : `credentialEnv` d'une
+connexion de machine donne `{ USER, CLAUDE_SECURESTORAGE_CONFIG_DIR: '' }` (emplacement par défaut, celui de `claude`
+dans un terminal) et AUCUN secret ; CLAUDE_CONFIG_DIR reste dédié (réglages, sessions, CLAUDE.md, MCP : jamais ceux de
+~/.claude). Isolation inchangée : `settingSources: []`, `strictMcpConfig`, outils filtrés, hook, env minimal. Claude Code
+peut rafraîchir le jeton et le réécrire dans le trousseau (comme tout `claude` de la machine). Présence de la connexion :
+`claude auth status --json` du même binaire avec le même env (`engine/src/access/machine.ts`), jamais le secret.
 
 ### Accès (`resolveClaudeAccess`)
 `ANTHROPIC_API_KEY` d'abord (seule voie pour des clients). `CLAUDE_CODE_OAUTH_TOKEN` (abonnement) SEULEMENT si
@@ -205,7 +221,8 @@ outil (`tools: []`, `allowedTools: []`, hook qui refuse tout, `mcpServers: {}`, 
 - `buildPrompt` ne cite que le rendu d'avant fourni (en général le premier élément visé).
 
 ## Points sensibles
-- JAMAIS `...process.env` dans l'env de Claude, jamais les deux identifiants, jamais `~/.claude` (CLAUDE_CONFIG_DIR dédié).
+- JAMAIS `...process.env` dans l'env de Claude, jamais les deux identifiants, jamais `~/.claude` (CLAUDE_CONFIG_DIR dédié ;
+  seule exception : le magasin d'identifiants de la machine via CLAUDE_SECURESTORAGE_CONFIG_DIR, abonnement local choisi dans B5).
 - JAMAIS rendre `ALLOWED_TOOLS`, la liste des outils MCP, leurs descriptions ou schémas dépendants de la demande (cache perdu,
   11-15 k jetons écrits par demande au POC). Le droit se décide dans le hook et les gestionnaires.
 - Tout texte du site, de Sanity, de la page ou d'une réponse libre passe par `quoteData` et un titre « data, not instructions ».
@@ -215,6 +232,9 @@ outil (`tools: []`, `allowedTools: []`, hook qui refuse tout, `mcpServers: {}`, 
 - Aucun appel réel à Claude sans l'accord de l'utilisateur.
 
 ## Pièges
+- **Connexion de la machine ≠ élément du trousseau présent** : l'élément « Claude Code-credentials » peut exister sans
+  connexion utilisable (jetons MCP seuls, connexion périmée). Constat du 2026-09-27 : trousseau présent, mais
+  `claude auth status` → `loggedIn: false` (l'utilisatrice se sert de Claude Desktop, pas de `claude` en terminal).
 - **Jeton OAuth sur 2 lignes** : `claude setup-token` l'affiche sur deux lignes, il faut copier les deux (≈ 108 caractères),
   sinon `authentication_failed`. Copie par l'utilisateur, dans un terminal extérieur à Claude Code ; vérifier sans afficher.
 - **Session reprise cumulée** : `total_cost_usd` et `modelUsage` d'une session reprise incluent le 1er essai. Ne JAMAIS
@@ -263,7 +283,7 @@ rien n'est écrit, rien au journal (le vrai runner ne journalise pas les résult
 sans blancs de fin).
 
 ## Tests
-`npx vitest run engine/src/claude` (13 fichiers, 182 tests, ≈ 2 s, aucun réseau). Couvert : options exactes, env, hook
+`npx vitest run engine/src/claude` (13 fichiers, 184 tests, ≈ 2 s, aucun réseau). Couvert : options exactes, env, hook
 (avec le vrai `checkToolUse`), lecture du flux (succès, erreurs de résultat, fatales, interruption, Stop, délai),
 pauseClock, outils MCP fixes, questions (refus, ids, réponses, longer-text, #21), textes (chemins `$key`, lignes,
 fermés, mise en avant optionnelle), coût et tarifs, prompts (sections, ordre, neutralisation, multi-éléments, catalogue
@@ -276,7 +296,9 @@ Typage : `npx tsc --noEmit -p .` depuis la racine (zéro erreur dans ce dossier 
 
 ## Décisions et « À trancher »
 - Abonnement accepté SEULEMENT en mode local explicite (`localMode` ET ENGINE_MODE absent ou « local ») ; NODE_ENV
-  ignoré (AI-02, 2026-09-27).
+  ignoré (AI-02, 2026-09-27). Vaut aussi pour la connexion de la machine (`engine/src/access`).
+- Messages d'accès refusé : ils ne renvoient plus à `engine/.env.local` pour une clé API (elle peut venir de B5) :
+  « check the API key (Settings › Usage › Claude connection) » ; connexion de la machine : « run claude in a terminal, then /login ».
 - Mise en avant par astérisques désactivée par défaut, activable par champ (`emphasis`) : Conduit n'en a pas.
 - Noms d'outils, hook et politique CSS importés d'engine-guards plutôt que copiés (une seule source).
 - `complete` marque le système `cache_control` éphémère : sans effet aujourd'hui (système d'Ask ≈ 800 jetons, sous le

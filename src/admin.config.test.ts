@@ -4,8 +4,8 @@ import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 import type { FieldDef, FieldKind, SectionDef, ZonesFile } from '@/admin/core/contracts'
-import { POST_TEMPLATE_VARIABLES } from '@/sanity/schemaTypes/articleSeoTemplate'
-import { SINGLETON_IDS, schemaTypes } from '@/sanity/schemaTypes'
+import { ARTICLE_TEMPLATE_VARIABLES } from '@/sanity/schemaTypes/articleSeoTemplate'
+import { ARTICLE_SEO_IDS, SINGLETON_IDS, schemaTypes } from '@/sanity/schemaTypes'
 import {
   arrayMember,
   baseType,
@@ -157,18 +157,32 @@ describe('admin.config ↔ schéma Sanity', () => {
     },
   )
 
-  it('modèle SEO des pages article : document à id sans point, variables = champs de l’article', () => {
+  it('modèles SEO des pages article : un par collection, id sans point (ARTICLE_SEO_IDS), variables = champs de l’élément', () => {
+    expect(adminConfig.articleSeoTemplates.map((template) => template.collection)).toEqual(['post', 'testimonial', 'faq'])
     for (const template of adminConfig.articleSeoTemplates) {
       docType(template.document.type)
       expect(template.document.id).not.toContain('.')
-      expect(template.variables.map((variable) => variable.token)).toEqual([...POST_TEMPLATE_VARIABLES])
-      const post = docType(template.collection)
+      expect(template.document.id).toBe(ARTICLE_SEO_IDS[template.collection as keyof typeof ARTICLE_SEO_IDS])
+      expect(template.variables.map((variable) => variable.token)).toEqual([...ARTICLE_TEMPLATE_VARIABLES[template.collection]])
+      const item = docType(template.collection)
       for (const variable of template.variables) {
-        expect(resolvePath(post, variable.path.replace(/\.current$/, ''), index), variable.path).not.toBeNull()
+        expect(resolvePath(item, variable.path.replace(/\.current$/, ''), index), variable.path).not.toBeNull()
       }
     }
-    const blog = adminConfig.pages.find((page) => page.id === 'blog')!
-    expect(blog.article?.seoTemplate).toEqual(adminConfig.articleSeoTemplates[0].document)
+  })
+
+  it('pages listing (blog, testimonials, faq) : page article = modèle SEO et articlePath de sa collection', () => {
+    const listings = adminConfig.pages.filter((page) => 'article' in page && page.article)
+    expect(listings.map((page) => page.id)).toEqual(['blog', 'testimonials', 'faq'])
+    for (const page of listings) {
+      const article = page.article!
+      const template = adminConfig.articleSeoTemplates.find((t) => t.collection === article.collection)
+      expect(article.seoTemplate, page.id).toEqual(template?.document)
+      const collection = adminConfig.collections.find((c) => c.type === article.collection)
+      expect(collection?.articlePath, page.id).toBe(article.path)
+      expect(collection?.slugField, page.id).toBe('slug')
+      expect(article.path).toBe(`${page.path}/:slug`)
+    }
   })
 
   // FOLLOWUPS #28 : itemType, richText, source, launchedAt d'après le schéma réel.

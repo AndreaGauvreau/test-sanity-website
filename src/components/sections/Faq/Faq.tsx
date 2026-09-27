@@ -86,13 +86,14 @@ export function Faq({ data, items }: Props) {
 }
 
 // Texte brut d'une réponse, paragraphes séparés par une ligne vide ; chaîne vide si la
-// réponse manque ou ne contient que des blocs vides.
-function answerText(answer: FaqAnswer | null | undefined) {
+// réponse manque ou ne contient que des blocs vides. Aussi utilisé par /faq.
+export function answerText(answer: FaqAnswer | null | undefined) {
   return answer?.length ? toPlainText(answer).trim() : ''
 }
 
 // Une entrée par question qui a une réponse. Rien si aucune question n'a de réponse.
-function faqPageJsonLd(items: FAQS_QUERY_RESULT) {
+// Aussi utilisé par /faq (src/app/(site)/faq/page.tsx), avec les mêmes questions.
+export function faqPageJsonLd(items: FAQS_QUERY_RESULT) {
   const mainEntity = items.flatMap(({ question, answer }) => {
     const text = answerText(answer)
     return text ? [{ '@type': 'Question', name: question, acceptedAnswer: { '@type': 'Answer', text } }] : []

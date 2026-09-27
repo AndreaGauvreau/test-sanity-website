@@ -3,6 +3,7 @@ import { articleSeoTemplate } from './articleSeoTemplate'
 import { blogPage } from './blogPage'
 import { dockSchedulingPage } from './dockSchedulingPage'
 import { faq } from './faq'
+import { faqPage, testimonialsPage } from './listingPage'
 import { cta } from './objects/cta'
 import { seo } from './objects/seo'
 import { post } from './post'
@@ -26,6 +27,8 @@ export const schemaTypes = [
   siteSettings,
   dockSchedulingPage,
   blogPage,
+  testimonialsPage,
+  faqPage,
   articleSeoTemplate,
   post,
   testimonial,
@@ -52,8 +55,18 @@ export const SINGLETON_IDS = {
   siteSettings: 'siteSettings',
   dockSchedulingPage: 'dockSchedulingPage',
   blogPage: 'blogPage',
+  testimonialsPage: 'testimonialsPage',
+  faqPage: 'faqPage',
   // Pas de point dans l'id : un id avec un point est privé, le site ne pourrait pas le lire.
+  // Modèle SEO des articles du blog ; ceux des autres collections : ARTICLE_SEO_IDS.
   articleSeoTemplate: 'articleSeo-post',
+} as const
+
+/** Modèle SEO des pages article (C6), par collection (type Sanity) : un document articleSeoTemplate chacun. */
+export const ARTICLE_SEO_IDS = {
+  post: 'articleSeo-post',
+  testimonial: 'articleSeo-testimonial',
+  faq: 'articleSeo-faq',
 } as const
 
 export const singletonTypes = new Set<string>(Object.keys(SINGLETON_IDS))

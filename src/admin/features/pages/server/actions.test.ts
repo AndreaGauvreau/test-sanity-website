@@ -6,6 +6,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
  */
 
 vi.mock('server-only', () => ({}))
+// `../lib/seo-preview` (modèles par défaut de C6) importe `@/lib/seo` → `urlFor` → variables publiques Sanity.
+vi.hoisted(() => {
+  vi.stubEnv('NEXT_PUBLIC_SANITY_PROJECT_ID', 'test1234')
+  vi.stubEnv('NEXT_PUBLIC_SANITY_DATASET', 'development')
+})
 
 const state = vi.hoisted(() => ({
   mode: 'ok' as 'ok' | 'unauthorized' | 'forbidden',

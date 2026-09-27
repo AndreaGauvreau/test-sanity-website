@@ -3,7 +3,8 @@ import { describe, expect, it, vi } from 'vitest'
 // src/sanity/env.ts exige le projet et le dataset à l'import (urlFor).
 vi.stubEnv('NEXT_PUBLIC_SANITY_PROJECT_ID', 'test1234')
 vi.stubEnv('NEXT_PUBLIC_SANITY_DATASET', 'development')
-const { articlePath, articleSeoPreview, displayUrl, estimatedLength, pageSeoPreview } = await import('./seo-preview')
+const { articlePath, articleSeoPreview, defaultArticleTemplate, displayUrl, estimatedLength, pageSeoPreview } = await import('./seo-preview')
+const seo = await import('@/lib/seo')
 const { resolveTemplate } = await import('@/lib/template-variables')
 
 const settings = {
@@ -73,6 +74,26 @@ describe('articleSeoPreview (C6, variables résolues)', () => {
   it('longueur estimée et résolution des variables', () => {
     expect(estimatedLength('{{title}} | Conduit Blog', values)).toBe('Carrier portals: a checklist | Conduit Blog'.length)
     expect(resolveTemplate('{{title}} {{nope}}', values, 'text')).toEqual({ value: 'Carrier portals: a checklist {{nope}}', empty: [], unknown: ['nope'] })
+  })
+})
+
+describe('defaultArticleTemplate (modèle du site sans document)', () => {
+  it('une constante de src/lib/seo.ts par collection ; inconnue → celle du blog', () => {
+    expect(defaultArticleTemplate('post')).toBe(seo.DEFAULT_ARTICLE_TEMPLATE)
+    expect(defaultArticleTemplate('testimonial')).toBe(seo.DEFAULT_TESTIMONIAL_TEMPLATE)
+    expect(defaultArticleTemplate('faq')).toBe(seo.DEFAULT_FAQ_TEMPLATE)
+    expect(defaultArticleTemplate('nope')).toBe(seo.DEFAULT_ARTICLE_TEMPLATE)
+  })
+
+  it('aperçu FAQ avec le modèle par défaut : question en titre, réponse en description', () => {
+    const p = articleSeoPreview({
+      settings,
+      template: defaultArticleTemplate('faq'),
+      values: { question: 'How do carriers book a slot?', slug: 'book-a-slot', answer: 'From the carrier portal.' },
+      cover: { url: null },
+    })
+    expect(p.title).toBe('How do carriers book a slot? — Conduit')
+    expect(p.description).toBe('From the carrier portal.')
   })
 })
 

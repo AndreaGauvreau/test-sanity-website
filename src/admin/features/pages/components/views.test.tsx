@@ -31,7 +31,7 @@ const { autosave } = await import('@/admin/core/autosave')
 const { findPage, sectionSource, sectionSummary } = await import('../lib/manifest')
 const { ContentView } = await import('./ContentView')
 const { SeoView } = await import('./SeoView')
-const { ArticleSeoView } = await import('./ArticleSeoView')
+const { ArticleSeoView, indexingTarget } = await import('./ArticleSeoView')
 const { adminConfig } = await import('@/admin.config')
 
 MotionGlobalConfig.skipAnimations = true
@@ -288,8 +288,10 @@ describe('C6 · modèle SEO d’article', () => {
         siteName="Conduit"
         pathPattern={blog.article!.path}
         collectionLabel="Blog"
+        itemLabel="post"
         itemsLabel="posts"
         variables={adminConfig.articleSeoTemplates[0].variables}
+        imageFields={[{ value: 'cover', label: 'Cover' }]}
         initial={{ metaTitle: '{{title}} | Conduit Blog', metaDescription: '{{excerpt}}', ogImageField: 'cover', ogImage: null, allowIndexing: true }}
         settings={settings}
         articles={articles}
@@ -305,8 +307,62 @@ describe('C6 · modèle SEO d’article', () => {
     expect(text(screen.getByLabelText('Google search preview'))).toContain('https://conduit.com › blog › carrier-portals')
     expect(screen.getByText('Allow indexing of all 12 Blog posts.')).toBeTruthy()
     expect(screen.getByText('From field')).toBeTruthy()
+    expect(screen.getByText(/with this post$/)).toBeTruthy()
     await user.click(screen.getByRole('combobox', { name: 'Preview with' }))
     await user.click(screen.getByRole('option', { name: 'Second' }))
     expect(text(screen.getByLabelText('Social media preview'))).toContain('Second | Conduit Blog')
+  })
+
+  it('FAQ : variables de la question, libellés de la collection, pas de « From field » (pas d’image)', async () => {
+    const save = vi.fn(async () => ({ ok: true as const }))
+    const faqPage = findPage('faq')!
+    const faqs = [
+      {
+        id: 'f1',
+        title: 'How do carriers book a slot?',
+        slug: 'how-do-carriers-book-a-slot',
+        values: { question: 'How do carriers book a slot?', slug: 'how-do-carriers-book-a-slot', answer: 'From the carrier portal, in two clicks.' },
+        coverUrl: null,
+        coverAlt: null,
+      },
+    ]
+    render(
+      <ArticleSeoView
+        pageId="faq"
+        domain="conduit.com"
+        siteName="Conduit"
+        pathPattern={faqPage.article!.path}
+        collectionLabel="FAQ"
+        itemLabel="question"
+        itemsLabel="questions"
+        variables={adminConfig.articleSeoTemplates.find((t) => t.collection === 'faq')!.variables}
+        imageFields={[]}
+        initial={{ metaTitle: '{{question}}', metaDescription: '{{answer}}', ogImageField: null, ogImage: null, allowIndexing: true }}
+        settings={settings}
+        articles={faqs}
+        total={9}
+        readOnly={false}
+        jsonLd={null}
+        save={save}
+        upload={vi.fn()}
+      />,
+    )
+    expect(screen.getByText('≈ 28 / 60 with “How do carriers book a slot?”')).toBeTruthy()
+    expect(screen.getByText(/with this question$/)).toBeTruthy()
+    expect(text(screen.getByLabelText('Google search preview'))).toContain('How do carriers book a slot? — Conduit')
+    expect(text(screen.getByLabelText('Google search preview'))).toContain('https://conduit.com › faq › how-do-carriers-book-a-slot')
+    expect(text(screen.getByLabelText('Google search preview'))).toContain('From the carrier portal, in two clicks.')
+    expect(screen.getByText('Allow indexing of all 9 FAQ questions.')).toBeTruthy()
+    expect(screen.queryByText('From field')).toBeNull()
+    expect(screen.queryByRole('button', { name: /Use the/ })).toBeNull()
+    expect(screen.queryByText(/post/)).toBeNull()
+    expect(save).not.toHaveBeenCalled()
+  })
+
+  it('indexation : le nom de la collection n’est pas répété (« all 3 testimonials »)', () => {
+    expect(indexingTarget(12, 'Blog', 'posts')).toBe('12 Blog posts')
+    expect(indexingTarget(3, 'Testimonials', 'testimonials')).toBe('3 testimonials')
+    expect(indexingTarget(1, 'Testimonials', 'testimonial')).toBe('1 testimonial')
+    expect(indexingTarget(9, 'FAQ', 'questions')).toBe('9 FAQ questions')
   })
 })

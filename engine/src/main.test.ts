@@ -160,6 +160,25 @@ describe('startEngine', () => {
     assert.deepEqual([refused.status, refused.json.error.code], [503, 'unavailable'])
   })
 
+  it('clé API enregistrée depuis l’admin : santé, éditeur et Ask AI la voient SANS redémarrage ; jamais renvoyée', async () => {
+    const key = `sk-ant-api03-${'k'.repeat(90)}-HOT1`
+    const { call, lines, ws } = await boot({ ANTHROPIC_API_KEY: '' })
+    await engine!.context.preview.waitReady(2_000)
+    assert.equal(((await call('GET', '/health')).json as EngineHealth).claude.access, 'none')
+    assert.equal(engine!.context.access.ok, false)
+    const saved = await call('POST', '/claude/access', { kind: 'api-key', apiKey: key })
+    assert.equal(saved.status, 200)
+    assert.deepEqual([saved.json.source, saved.json.keyHint], ['stored', 'sk-ant-…HOT1'])
+    // Rechargement à chaud : même processus, accès lu à chaque lecture.
+    assert.equal(((await call('GET', '/health')).json as EngineHealth).claude.access, 'api-key')
+    assert.deepEqual(engine!.context.access, { ok: true, access: { kind: 'api-key', secret: key } })
+    const created = await call('POST', '/editor/requests', editRequest())
+    assert.equal(created.status, 201)
+    await engine!.context.editor.idle()
+    const onDisk = await import('node:fs/promises').then((fs) => fs.readFile(path.join(ws.workspace, 'data', 'claude-access.json'), 'utf8'))
+    assert.ok(!onDisk.includes(key) && !JSON.stringify(saved.json).includes(key) && !lines.join('\n').includes(key))
+  })
+
   it('FOLLOWUPS #14 : l’arrêt attend le crochet stop des modules avant d’écrire le magasin', async () => {
     const order: string[] = []
     const slow: EngineModule = {

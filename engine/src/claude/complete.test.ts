@@ -90,7 +90,7 @@ describe('complete — clé API : API Messages', () => {
     const error = await complete(INPUT, { access: API, configDir, anthropic: fakeClient(auth).factory }).catch((e: unknown) => e)
     assert.ok(error instanceof CompleteError)
     assert.equal(error.fatal, true)
-    assert.match(error.message, /check the ANTHROPIC_API_KEY/)
+    assert.match(error.message, /check the API key \(Settings › Usage › Claude connection\)/)
     assert.ok(!error.message.includes('sk-ant-api-fake'))
     const busy = new Anthropic.RateLimitError(429, { type: 'error' }, 'rate', new Headers())
     const limited = await complete(INPUT, { access: API, configDir, anthropic: fakeClient(busy).factory }).catch((e: unknown) => e as CompleteError)

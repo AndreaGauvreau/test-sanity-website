@@ -6,8 +6,26 @@ import path from 'node:path'
  * Porté de `batterie-tests:cms/src/editor/config.ts` (resolveClaudeAccess + réglages de l'agent).
  */
 
-/** Identifiant transmis au processus Claude Code : UN SEUL, jamais les deux. */
-export type ClaudeCredential = { kind: 'api-key'; secret: string } | { kind: 'subscription'; secret: string }
+/**
+ * Identifiant transmis au processus Claude Code : UN SEUL, jamais les deux.
+ * - `api-key` : clé API Anthropic (ANTHROPIC_API_KEY de l'environnement ou clé enregistrée depuis l'admin) ;
+ * - `subscription` + `secret` : jeton `claude setup-token` (CLAUDE_CODE_OAUTH_TOKEN, repli local) ;
+ * - `subscription` + `secret: null` + `machineLogin` : connexion Claude Code DE LA MACHINE (moteur local seulement).
+ *   Aucun secret ne passe par le moteur : le sous-processus lit lui-même le trousseau macOS (service
+ *   « Claude Code-credentials », compte $USER) ou `~/.claude/.credentials.json` (Linux), grâce à
+ *   CLAUDE_SECURESTORAGE_CONFIG_DIR ; CLAUDE_CONFIG_DIR reste le dossier dédié du moteur (voir `credentialEnv`).
+ */
+export type ClaudeCredential =
+  | { kind: 'api-key'; secret: string }
+  | { kind: 'subscription'; secret: string }
+  | { kind: 'subscription'; secret: null; machineLogin: MachineLogin }
+
+/**
+ * Où Claude Code range la connexion de la machine. `storageDir` = valeur de CLAUDE_SECURESTORAGE_CONFIG_DIR passée au
+ * sous-processus : '' = emplacement par défaut (trousseau « Claude Code-credentials », `~/.claude`), c'est-à-dire celui
+ * de `claude` lancé dans un terminal sans CLAUDE_CONFIG_DIR ; sinon le CLAUDE_CONFIG_DIR de l'utilisatrice.
+ */
+export type MachineLogin = { storageDir: string }
 
 export type AccessResult = { ok: true; access: ClaudeCredential; warning?: string } | { ok: false; error: string }
 
@@ -80,6 +98,23 @@ export function resolveClaudeAccess(env: AccessEnv, options: AccessOptions = {})
       'No Claude access is configured in engine/.env.local: set ANTHROPIC_API_KEY (required for clients), or for a ' +
       'local test paste the output of `claude setup-token` (both lines) into CLAUDE_CODE_OAUTH_TOKEN. Then restart the engine.',
   }
+}
+
+/**
+ * Variables d'environnement de l'identifiant pour le sous-processus Claude Code (le reste de l'env minimal est ajouté
+ * par l'appelant : PATH, HOME, CLAUDE_CONFIG_DIR dédié…). Connexion de la machine (vérifié dans le binaire Claude Code
+ * 2.1.283 de l'Agent SDK 0.3.283) : le nom du service du trousseau est « Claude Code-credentials » suivi d'un suffixe
+ * `-<sha256(dossier)[0..8]>` dès que CLAUDE_CONFIG_DIR est posé ; CLAUDE_SECURESTORAGE_CONFIG_DIR (même vide) décide
+ * seul de ce suffixe et du dossier de `.credentials.json`. Vide = emplacement par défaut de la machine, sans toucher au
+ * CLAUDE_CONFIG_DIR dédié (réglages, sessions, CLAUDE.md : jamais ceux de ~/.claude). Le compte du trousseau est $USER.
+ */
+export function credentialEnv(
+  access: ClaudeCredential,
+  base: Readonly<Record<string, string | undefined>> = process.env,
+): Record<string, string | undefined> {
+  if (access.kind === 'api-key') return { ANTHROPIC_API_KEY: access.secret }
+  if (access.secret !== null) return { CLAUDE_CODE_OAUTH_TOKEN: access.secret }
+  return { ...(base.USER ? { USER: base.USER } : {}), CLAUDE_SECURESTORAGE_CONFIG_DIR: access.machineLogin.storageDir }
 }
 
 /** Valeur de `Usage.access` (contrat) pour un identifiant. */

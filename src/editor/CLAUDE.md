@@ -65,9 +65,12 @@ demande (dans son clone), par le pont (repérage `data-edit`) et par l'admin (li
   limite différente du schéma).
 
 ## Faiblesses et limites connues
-- Zones de la page d'accueil seulement (+ carte d'article) ; /blog et l'article n'ont pas de zones propres
-  (`aiEditor: false` pour 'blog' dans le manifeste). En-tête et pied de page : emplacements gris, sans zone.
+- En-tête et pied de page : emplacements gris, sans zone.
+- Zones de la page d'accueil seulement (+ carte d'article) ; /blog, /testimonials, /faq et leurs pages article n'ont
+  pas de zones propres (`aiEditor: false` dans le manifeste ; seulement `data-edit-doc` sur la racine et les éléments).
 - `post.card` partage PostCard.module.css avec /blog : une retouche change aussi /blog (dit dans `reach`).
+- Depuis la question 15 révisée (2026-09-27), `Faq.module.css` sert aussi à /faq et la section `Testimonial` (composant et
+  CSS) à /testimonials/:slug : une retouche des zones `faq`, `faq.item*` ou `testimonial*` change aussi ces pages (dit dans leur `reach`).
 - Le lint TSX du moteur compte les `data-edit` : ici ils viennent de `editAttrs('<zone>')` (et `edit={editAttrs(…)}`
   pour Button/Eyebrow), pas d'attributs littéraux — à compter ainsi côté engine-guards.
 - Photos décoratives (Performance, Testimonial, GetStarted) : dans les sélecteurs de la section, sans zone propre.

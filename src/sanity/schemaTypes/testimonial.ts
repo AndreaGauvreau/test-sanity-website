@@ -3,7 +3,8 @@ import { defineField, defineType } from 'sanity'
 
 import { maxLength, orderRankField } from './shared'
 
-// Témoignage client : la citation sur photo d'entrepôt, sous la section « Customer story ».
+// Témoignage client : la citation sur photo d'entrepôt, sous la section « Customer story » ; liste sur
+// /testimonials, page à lui sur /testimonials/:slug.
 export const testimonial = defineType({
   name: 'testimonial',
   title: 'Témoignage',
@@ -35,6 +36,19 @@ export const testimonial = defineType({
       title: 'Entreprise',
       type: 'string',
       validation: (rule) => [rule.required(), maxLength(rule, 60)],
+    }),
+    // Page du témoignage (/testimonials/:slug). Studio : généré depuis le nom et l'entreprise ; admin
+    // (C4) : depuis le nom (titleField), à la création. La migration en a donné un aux témoignages existants.
+    defineField({
+      name: 'slug',
+      title: 'Slug',
+      type: 'slug',
+      description: 'Adresse de la page du témoignage (/testimonials/…). La changer change l’URL publique.',
+      options: {
+        source: (doc) => [doc.name, doc.company].filter((part) => typeof part === 'string' && part).join(' '),
+        maxLength: 96,
+      },
+      validation: (rule) => rule.required(),
     }),
     defineField({
       name: 'caseStudyUrl',

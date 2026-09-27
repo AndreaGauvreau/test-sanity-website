@@ -1,7 +1,8 @@
 # core/auth — LLM context
 
-> Propriétaire : auth-core · Figma : A1 (docs/admin/figma/screens/A1.md) · Mis à jour : 2026-09-27 (vague 3b-2, FOLLOWUPS #39)
-> Possède aussi : `src/proxy.ts`, `src/app/admin/api/auth/**`, `src/app/admin/auth/**` (callback, denied).
+> Propriétaire : auth-core · Figma : A1 (docs/admin/figma/screens/A1.md) · Mis à jour : 2026-09-27 (question 9 : editor-access)
+> Possède aussi : `src/proxy.ts`, `src/app/admin/api/auth/**`, `src/app/admin/auth/**` (callback, denied),
+> `src/admin/live-edit/` (bouton « Edit with AI » du site en ligne, voir son CLAUDE.md).
 
 ## Utilité
 
@@ -22,6 +23,9 @@ données (`getLoginProviders`, `getDevLoginState`, `loginErrorMessage`).
 - `login.ts` — `signInWithSid({ projectId, sid, allowlist, fetchImpl? })` : sid → jeton → `/users/me` → rôle ; refus (et révocation du jeton) sinon. Pur.
 - `dev.ts` — `decideDevAutologin`, `warnIfDevAutologinRefused`, `buildDevSession`, `isLocalHost` (forme stricte, SEC-03), `hostnameOf`, `isAdminClosed` (aperçu), `parseAdminRole`. Pur.
 - `next-path.ts` — `sanitizeNextPath` (anti-redirection ouverte, anti-boucle), `loginUrlFor`. Pur.
+- `editor-access.ts` — question 9 : `decideEditorAccess({ role, path, pages, can? })` → `{ canEdit: false }` ou
+  `{ canEdit: true, href }` ; `normalizePublicPath` (chemin relatif seulement, sans requête/fragment/barre finale),
+  `editablePageForPath` (PageDef exacte avec `aiEditor: true`, jamais un motif `:slug`), `editorHrefFor`. Pur.
 - `request.ts` — `requestOrigin`, `shouldUseSecureCookies`, `isSameOriginRequest` (CSRF). Pur.
 - `proxy-rules.ts` — `decideProxy` (async, décision du proxy en fonction pure), `PAGE_CAPABILITIES` / `pageCapabilityFor`,
   `ADMIN_DENIED_PATH`, `HARNESS_PATH` / `HARNESS_FRAME_HEADERS`, `PREVIEW_CLOSED_PREFIXES`, `PREVIEW_COOKIE`,
@@ -36,6 +40,10 @@ données (`getLoginProviders`, `getDevLoginState`, `loginErrorMessage`).
 - `src/app/admin/api/auth/session/route.ts` — POST `{ sid, next? }` → cookie `kz_admin` + `{ ok, redirect, session: PublicSession }`.
 - `src/app/admin/api/auth/logout/route.ts` — POST → révocation Sanity + cookie effacé ; 303 vers A1 (ou JSON si `Accept: application/json`).
 - `src/app/admin/api/auth/dev-role/route.ts` — POST `{ role | 'off', next? }` (JSON ou formulaire), dev seulement, sinon 404.
+- `src/app/admin/api/auth/editor-access/route.ts` (+ `route.test.ts`) — GET `?path=<chemin public>` → toujours 200
+  `{ canEdit: false }` ou `{ canEdit: true, href: '/admin/editor?page=<id>&back=%2Fadmin%2Fpages%2F<id>' }`,
+  `cache-control: private, no-store`, `vary: Cookie`. `getSession()` SANS redirection (session de dev comprise) ;
+  erreur de session (secret absent) → false. Appelée par le bouton du site (`src/admin/live-edit`).
 - `src/app/admin/auth/callback/{page.tsx,AuthCallback.tsx,callback.module.css}` — retour du fournisseur : lit `#sid=`, l'efface de l'URL, POST session, puis `location.replace(redirect)`.
 - `src/app/admin/auth/denied/page.tsx` — cible INTERNE de la réécriture du proxy : `notFound()` immédiat, hors de tout
   loading.tsx → vraie 404 avec `app/admin/not-found.tsx` (plein écran).
@@ -88,6 +96,13 @@ tout de suite ; un rôle devenu inconnu = plus de session. Les rôles Sanity eux
 Serveur d'aperçu (`KZ_EDITOR_PREVIEW=1`) : `getSession` renvoie toujours null (l'admin y est fermé, même pour les
 routes hors du matcher du proxy).
 Cookie expiré/retouché/autre secret → `null` → redirection vers A1 puis retour à l'écran demandé (`x-kz-path` posé par le proxy).
+
+**Accès depuis le site en ligne (question 9)** : le cookie `kz_admin` a `path=/admin`, le site ne le voit pas ; le
+bouton du site appelle `GET /admin/api/auth/editor-access?path=` (même origine, le navigateur envoie le cookie car la
+requête vise /admin). Route publique pour le proxy (`/admin/api/auth/**`) : c'est elle qui lit la session, vérifie
+`can(role, 'ai.editor')` et la page (`aiEditor: true`, chemin exact). Refus = `{ canEdit: false }` quelle qu'en soit la
+cause (rien révélé : ni rôle, ni identité). `back` = `/admin/pages/<id>` : `sanitizeNextPath` n'accepte que `/admin…`,
+le « ‹ Admin » de l'éditeur ne revient donc pas au site public.
 
 **Gardes** : `requireSession('page')` sans session → `redirect('/admin/login?next=…')` ; `'action' | 'route'` →
 `AdminAuthError(401)`. `requireCapability` sans le droit : page → `notFound()` (404 : ne révèle pas une page Kuartz ;
@@ -168,6 +183,8 @@ pour que « Log out » ramène vraiment sur A1 ; choisir un rôle le réactive).
   au jeton d'aperçu (SEC-06).
 - `ADMIN_SESSION_SECRET` ≥ 32 caractères (sinon exception) ; le changer déconnecte tout le monde.
 - Ne pas relâcher `isPlausibleSid`, `sanitizeNextPath`, `isSameOriginRequest` ni le filtre des URL de fournisseur.
+- `editor-access` : ne JAMAIS y ajouter l'identité, le rôle ou la raison d'un refus (la route est publique et appelée
+  par chaque visiteur ≥ 1 024 px) ; garder `no-store` ; jamais de redirection ni de 401 (le site n'affiche rien).
 
 ## Pièges
 
@@ -203,6 +220,8 @@ pour que « Log out » ramène vraiment sur A1 ; choisir un rôle le réactive).
 - Donner le rôle kuartz à quelqu'un : l'ajouter à `KUARTZ_ALLOWLIST` (serveur ; id Sanity de préférence) ET lui donner
   Developer ou Administrator dans Sanity. Effet immédiat (rôle recalculé à chaque requête).
 - Ajouter un message d'erreur de A1 : `loginErrorMessage` (constants.ts) et le code dans la route qui redirige.
+- Ouvrir le bouton « Edit with AI » sur une autre page : `aiEditor: true` dans src/admin.config.ts (rien ici) ; une
+  page à motif (`/blog/:slug`) demanderait d'étendre `editablePageForPath` (et l'éditeur, qui ne connaît que les ids).
 - Protéger une nouvelle page : `const session = await requireCapability('settings.code')` en première ligne.
 - Protéger une server action : `await requireCapability('content.write', 'action')` puis capturer `AdminAuthError`.
 
@@ -221,6 +240,11 @@ exclues, préfixes exacts : `/__nextjs_*`, `/_next/staticx`, `/_next/imagex` pas
 avec un faux Next (page →
 redirect / 404, action / route → 401 / 403, cookie « kuartz » hors liste lu comme editor, aperçu sans session,
 PublicSession, cookie, logout).
+`editor-access.test.ts` + `src/app/admin/api/auth/editor-access/route.test.ts` (vraie session.ts, faux Next) : sans
+session → false (200, no-store), vraie session → href, rôle sans `ai.editor` (contrat espionné) → false, `/blog`
+(sans `aiEditor`), motif d'article, page inconnue, `/admin`, URL absolue ou `//hôte` → false, requête/fragment
+ignorés, session de dev → true puis `kz_dev_role=off` → false, aperçu → false, secret absent → false, réponse sans
+identité ni rôle.
 Non couvert : la page `AuthCallback` (composant client) et un vrai aller-retour Sanity.
 À la main : `curl -i http://127.0.0.1:4040/admin/api/engine/health` (en-têtes anti-iframe) ; POST avec
 `Origin: https://evil.com` → 403 ; `POST /admin/api/auth/session {"sid":"short"}` → 401 sans appel Sanity.
@@ -237,6 +261,10 @@ Conduit Admin ») ; kuartz → 200 ; editor → 404 sur code et team ; `Host: [:
 - QA-1 : routes d'envoi hors du matcher (plutôt que `proxyClientMaxBodySize`, qui garderait tout le corps en mémoire).
 - `logout()` en dev pose `kz_dev_role=off` pour sortir vraiment de l'autologin.
 - Question 2 du Figma (interface propre) : tranchée par l'orchestrateur, connexion par jeton gardé côté serveur.
+- Question 9 (2026-09-27, décision changée) : ouverture de l'éditeur depuis le site en ligne par une route publique
+  `editor-access` plutôt qu'un cookie d'indice lisible par le site (`path=/`) : rien de nouveau n'est exposé aux
+  scripts du site, au prix d'une requête par page vue (≥ 1 024 px, hors iframe). Piste si ce coût gêne en production :
+  un cookie d'indice non sensible posé à la connexion pour ne faire la requête que s'il existe.
 
 ## Demandes de contrat
 

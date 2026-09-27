@@ -53,6 +53,7 @@ src/admin/                          ← tout le code de l'admin, isolé du site 
      publish (E1, E2, G3)           (publish-ui)        ask-ai (ask-ai)
      ai-editor/sidebar (D, G2)      (editor-sidebar)    ai-editor/canvas (D, G1) (editor-canvas)
   editor-bridge/                    pont de l'aperçu, monté dans le SITE en mode aperçu seulement (editor-canvas)
+  live-edit/                        bouton « Edit with AI » du site en ligne, monté dans le SITE hors aperçu (auth-core)
 src/app/admin/                      routes Next minces : elles importent les features (chaque agent possède ses routes)
 src/app/studio/                     Studio Sanity déplacé (site-adapter)
 src/admin.config.ts                 manifeste du site pour l'admin (site-adapter), type AdminConfig
@@ -119,6 +120,8 @@ Le bouton Publish natif du Studio publierait un texte sans le code qui va avec :
   production. Le jeton Sanity de l'utilisateur ne quitte jamais le serveur (`PublicSession` côté client).
 - **Garde** : `src/proxy.ts` (Next 16) redirige vers `/admin/login` sans cookie ; la vraie vérification est
   `requireSession()` / `requireCapability()` au début de CHAQUE page serveur, server action et route handler de l'admin.
+  Exception publique (comme login/session) : `GET /admin/api/auth/editor-access?path=` (question 9) lit la session
+  sans rediriger et ne répond que `{ canEdit: false }` ou `{ canEdit: true, href }`.
 - **Développement** : `ADMIN_DEV_AUTOLOGIN=kuartz|client|editor` (seulement `NODE_ENV=development` et hôte 127.0.0.1)
   ouvre une session sans jeton Sanity ; les écritures passent alors par `SANITY_API_WRITE_TOKEN`. Un sélecteur de rôle de
   développement dans le menu utilisateur permet de voir les deux admins. Jamais dans un `.env` commité.
@@ -146,7 +149,14 @@ Payload intervenait (magasin de contenu, cibles texte, identité, stockage, publ
 6. **Coût** : `total_cost_usd` d'une session reprise est cumulé (ne pas l'additionner) ; plafond du cumul par demande côté
    moteur ; appel interrompu estimé d'après les jetons vus. Chaque demande terminée écrit un `aiUsage`.
 7. **Langue** : l'admin est en anglais, donc les questions et messages de Claude au client aussi (`RULES.md` en anglais).
-8. **Accès Claude** : `ANTHROPIC_API_KEY` en priorité ; `CLAUDE_CODE_OAUTH_TOKEN` (abonnement) seulement en développement.
+8. **Accès Claude** (réglé dans l'admin, B5 · Usage › « Claude connection », sans redémarrage — `engine/src/access`) :
+   `ANTHROPIC_API_KEY` de l'environnement toujours prioritaire ; puis la clé API enregistrée depuis l'admin (relais signé,
+   POST ; chiffrée AES-256-GCM avec une clé dérivée d'ENGINE_SECRET dans `<ENGINE_WORKSPACE>/data/claude-access.json`,
+   0600, jamais dans Sanity, jamais renvoyée : seulement « sk-ant-…XXXX ») ; puis, moteur ENGINE_MODE=local écrit ET admin
+   sur localhost, « Use my Claude subscription » = la connexion Claude Code de la machine (`claude` puis `/login` ; le
+   sous-processus la lit lui-même via CLAUDE_SECURESTORAGE_CONFIG_DIR, CLAUDE_CONFIG_DIR restant dédié) ; puis
+   `CLAUDE_CODE_OAUTH_TOKEN` (repli local). Jamais d'abonnement en hébergé. Droit `ai.access` (Kuartz et client). Test de
+   connexion : clé API → `GET /v1/models` (gratuit) ; abonnement → un tour Haiku sans outil.
    Aucun appel réel à Claude pendant la construction : les tests injectent un faux Claude. Le premier passage réel se fait
    avec l'accord de l'utilisateur.
 
@@ -204,11 +214,14 @@ autorisée du pont), `ENGINE_IDENTITY_PRIVATE_KEY` (Ed25519, signe l'identité e
 `ENGINE_SOURCE_REPO`, `ENGINE_SOURCE_BRANCH` (facultatif, sinon la branche courante de la source), `ENGINE_GIT_PUSH` (0 par défaut),
 `EDITOR_MAX_REQUEST_USD` (facultatif : plafond du cumul d'une demande, 2 essais compris ; défaut = `EDITOR_MAX_BUDGET_USD`), `VERCEL_DEPLOY_HOOK_URL` (facultatif), `SITE_REVALIDATE_URL`,
 `REVALIDATE_SECRET`, `NEXT_PUBLIC_SANITY_PROJECT_ID`, `NEXT_PUBLIC_SANITY_DATASET`, `SANITY_API_READ_TOKEN`,
-`SANITY_API_WRITE_TOKEN`, `ANTHROPIC_API_KEY` ou `CLAUDE_CODE_OAUTH_TOKEN`, `EDITOR_MODEL` (claude-opus-5-5),
+`SANITY_API_WRITE_TOKEN`, `ANTHROPIC_API_KEY` et `CLAUDE_CODE_OAUTH_TOKEN` (FACULTATIFS depuis le 2026-09-27 : l'accès se
+règle dans l'admin, B5 › Claude connection ; `ANTHROPIC_API_KEY`, si présente, l'emporte et l'écran le dit ;
+`CLAUDE_CODE_OAUTH_TOKEN` = repli local de l'abonnement), `EDITOR_MODEL` (claude-opus-5-5),
 `EDITOR_EFFORT` (medium), `EDITOR_MAX_TURNS` (24), `EDITOR_MAX_BUDGET_USD` (1.5), `ASK_MODEL` (claude-haiku-4-5-20251001).
 
 Aucun secret n'est affiché, collé dans une conversation ni commité. Les jetons Claude et Sanity sont recopiés par
-l'utilisateur lui-même.
+l'utilisateur lui-même (la clé API Claude peut aussi être collée par l'utilisateur dans l'admin, B5).
+Fichier du moteur (hors dépôt) : `<ENGINE_WORKSPACE>/data/claude-access.json` — accès enregistré depuis l'admin, clé chiffrée.
 
 ## 10. Décisions prises pour les « À trancher » du Figma (réversibles, rappelées dans les CLAUDE.md concernés)
 
@@ -220,10 +233,10 @@ l'utilisateur lui-même.
 | 5 | Code (B3), diff et retour arrière (E2) réservés à Kuartz. |
 | 6 | Team : liste et invitation par l'API Sanity si l'utilisateur en a le droit, sinon lien vers la gestion Sanity. |
 | 7 | Moteur local persistant ; Vercel Sandbox ou VM plus tard (mode `hosted` prévu dans les contrats). |
-| 9 | Pas d'ouverture de l'éditeur depuis le site public dans ce build. |
+| 9 | **Décision changée le 2026-09-27** (demande de l'utilisatrice) : sur le site en ligne, une personne connectée à l'admin avec le droit `ai.editor` voit une pilule flottante « Edit with AI » (bas à droite, ≥ 1 024 px, jamais en aperçu de l'éditeur, en Draft Mode/Presentation ni dans une iframe) qui ouvre `/admin/editor?page=<id>` sur la page affichée si elle a `aiEditor: true`. Rendu côté client seulement, après `GET /admin/api/auth/editor-access?path=` (auth-core, `{ canEdit, href? }`, no-store) : HTML public inchangé pour un visiteur. `src/admin/live-edit/`. |
 | 10 | Images des pages dans Sanity quand le schéma les porte ; les visuels décoratifs du code restent dans le code. |
 | 11 | Rôle Editor : l'admin du client sans Team. |
 | 12 | Journal IA : un document Sanity privé par demande. |
 | 13 | Texte alternatif sur l'asset (`altText`), repli sur l'`alt` existant. |
 | 14 | Sidebar de l'éditeur : 260 à 480 px, double-clic → 260. |
-| 15 | Pas de pages /testimonials ni /faq (elles n'existent pas sur Conduit) : les pages viennent de `admin.config.ts`. |
+| 15 | **Révisée le 2026-09-27 (décision de l'utilisatrice)** : vraies pages publiques /testimonials, /testimonials/:slug, /faq, /faq/:slug, bâties comme Blog (documents `testimonialsPage`, `faqPage`, modèles `articleSeo-testimonial`, `articleSeo-faq`, champ `slug`), sans maquette, avec les composants existants ; déclarées dans `admin.config.ts` (`aiEditor: false`). L'accueil ne change pas (prouvé au pixel). |

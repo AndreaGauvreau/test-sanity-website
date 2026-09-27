@@ -44,12 +44,20 @@ export function editorHref(pageId: string, back?: string): string {
 export function articleOf(
   page: PageDef,
   config: Config = DEFAULT_CONFIG,
-): { collection: CollectionDef | undefined; variables: readonly SeoTemplateVariable[]; path: string; documentId: string } | null {
+): {
+  collection: CollectionDef | undefined
+  variables: readonly SeoTemplateVariable[]
+  /** Champs image de l'article utilisables comme image OG (« From field ») ; vide : image fixe seulement. */
+  imageFields: readonly ArticleImageField[]
+  path: string
+  documentId: string
+} | null {
   if (!page.article) return null
   const template = config.articleSeoTemplates.find((t) => t.collection === page.article!.collection)
   return {
     collection: collectionByType(page.article.collection, config),
     variables: template?.variables ?? [],
+    imageFields: ARTICLE_IMAGE_FIELDS[page.article.collection] ?? [],
     path: page.article.path,
     documentId: page.article.seoTemplate.id,
   }
@@ -174,6 +182,17 @@ export const SEO_FIELDS = {
 } as const satisfies Record<string, FieldDef>
 
 export type SeoKey = keyof typeof SEO_FIELDS
+
+export type ArticleImageField = { value: string; label: string }
+
+/**
+ * Champs image par collection (type Sanity) pour « From field » (C6) : même liste que IMAGE_FIELDS du schéma
+ * (src/sanity/schemaTypes/articleSeoTemplate.ts), où `ogImageField` n'est visible que pour post. Témoignages et
+ * questions n'ont pas d'image : image fixe du modèle, sinon image de partage du site.
+ */
+export const ARTICLE_IMAGE_FIELDS: Readonly<Record<string, readonly ArticleImageField[]>> = {
+  post: [{ value: 'cover', label: 'Cover' }],
+}
 
 /** Champs du modèle SEO d'article (document articleSeoTemplate, C6). */
 export const ARTICLE_SEO_FIELDS = {

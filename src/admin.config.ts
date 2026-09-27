@@ -1,4 +1,4 @@
-import type { AdminConfig, FieldDef } from '@/admin/core/contracts'
+import type { AdminConfig, FieldDef, SectionDef } from '@/admin/core/contracts'
 
 /**
  * Manifeste du site Conduit pour l'admin (contrat AdminConfig, src/admin/core/contracts/manifest.ts).
@@ -40,6 +40,23 @@ const eyebrow = (zone: string, maxLength = 30): FieldDef => ({
   help: 'The small label above the title.',
   zone,
 })
+
+/**
+ * Section « Page » des pages listing /testimonials et /faq (documents testimonialsPage, faqPage) : textes de
+ * l'en-tête et message sans élément. Vides : textes par défaut du site (src/lib/page-defaults.ts).
+ */
+function listingContent(defaults: { eyebrow: string; title: string; lede: string; emptyText: string }) {
+  return {
+    name: 'content',
+    label: 'Page',
+    fields: [
+      { name: 'eyebrow', label: 'Eyebrow', kind: 'string', maxLength: 30, help: `The small label above the title. Empty: “${defaults.eyebrow}”.` },
+      { name: 'title', label: 'Title', kind: 'string', maxLength: 60, help: `Page title (H1). Empty: “${defaults.title}”.` },
+      { name: 'lede', label: 'Subtitle', kind: 'text', maxLength: 200, help: `The sentence under the title. Empty: “${defaults.lede}”.` },
+      { name: 'emptyText', label: 'Empty list message', kind: 'string', maxLength: 80, help: `Shown while the collection is empty. Empty: “${defaults.emptyText}”.` },
+    ],
+  } satisfies SectionDef
+}
 
 const SEO = { metaTitle: 'seo.metaTitle', metaDescription: 'seo.metaDescription', ogImage: 'seo.ogImage', allowIndexing: 'seo.allowIndexing' }
 
@@ -406,6 +423,53 @@ const adminConfig = {
         seoTemplate: { type: 'articleSeoTemplate', id: 'articleSeo-post' },
       },
     },
+    {
+      id: 'testimonials',
+      label: 'Testimonials',
+      path: '/testimonials',
+      document: { type: 'testimonialsPage', id: 'testimonialsPage' },
+      // Pas de zones de l'éditeur IA sur cette page (comme /blog) : formulaire C1 seulement.
+      aiEditor: false,
+      seo: SEO,
+      sections: [
+        listingContent({
+          eyebrow: 'Testimonials',
+          title: 'What our customers say',
+          lede: 'Operations teams share how Conduit changed the way their docks run.',
+          emptyText: 'No testimonials published yet.',
+        }),
+      ],
+      article: {
+        collection: 'testimonial',
+        path: '/testimonials/:slug',
+        seoTemplate: { type: 'articleSeoTemplate', id: 'articleSeo-testimonial' },
+      },
+    },
+    {
+      id: 'faq',
+      label: 'FAQ',
+      path: '/faq',
+      document: { type: 'faqPage', id: 'faqPage' },
+      aiEditor: false,
+      seo: SEO,
+      jsonLd: {
+        file: 'src/app/(site)/faq/page.tsx',
+        summary: 'FAQPage built from the published FAQ questions that have an answer (same as the Home FAQ section).',
+      },
+      sections: [
+        listingContent({
+          eyebrow: 'FAQ',
+          title: 'Frequently asked questions',
+          lede: 'Everything you need to know about Conduit Dock Scheduling.',
+          emptyText: 'No questions published yet.',
+        }),
+      ],
+      article: {
+        collection: 'faq',
+        path: '/faq/:slug',
+        seoTemplate: { type: 'articleSeoTemplate', id: 'articleSeo-faq' },
+      },
+    },
   ],
   collections: [
     {
@@ -472,9 +536,12 @@ const adminConfig = {
       singular: 'Testimonial',
       icon: 'database',
       titleField: 'name',
+      slugField: 'slug',
+      articlePath: '/testimonials/:slug',
       columns: [
         { field: 'name', label: 'Name', kind: 'title', width: 200 },
         { field: 'status', label: 'Status', kind: 'status', width: 120 },
+        { field: 'slug', label: 'Slug', kind: 'text', width: 220 },
         { field: 'company', label: 'Company', kind: 'text', width: 220 },
         { field: 'role', label: 'Role', kind: 'text', width: 180 },
         { field: 'quote', label: 'Quote', kind: 'text', width: 360 },
@@ -484,6 +551,7 @@ const adminConfig = {
         { name: 'name', label: 'Name', kind: 'string', required: true, maxLength: 50, zone: 'testimonial.quote.author' },
         { name: 'role', label: 'Role', kind: 'string', maxLength: 60, zone: 'testimonial.quote.author' },
         { name: 'company', label: 'Company', kind: 'string', required: true, maxLength: 60, zone: 'testimonial.quote.author' },
+        { name: 'slug', label: 'Slug', kind: 'slug', required: true, maxLength: 96, help: 'Generated from the name. Changing it changes the public URL.' },
         { name: 'caseStudyUrl', label: 'Case study link', kind: 'url', help: 'Default destination of the “Read the case study” button.' },
       ],
       orderable: true,
@@ -498,12 +566,16 @@ const adminConfig = {
       singular: 'Question',
       icon: 'database',
       titleField: 'question',
+      slugField: 'slug',
+      articlePath: '/faq/:slug',
       columns: [
         { field: 'question', label: 'Question', kind: 'title', width: 420 },
         { field: 'status', label: 'Status', kind: 'status', width: 120 },
+        { field: 'slug', label: 'Slug', kind: 'text', width: 260 },
       ],
       fields: [
         { name: 'question', label: 'Question', kind: 'string', required: true, maxLength: 100, zone: 'faq.item.question' },
+        { name: 'slug', label: 'Slug', kind: 'slug', required: true, maxLength: 96, help: 'Generated from the question. Changing it changes the public URL.' },
         {
           name: 'answer',
           label: 'Answer',
@@ -532,6 +604,29 @@ const adminConfig = {
         { token: 'cover', label: 'Cover', path: 'image' },
         { token: 'author', label: 'Author', path: 'author' },
         { token: 'category', label: 'Category', path: 'category' },
+      ],
+    },
+    {
+      collection: 'testimonial',
+      document: { type: 'articleSeoTemplate', id: 'articleSeo-testimonial' },
+      // Mêmes variables que TESTIMONIAL_TEMPLATE_VARIABLES (schéma) et src/lib/article-values.ts.
+      variables: [
+        { token: 'name', label: 'Name', path: 'name' },
+        { token: 'slug', label: 'Slug', path: 'slug.current' },
+        { token: 'company', label: 'Company', path: 'company' },
+        { token: 'role', label: 'Role', path: 'role' },
+        { token: 'quote', label: 'Quote', path: 'quote' },
+      ],
+    },
+    {
+      collection: 'faq',
+      document: { type: 'articleSeoTemplate', id: 'articleSeo-faq' },
+      // Mêmes variables que FAQ_TEMPLATE_VARIABLES (schéma) et src/lib/article-values.ts ; {{answer}} = texte
+      // brut de la réponse, 160 caractères au plus.
+      variables: [
+        { token: 'question', label: 'Question', path: 'question' },
+        { token: 'slug', label: 'Slug', path: 'slug.current' },
+        { token: 'answer', label: 'Answer (plain text, 160 characters)', path: 'answer' },
       ],
     },
   ],

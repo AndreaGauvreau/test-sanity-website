@@ -94,10 +94,10 @@ async function boot(options: { modules?: boolean } = {}) {
 }
 
 describe('engine-publish dans le moteur', () => {
-  it('MODULES de main.ts : usage, publish, versions, ask (dans cet ordre ; ask après usage)', () => {
+  it('MODULES de main.ts : usage, publish, versions, ask (dans cet ordre ; ask après usage), puis claude-access', () => {
     assert.deepEqual(
       MODULES.map((module) => module.name),
-      ['usage', 'publish', 'versions', 'ask'],
+      ['usage', 'publish', 'versions', 'ask', 'claude-access'],
     )
   })
 

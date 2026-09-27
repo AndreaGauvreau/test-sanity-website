@@ -4,17 +4,29 @@ import { defineField, defineType } from 'sanity'
 import { maxLength } from './shared'
 
 /**
- * Variables {{…}} d'un modèle SEO de page article (C6) et des scripts de page article (G6), pour la
- * collection post. Liste reprise dans src/admin.config.ts (articleSeoTemplates) et lue par
- * src/lib/seo-template.ts. {{cover}} = URL de l'image (1200 × 630).
+ * Variables {{…}} d'un modèle SEO de page article (C6) et des scripts de page article (G6), par collection
+ * (type Sanity). Listes reprises dans src/admin.config.ts (articleSeoTemplates) et calculées par les pages
+ * article du site (src/lib/article-values.ts pour testimonial et faq). {{cover}} = URL de l'image (1200 × 630) ;
+ * {{answer}} = texte brut de la réponse, 160 caractères au plus.
  */
 export const POST_TEMPLATE_VARIABLES = ['title', 'slug', 'date', 'excerpt', 'cover', 'author', 'category'] as const
+export const TESTIMONIAL_TEMPLATE_VARIABLES = ['name', 'slug', 'company', 'role', 'quote'] as const
+export const FAQ_TEMPLATE_VARIABLES = ['question', 'slug', 'answer'] as const
 
-// Champs image d'un article utilisables comme image OG (« From field »).
+export const ARTICLE_TEMPLATE_VARIABLES: Readonly<Record<string, readonly string[]>> = {
+  post: POST_TEMPLATE_VARIABLES,
+  testimonial: TESTIMONIAL_TEMPLATE_VARIABLES,
+  faq: FAQ_TEMPLATE_VARIABLES,
+}
+
+const variableList = (collection: string) => ARTICLE_TEMPLATE_VARIABLES[collection].map((v) => `{{${v}}}`).join(', ')
+
+// Champs image d'un article utilisables comme image OG (« From field ») : seul post en a un.
 const IMAGE_FIELDS = [{ title: 'Cover (image de l’article)', value: 'cover' }]
 
 // Modèle SEO de la page article d'une collection (C6) : un document par collection, id fixe SANS point
-// (« articleSeo-post ») : un id avec un point serait privé et le site ne pourrait pas le lire.
+// (« articleSeo-post », « articleSeo-testimonial », « articleSeo-faq ») : un id avec un point serait privé et
+// le site ne pourrait pas le lire.
 export const articleSeoTemplate = defineType({
   name: 'articleSeoTemplate',
   title: 'SEO des pages article',
@@ -25,7 +37,7 @@ export const articleSeoTemplate = defineType({
       name: 'collection',
       title: 'Collection',
       type: 'string',
-      description: 'Type Sanity des articles (post = /blog/:slug).',
+      description: 'Type Sanity des articles : post = /blog/:slug, testimonial = /testimonials/:slug, faq = /faq/:slug.',
       readOnly: true,
       validation: (rule) => rule.required(),
     }),
@@ -33,7 +45,7 @@ export const articleSeoTemplate = defineType({
       name: 'metaTitle',
       title: 'Meta title',
       type: 'string',
-      description: `Avec des variables : {{title}} | Conduit Blog. Variables : ${POST_TEMPLATE_VARIABLES.map((v) => `{{${v}}}`).join(', ')}. « — Conduit » est ajouté par le site.`,
+      description: `Avec des variables : {{title}} | Conduit Blog. Variables — post : ${variableList('post')} ; testimonial : ${variableList('testimonial')} ; faq : ${variableList('faq')}. « — Conduit » est ajouté par le site.`,
       validation: (rule) => maxLength(rule, 60),
     }),
     defineField({
@@ -41,7 +53,7 @@ export const articleSeoTemplate = defineType({
       title: 'Meta description',
       type: 'text',
       rows: 3,
-      description: 'Avec des variables : {{excerpt}}. Variable vide : description du site.',
+      description: 'Avec des variables : {{excerpt}}, {{quote}}, {{answer}}. Variable vide : description du site.',
       validation: (rule) => maxLength(rule, 160),
     }),
     defineField({
@@ -50,6 +62,8 @@ export const articleSeoTemplate = defineType({
       type: 'string',
       description: 'Choisi : l’image de ce champ (From field). Vide : l’image fixe ci-dessous.',
       options: { list: IMAGE_FIELDS },
+      // Témoignages et questions n'ont pas d'image : image fixe ou image de partage du site.
+      hidden: ({ document }) => document?.collection !== 'post',
     }),
     defineField({
       name: 'ogImage',

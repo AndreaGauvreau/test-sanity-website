@@ -2,7 +2,8 @@ import { rm, writeFile } from 'node:fs/promises'
 import type { AddressInfo } from 'node:net'
 import path from 'node:path'
 import { signPreviewToken } from '../../src/admin/core/engine/preview-token'
-import { createAgentRunner, readAgentSettings, resolveClaudeAccess, type AccessResult, type AgentSettings, type SettingsEnv } from './claude'
+import { accessModule, createClaudeAccessService, machineLoginOf, openAccessStore, systemProbe, testConfigDirOf, type ClaudeAccessService } from './access'
+import { createAgentRunner, readAgentSettings, type AccessResult, type AgentSettings, type SettingsEnv } from './claude'
 import { EngineConfigError, readEngineConfig, type EngineEnv } from './config'
 import { createRobotClient, sanityPort, type SanityPort } from './content/sanity'
 import { createTextStore } from './content/texts'
@@ -39,7 +40,8 @@ import { checkWorkspace, engineRunning, PID_FILE, WorkspaceError } from './works
 // ─── Section engine-publish (transfert d'engine-core) : journal aiUsage, publication, versions ───
 // Ordre : `usage` d'abord (il pose `ports.usage` ; ask-ai y écrit via `getUsageJournal(context)`).
 // Ask AI après usageModule : il écrit sa consommation dans le journal commun.
-export const MODULES: EngineModule[] = [usageModule, publishModule, versionsModule, askModule()]
+// Connexion à Claude depuis l'admin (B5) : routes /claude/access* sur le service créé par startEngine.
+export const MODULES: EngineModule[] = [usageModule, publishModule, versionsModule, askModule(), accessModule]
 
 /** Remplacements pour les tests (jamais utilisés par `npm run engine`). */
 export type EngineOverrides = {
@@ -55,6 +57,8 @@ export type EngineOverrides = {
   modules?: EngineModule[]
   /** Domaines du site (SEC-08) au lieu de ceux de `<ENGINE_SOURCE_REPO>/src/admin.config.ts`. */
   siteDomains?: readonly string[]
+  /** Connexion à Claude (tests : faux réseau, faux Claude Code, fausse sonde de la machine). */
+  claudeAccess?: ClaudeAccessService
   log?: (line: string) => void
 }
 
@@ -82,10 +86,30 @@ export async function startEngine(env: EngineEnv, overrides: EngineOverrides = {
   const store = await openEngineStore(config.paths.data)
   const lock = createEngineLock()
 
-  // Claude : accès (clé API d'abord ; abonnement seulement en mode local EXPLICITE), réglages de l'agent.
-  const access = resolveClaudeAccess(env, { localMode: config.mode === 'local' && config.explicitLocal })
-  if (!access.ok) log(`⚠ ${access.error}`)
-  else if (access.warning) log(`⚠ ${access.warning}`)
+  // Claude : accès RECHARGEABLE (engine/src/access) — ANTHROPIC_API_KEY de l'environnement d'abord, puis ce qui est
+  // enregistré depuis l'admin (clé API chiffrée, ou abonnement de la machine en mode local EXPLICITE seulement), puis
+  // CLAUDE_CODE_OAUTH_TOKEN (repli local). Lu à chaque demande : un changement depuis l'admin s'applique sans redémarrage.
+  const localMode = config.mode === 'local' && config.explicitLocal
+  const claudeAccess =
+    overrides.claudeAccess ??
+    createClaudeAccessService({
+      env,
+      mode: config.mode,
+      localMode,
+      store: openAccessStore({ dataDir: config.paths.data, secret: config.secret }),
+      machineLogin: machineLoginOf(env),
+      probe: systemProbe(env, { configDir: testConfigDirOf(config.paths.claude) }),
+      testModel: config.models.ask,
+      testConfigDir: testConfigDirOf(config.paths.claude),
+      log,
+    })
+  await claudeAccess.refresh()
+  {
+    const initial = claudeAccess.current()
+    if (!initial.ok) log(`⚠ ${initial.error}`)
+    else if (initial.warning) log(`⚠ ${initial.warning}`)
+  }
+  const currentAccess = () => claudeAccess.current()
   const settings: AgentSettings = readAgentSettings(env as SettingsEnv, { configDir: config.paths.claude })
   const maxRequestUsd = config.maxRequestUsd ?? settings.maxBudgetUsd
   // Faux Claude (ENGINE_FAKE_CLAUDE, mode local écrit seulement : validé par config.ts) : avertissement bruyant.
@@ -96,7 +120,10 @@ export async function startEngine(env: EngineEnv, overrides: EngineOverrides = {
   }
   // Sans accès Claude configuré, le faux Claude reçoit un identifiant factice (jamais envoyé nulle part) ; la santé et
   // Ask AI gardent l'accès RÉEL.
-  const editorAccess: AccessResult = fake && !access.ok ? { ok: true, access: { kind: 'api-key', secret: 'fake-claude-no-real-call' } } : access
+  const editorAccess = (): AccessResult => {
+    const current = currentAccess()
+    return fake && !current.ok ? { ok: true, access: { kind: 'api-key', secret: 'fake-claude-no-real-call' } } : current
+  }
   const runAgent: JobRunAgent =
     overrides.runAgent ??
     (fake
@@ -147,7 +174,10 @@ export async function startEngine(env: EngineEnv, overrides: EngineOverrides = {
   }
   const health = createHealth({
     mode: config.mode,
-    access,
+    // Accesseur : la santé suit l'accès rechargé depuis l'admin.
+    get access() {
+      return currentAccess()
+    },
     editorModel: settings.model,
     askModel: config.models.ask,
     sanityWrite: texts.available,
@@ -169,7 +199,10 @@ export async function startEngine(env: EngineEnv, overrides: EngineOverrides = {
     previewReady: () => preview.status().ready,
     previewUrl,
     runAgent,
-    access: editorAccess,
+    // Accesseur (rechargement à chaud) : relu au début de CHAQUE demande ; une demande lancée garde son identifiant.
+    get access() {
+      return editorAccess()
+    },
     settings,
     maxRequestUsd,
     fakeClaude: fake,
@@ -186,7 +219,23 @@ export async function startEngine(env: EngineEnv, overrides: EngineOverrides = {
 
   const router = createRouter()
   registerEditorRoutes(router, editor, health)
-  const context: EngineContext = { config, router, store, repo, lock, editor, sanity, texts, preview, access, settings, ports }
+  const context: EngineContext = {
+    config,
+    router,
+    store,
+    repo,
+    lock,
+    editor,
+    sanity,
+    texts,
+    preview,
+    get access() {
+      return currentAccess()
+    },
+    claudeAccess,
+    settings,
+    ports,
+  }
   const modules = overrides.modules ?? MODULES
   for (const module of modules) {
     await module.register(context)

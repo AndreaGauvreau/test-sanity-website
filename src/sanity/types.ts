@@ -206,6 +206,7 @@ export type Faq = {
   _updatedAt: string;
   _rev: string;
   question: string;
+  slug: Slug;
   answer: Array<{
     children?: Array<{
       marks?: Array<string>;
@@ -227,6 +228,12 @@ export type Faq = {
   orderRank?: string;
 };
 
+export type Slug = {
+  _type: "slug";
+  current: string;
+  source?: string;
+};
+
 export type Testimonial = {
   _id: string;
   _type: "testimonial";
@@ -237,6 +244,7 @@ export type Testimonial = {
   name: string;
   role?: string;
   company: string;
+  slug: Slug;
   caseStudyUrl?: string;
   orderRank?: string;
 };
@@ -310,12 +318,6 @@ export type SanityImageHotspot = {
   width: number;
 };
 
-export type Slug = {
-  _type: "slug";
-  current: string;
-  source?: string;
-};
-
 export type ArticleSeoTemplate = {
   _id: string;
   _type: "articleSeoTemplate";
@@ -334,6 +336,36 @@ export type ArticleSeoTemplate = {
     _type: "image";
   };
   allowIndexing?: boolean;
+};
+
+export type FaqPage = {
+  _id: string;
+  _type: "faqPage";
+  _createdAt: string;
+  _updatedAt: string;
+  _rev: string;
+  content?: {
+    eyebrow?: string;
+    title?: string;
+    lede?: string;
+    emptyText?: string;
+  };
+  seo?: Seo;
+};
+
+export type TestimonialsPage = {
+  _id: string;
+  _type: "testimonialsPage";
+  _createdAt: string;
+  _updatedAt: string;
+  _rev: string;
+  content?: {
+    eyebrow?: string;
+    title?: string;
+    lede?: string;
+    emptyText?: string;
+  };
+  seo?: Seo;
 };
 
 export type BlogPage = {
@@ -402,7 +434,15 @@ export type SiteSettings = {
   scripts?: Array<{
     name: string;
     placement: "headEnd" | "bodyStart" | "bodyEnd";
-    page: "all" | "home" | "blog" | "blog/slug";
+    page:
+      | "all"
+      | "home"
+      | "blog"
+      | "blog/slug"
+      | "testimonials"
+      | "testimonials/slug"
+      | "faq"
+      | "faq/slug";
     run: "once" | "everyPageVisit";
     code: string;
     enabled?: boolean;
@@ -553,12 +593,14 @@ export type AllSanitySchemaTypes =
   | Cta
   | AiUsage
   | Faq
+  | Slug
   | Testimonial
   | Post
   | SanityImageCrop
   | SanityImageHotspot
-  | Slug
   | ArticleSeoTemplate
+  | FaqPage
+  | TestimonialsPage
   | BlogPage
   | DockSchedulingPage
   | SiteSettings
@@ -796,7 +838,15 @@ export type SITE_SETTINGS_QUERY_RESULT = {
     _key: string;
     name: string;
     placement: "bodyEnd" | "bodyStart" | "headEnd";
-    page: "all" | "blog" | "blog/slug" | "home";
+    page:
+      | "all"
+      | "blog"
+      | "blog/slug"
+      | "faq"
+      | "faq/slug"
+      | "home"
+      | "testimonials"
+      | "testimonials/slug";
     run: "everyPageVisit" | "once";
     code: string;
     enabled: boolean | null;
@@ -833,6 +883,127 @@ export type ARTICLE_SEO_QUERY_RESULT = {
   allowIndexing: boolean | null;
 } | null;
 
+// Source: src/sanity/lib/queries.ts
+// Variable: TESTIMONIALS_PAGE_QUERY
+// Query: *[_type == "testimonialsPage" && _id == "testimonialsPage"][0]{  _id,  content,  seo}
+export type TESTIMONIALS_PAGE_QUERY_RESULT = {
+  _id: "testimonialsPage";
+  content: {
+    eyebrow?: string;
+    title?: string;
+    lede?: string;
+    emptyText?: string;
+  } | null;
+  seo: Seo | null;
+} | null;
+
+// Source: src/sanity/lib/queries.ts
+// Variable: FAQ_PAGE_QUERY
+// Query: *[_type == "faqPage" && _id == "faqPage"][0]{  _id,  content,  seo}
+export type FAQ_PAGE_QUERY_RESULT = {
+  _id: "faqPage";
+  content: {
+    eyebrow?: string;
+    title?: string;
+    lede?: string;
+    emptyText?: string;
+  } | null;
+  seo: Seo | null;
+} | null;
+
+// Source: src/sanity/lib/queries.ts
+// Variable: TESTIMONIALS_QUERY
+// Query: *[_type == "testimonial"] | order(coalesce(orderRank, "~") asc, _createdAt desc){  _id,  quote,  name,  role,  company,  "slug": slug.current}
+export type TESTIMONIALS_QUERY_RESULT = Array<{
+  _id: string;
+  quote: string;
+  name: string;
+  role: string | null;
+  company: string;
+  slug: string;
+}>;
+
+// Source: src/sanity/lib/queries.ts
+// Variable: TESTIMONIAL_QUERY
+// Query: *[_type == "testimonial" && slug.current == $slug][0]{  _id,  quote,  name,  role,  company,  caseStudyUrl,  "slug": slug.current}
+export type TESTIMONIAL_QUERY_RESULT = {
+  _id: string;
+  quote: string;
+  name: string;
+  role: string | null;
+  company: string;
+  caseStudyUrl: string | null;
+  slug: string;
+} | null;
+
+// Source: src/sanity/lib/queries.ts
+// Variable: TESTIMONIAL_SLUGS_QUERY
+// Query: *[_type == "testimonial" && defined(slug.current)]{  "slug": slug.current}
+export type TESTIMONIAL_SLUGS_QUERY_RESULT = Array<{
+  slug: string;
+}>;
+
+// Source: src/sanity/lib/queries.ts
+// Variable: FAQ_LIST_QUERY
+// Query: *[_type == "faq" && defined(answer)] | order(coalesce(orderRank, "~") asc, order asc){  _id,  question,  answer,  "slug": slug.current}
+export type FAQ_LIST_QUERY_RESULT = Array<{
+  _id: string;
+  question: string;
+  answer: Array<{
+    children?: Array<{
+      marks?: Array<string>;
+      text?: string;
+      _type: "span";
+      _key: string;
+    }>;
+    style?: "normal";
+    listItem?: never;
+    markDefs?: Array<{
+      href?: string;
+      _type: "link";
+      _key: string;
+    }>;
+    level?: number;
+    _type: "block";
+    _key: string;
+  }>;
+  slug: string;
+}>;
+
+// Source: src/sanity/lib/queries.ts
+// Variable: FAQ_QUERY
+// Query: *[_type == "faq" && slug.current == $slug && defined(answer)][0]{  _id,  question,  answer,  "slug": slug.current}
+export type FAQ_QUERY_RESULT = {
+  _id: string;
+  question: string;
+  answer: Array<{
+    children?: Array<{
+      marks?: Array<string>;
+      text?: string;
+      _type: "span";
+      _key: string;
+    }>;
+    style?: "normal";
+    listItem?: never;
+    markDefs?: Array<{
+      href?: string;
+      _type: "link";
+      _key: string;
+    }>;
+    level?: number;
+    _type: "block";
+    _key: string;
+  }>;
+  slug: string;
+} | null;
+
+// Source: src/sanity/lib/queries.ts
+// Variable: FAQ_SLUGS_QUERY
+// Query: *[_type == "faq" && defined(slug.current) && defined(answer)]{  "slug": slug.current}
+export type FAQ_SLUGS_QUERY_RESULT = Array<{
+  slug: string;
+}>;
+
 // Query TypeMap
 declare global {
   interface SanityQueries {
@@ -846,6 +1017,14 @@ declare global {
     '*[_type == "siteSettings" && _id == "siteSettings"][0]{\n  title,\n  description,\n  allowIndexing,\n  "faviconLight": faviconLight.asset->url,\n  "faviconDark": faviconDark.asset->url,\n  socialImage,\n  "scripts": scripts[enabled != false]{ _key, name, placement, page, run, code, enabled, signature }\n}': SITE_SETTINGS_QUERY_RESULT;
     '*[_type == "blogPage" && _id == "blogPage"][0]{\n  _id,\n  content,\n  seo\n}': BLOG_PAGE_QUERY_RESULT;
     '*[_type == "articleSeoTemplate" && _id == $id][0]{\n  metaTitle,\n  metaDescription,\n  ogImageField,\n  ogImage,\n  allowIndexing\n}': ARTICLE_SEO_QUERY_RESULT;
+    '*[_type == "testimonialsPage" && _id == "testimonialsPage"][0]{\n  _id,\n  content,\n  seo\n}': TESTIMONIALS_PAGE_QUERY_RESULT;
+    '*[_type == "faqPage" && _id == "faqPage"][0]{\n  _id,\n  content,\n  seo\n}': FAQ_PAGE_QUERY_RESULT;
+    '*[_type == "testimonial"] | order(coalesce(orderRank, "~") asc, _createdAt desc){\n  _id,\n  quote,\n  name,\n  role,\n  company,\n  "slug": slug.current\n}': TESTIMONIALS_QUERY_RESULT;
+    '*[_type == "testimonial" && slug.current == $slug][0]{\n  _id,\n  quote,\n  name,\n  role,\n  company,\n  caseStudyUrl,\n  "slug": slug.current\n}': TESTIMONIAL_QUERY_RESULT;
+    '*[_type == "testimonial" && defined(slug.current)]{\n  "slug": slug.current\n}': TESTIMONIAL_SLUGS_QUERY_RESULT;
+    '*[_type == "faq" && defined(answer)] | order(coalesce(orderRank, "~") asc, order asc){\n  _id,\n  question,\n  answer,\n  "slug": slug.current\n}': FAQ_LIST_QUERY_RESULT;
+    '*[_type == "faq" && slug.current == $slug && defined(answer)][0]{\n  _id,\n  question,\n  answer,\n  "slug": slug.current\n}': FAQ_QUERY_RESULT;
+    '*[_type == "faq" && defined(slug.current) && defined(answer)]{\n  "slug": slug.current\n}': FAQ_SLUGS_QUERY_RESULT;
   }
 }
 // Lets @sanity/client releases that predate the global registry read it too

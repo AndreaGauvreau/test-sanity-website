@@ -1,0 +1,13 @@
+/*
+ * Page d'un témoignage, hors maquette : l'en-tête et le retour à la liste reprennent les marges des sections ;
+ * entre les deux, la section Témoignage de l'accueil, pleine largeur (components/sections/Testimonial).
+ */
+.heading {
+  padding-block: var(--section-space) 2.75rem; /* 44 avant la photo, comme le titre de /blog */
+  padding-inline: var(--page-inset);
+}
+
+.back {
+  padding-block: 2.5rem var(--section-space); /* 40 */
+  padding-inline: var(--page-inset);
+}

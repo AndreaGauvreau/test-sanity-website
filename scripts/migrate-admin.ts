@@ -14,7 +14,12 @@
  *      publié d'un même document avec la même clé ; les documents déjà classés gardent leur clé ;
  *   3. documents uniques créés s'ils manquent : siteSettings (titre « Conduit », description, image de
  *      partage tirée d'une photo du site), blogPage (textes d'avant l'admin), articleSeo-post (modèle
- *      qui reproduit les métadonnées d'avant : {{title}}, {{excerpt}}, image de l'article).
+ *      qui reproduit les métadonnées d'avant : {{title}}, {{excerpt}}, image de l'article) ; pages
+ *      /testimonials et /faq (question 15 révisée) : testimonialsPage, faqPage (textes par défaut du site,
+ *      src/lib/page-defaults.ts), articleSeo-testimonial, articleSeo-faq (modèles par défaut de src/lib/seo.ts).
+ * Slugs (toujours, après la démo qui réécrit les témoignages de démo) :
+ *   8. slug des témoignages (nom + entreprise) et des questions (question) qui n'en ont pas, unique dans sa
+ *      collection, même valeur sur le publié et le brouillon ; un slug existant n'est jamais changé.
  * Démo (--demo, contenu CHANGÉ, voir docs/admin/research/site-baseline/README.md) :
  *   4. suppression de la démo LyonDrive (document home, 6 articles français, leurs images) ;
  *   5. blog de démonstration Conduit : 12 articles en anglais (src/sanity/seed/demo-blog.ts), images
@@ -30,6 +35,8 @@
 import { generateKeyBetween, generateNKeysBetween } from 'fractional-indexing'
 import { getCliClient } from 'sanity/cli'
 
+import { slugify, uniqueSlug } from '../src/admin/features/cms/lib/slug'
+import { FAQ_PAGE_DEFAULTS, TESTIMONIALS_PAGE_DEFAULTS } from '../src/lib/page-defaults'
 import { assertNotProduction } from '../src/sanity/lib/dataset-guard'
 import { planDemoScriptSignatures } from '../src/sanity/seed/demo-script-signatures'
 import { runDemo } from './lib/demo'
@@ -128,7 +135,11 @@ async function migrateOrderRank(type: string) {
 
 async function ensureSingletons() {
   const existing = new Set(
-    await client.fetch<string[]>(`*[_id in ["siteSettings", "blogPage", "articleSeo-post"]]._id`, {}, { perspective: 'raw' }),
+    await client.fetch<string[]>(
+      `*[_id in ["siteSettings", "blogPage", "articleSeo-post", "testimonialsPage", "faqPage", "articleSeo-testimonial", "articleSeo-faq"]]._id`,
+      {},
+      { perspective: 'raw' },
+    ),
   )
 
   if (existing.has('siteSettings')) log('siteSettings : existe, inchangé')
@@ -201,6 +212,92 @@ async function ensureSingletons() {
       })
     }
   }
+
+  await ensureListingPages(existing)
+}
+
+/** Pages listing /testimonials et /faq et modèles SEO de leurs pages article (question 15 révisée). */
+async function ensureListingPages(existing: Set<string>) {
+  const pages = [
+    { _id: 'testimonialsPage', defaults: TESTIMONIALS_PAGE_DEFAULTS },
+    { _id: 'faqPage', defaults: FAQ_PAGE_DEFAULTS },
+  ]
+  for (const { _id, defaults } of pages) {
+    if (existing.has(_id)) {
+      log(`${_id} : existe, inchangé`)
+      continue
+    }
+    log(`${_id} : création (textes par défaut du site)`)
+    if (!dryRun) {
+      await client.createIfNotExists({
+        _id,
+        _type: _id,
+        content: { ...defaults },
+        seo: { _type: 'seo', allowIndexing: true },
+      })
+    }
+  }
+  // Mêmes valeurs que DEFAULT_TESTIMONIAL_TEMPLATE et DEFAULT_FAQ_TEMPLATE (src/lib/seo.ts).
+  const templates = [
+    { _id: 'articleSeo-testimonial', collection: 'testimonial', metaTitle: 'Testimonial from {{name}}, {{company}}', metaDescription: '{{quote}}' },
+    { _id: 'articleSeo-faq', collection: 'faq', metaTitle: '{{question}}', metaDescription: '{{answer}}' },
+  ]
+  for (const template of templates) {
+    if (existing.has(template._id)) {
+      log(`${template._id} : existe, inchangé`)
+      continue
+    }
+    log(`${template._id} : création (modèle ${template.metaTitle} / ${template.metaDescription})`)
+    if (!dryRun) await client.createIfNotExists({ _type: 'articleSeoTemplate', ...template, allowIndexing: true })
+  }
+}
+
+// ─── 8. Slugs des témoignages et des questions ────────────────────────────────────────────
+
+/** Texte d'où vient le slug (Studio : `options.source` du champ, même règle). */
+const SLUG_SOURCE: Record<string, (doc: Record<string, unknown>) => string> = {
+  testimonial: (doc) => [doc.name, doc.company].filter((part) => typeof part === 'string' && part).join(' '),
+  faq: (doc) => (typeof doc.question === 'string' ? doc.question : ''),
+}
+
+async function ensureSlugs(type: string) {
+  const docs = await client.fetch<{ _id: string; slug?: { current?: string }; [key: string]: unknown }[]>(
+    `*[_type == $type] | order(_createdAt asc){ _id, slug, name, company, question }`,
+    { type },
+    { perspective: 'raw' },
+  )
+  // Un slug par document publié : celui du publié, sinon celui du brouillon, sinon un nouveau.
+  const slugOf = new Map<string, string>()
+  const byId = new Map(docs.map((doc) => [doc._id, doc]))
+  for (const doc of docs) {
+    const current = doc.slug?.current
+    const id = publishedId(doc._id)
+    if (current && (!slugOf.has(id) || doc._id === id)) slugOf.set(id, current)
+  }
+  const taken = new Set(slugOf.values())
+  const ids = [...new Set(docs.map((doc) => publishedId(doc._id)))]
+  let created = 0
+  for (const id of ids) {
+    if (slugOf.has(id)) continue
+    const source = byId.get(`drafts.${id}`) ?? byId.get(id)!
+    const slug = uniqueSlug(slugify(SLUG_SOURCE[type](source)), taken)
+    taken.add(slug)
+    slugOf.set(id, slug)
+    created++
+  }
+
+  const transaction = client.transaction()
+  let writes = 0
+  for (const doc of docs) {
+    const slug = slugOf.get(publishedId(doc._id))
+    if (!slug || doc.slug?.current === slug) continue
+    // Le publié et son brouillon reçoivent la même valeur (un slug existant n'est jamais remplacé).
+    if (doc.slug?.current) continue
+    transaction.patch(doc._id, (patch) => patch.set({ slug: { _type: 'slug', current: slug } }))
+    writes++
+  }
+  log(`slug ${type} : ${created} slug(s) créé(s), ${writes} document(s) à compléter (${ids.length} élément(s))`)
+  if (writes && !dryRun) await transaction.commit()
 }
 
 // ─── 7. Signature des scripts d'exemple (SEC-04) ─────────────────────────────────────────
@@ -234,6 +331,7 @@ async function main() {
   for (const type of Object.keys(CURRENT_ORDER)) await migrateOrderRank(type)
   await ensureSingletons()
   if (demo) await runDemo(client, { dryRun, log })
+  for (const type of Object.keys(SLUG_SOURCE)) await ensureSlugs(type)
   await signDemoScripts()
   log('Terminé.')
 }

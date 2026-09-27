@@ -1,9 +1,10 @@
 import type { NextRequest } from 'next/server'
 
-import { isSameOriginRequest } from '@/admin/core/auth/request'
+import { isLocalHost } from '@/admin/core/auth/dev'
+import { isSameOriginRequest, requestHost } from '@/admin/core/auth/request'
 import { authErrorResponse, requireSession } from '@/admin/core/auth/session'
 import { ENGINE_MESSAGES, engineErrorResponse } from '@/admin/core/engine/errors'
-import { MAX_ENGINE_BODY_BYTES, type EngineMethod } from '@/admin/core/engine/routes'
+import { MAX_ENGINE_BODY_BYTES, requiresLocalAdmin, type EngineMethod } from '@/admin/core/engine/routes'
 import { relayEngineRequest } from '@/admin/core/engine/server'
 import { readBodyCapped } from '@/admin/core/engine/transport'
 
@@ -38,6 +39,11 @@ async function handle(request: NextRequest, context: Context, method: EngineMeth
   }
 
   const { path } = await context.params
+  // « Use my Claude subscription » : seulement depuis un admin ouvert sur cette machine (le moteur exige en plus
+  // ENGINE_MODE=local). Ailleurs, seule une clé API est acceptée.
+  if (requiresLocalAdmin(method, path ?? [], body) && !isLocalHost(requestHost(request.headers))) {
+    return engineErrorResponse(403, 'forbidden', 'The Claude subscription can only be used when the admin is opened on this computer (localhost). Use an API key.')
+  }
   return relayEngineRequest({ session, method, segments: path ?? [], search: request.nextUrl.searchParams, body })
 }
 

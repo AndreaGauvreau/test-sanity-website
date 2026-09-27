@@ -1,3 +1,4 @@
+import type { ClaudeAccessService } from '../access/service'
 import type { AccessResult, AgentSettings } from '../claude'
 import type { EngineConfig } from '../config'
 import type { SanityPort } from '../content/sanity'
@@ -25,7 +26,13 @@ export type EngineContext = {
   sanity: SanityPort | null
   texts: TextStore
   preview: PreviewProcess
-  access: AccessResult
+  /**
+   * Accès Claude RÉEL en cours, relu à chaque lecture (accesseur sur `claudeAccess.current()`) : un changement fait depuis
+   * l'admin s'applique sans redémarrage. Lire `context.access` AU MOMENT de l'appel, jamais le copier à l'enregistrement.
+   */
+  readonly access: AccessResult
+  /** Connexion à Claude rechargeable (engine/src/access) : routes `/claude/access*`, test de connexion. */
+  claudeAccess: ClaudeAccessService
   settings: AgentSettings
   /** Ports que les modules branchent (appelés par l'éditeur). */
   ports: {

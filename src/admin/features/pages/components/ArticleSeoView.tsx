@@ -9,7 +9,7 @@ import { Button, SearchPreview, Select, SettingRow, SocialPreview, VariableChip,
 import type { ArticleTemplate, SiteSettings } from '@/lib/seo'
 
 import { imageAssetId } from '../lib/form'
-import { ARTICLE_SEO_FIELDS, SEO_LIMITS, unknownVariables } from '../lib/manifest'
+import { ARTICLE_SEO_FIELDS, SEO_LIMITS, unknownVariables, type ArticleImageField } from '../lib/manifest'
 import { articlePath, articleSeoPreview, displayUrl, estimatedLength } from '../lib/seo-preview'
 import { saveArticleSeoAction } from '../server/actions'
 import type { SaveResult } from '../server/save'
@@ -30,9 +30,13 @@ export type ArticleSeoViewProps = {
   pathPattern: string
   /** « Blog » (« Allow indexing of all 12 Blog posts. ») */
   collectionLabel: string
+  /** Nom d'un élément, en minuscules (« post », « testimonial », « question ») : « ≈ 89 / 160 with this post ». */
+  itemLabel: string
   /** Nom d'un élément au pluriel, en minuscules (« posts »). */
   itemsLabel: string
   variables: readonly SeoTemplateVariable[]
+  /** Champs image de l'article pour « From field » (post : cover) ; vide : pas de « Use the … » (image fixe seulement). */
+  imageFields: readonly ArticleImageField[]
   initial: ArticleTemplate
   settings: SiteSettings
   articles: ArticleOption[]
@@ -45,11 +49,19 @@ export type ArticleSeoViewProps = {
 
 /**
  * Onglet SEO de la page article d'une collection (C6) : un modèle pour toutes les pages article, avec les champs de
- * l'article en variables {{…}} (VariableInput), image OG « From field » (cover) ou fixe, indexation de toutes les
- * pages article, aperçus avec un article réel choisi dans « Preview with ».
+ * l'article en variables {{…}} (VariableInput), image OG « From field » (cover, blog seulement) ou fixe, indexation
+ * de toutes les pages article, aperçus avec un élément réel choisi dans « Preview with ».
  */
+
+/** « all 12 Blog posts » ; « all 3 testimonials » quand le nom de la collection répète celui des éléments. */
+export function indexingTarget(total: number, collectionLabel: string, itemsLabel: string): string {
+  const singular = (word: string) => word.toLowerCase().replace(/s$/, '')
+  return singular(collectionLabel) === singular(itemsLabel) ? `${total} ${itemsLabel}` : `${total} ${collectionLabel} ${itemsLabel}`
+}
+
 export function ArticleSeoView(props: ArticleSeoViewProps) {
-  const { pageId, domain, siteName, pathPattern, collectionLabel, itemsLabel, variables, initial, settings, articles, total, readOnly, jsonLd } = props
+  const { pageId, domain, siteName, pathPattern, collectionLabel, itemLabel, itemsLabel, variables, imageFields, initial, settings, articles, total, readOnly, jsonLd } =
+    props
   const write = props.save ?? ((key: Key, value: unknown) => saveArticleSeoAction({ pageId, key, value }))
   const send = props.upload ?? ((file: File) => postImage(pageId, { target: 'article', file }))
 
@@ -66,7 +78,7 @@ export function ArticleSeoView(props: ArticleSeoViewProps) {
 
   const titleSaver = useFieldSave((v: string | null) => write('metaTitle', v), initial.metaTitle || null)
   const descriptionSaver = useFieldSave((v: string | null) => write('metaDescription', v), initial.metaDescription || null)
-  const fieldSaver = useFieldSave((v: string | null) => write('ogImageField', v), initial.ogImageField ?? null, 0)
+  const fieldSaver = useFieldSave((v: string | null) => write('ogImageField', v), (initial.ogImageField ?? null) as string | null, 0)
   const imageSaver = useFieldSave((v: string | null) => write('ogImage', v), imageAssetId(initial.ogImage), 0)
   const indexSaver = useFieldSave((v: boolean) => write('allowIndexing', v), initial.allowIndexing !== false, 0)
 
@@ -125,7 +137,10 @@ export function ArticleSeoView(props: ArticleSeoViewProps) {
   }
 
   const fixedImage = imageUrl(ogImage as Parameters<typeof imageUrl>[0])
-  const fromField = ogImageField === 'cover'
+  // Champ image choisi et existant dans la collection (un ogImageField resté sur une collection sans image est ignoré).
+  const imageField = imageFields.find((f) => f.value === ogImageField) ?? null
+  const fromField = imageField !== null
+  const firstImageField = imageFields[0] ?? null
   const withTitle = article ? ` with “${article.title}”` : ''
 
   return (
@@ -153,7 +168,7 @@ export function ArticleSeoView(props: ArticleSeoViewProps) {
               length={estimatedLength(metaDescription, values)}
               limit={SEO_LIMITS.metaDescription}
               prefix="≈ "
-              suffix={article ? ' with this post' : ''}
+              suffix={article ? ` with this ${itemLabel}` : ''}
             />
           }
           onValueChange={(v) => onText('metaDescription', v)}
@@ -167,23 +182,23 @@ export function ArticleSeoView(props: ArticleSeoViewProps) {
           extra={
             fromField ? (
               <span className={styles.ogFrom}>
-                From field <VariableChip name="cover" />
+                From field <VariableChip name={imageField.value} />
               </span>
-            ) : (
+            ) : firstImageField ? (
               <span className={styles.ogFrom}>
                 <Button
                   variant="ghost"
                   size="small"
                   disabled={readOnly}
                   onClick={() => {
-                    setOgImageField('cover')
-                    fieldSaver.schedule('cover')
+                    setOgImageField(firstImageField.value)
+                    fieldSaver.schedule(firstImageField.value)
                   }}
                 >
-                  Use the cover
+                  {`Use the ${firstImageField.label.toLowerCase()}`}
                 </Button>
               </span>
-            )
+            ) : null
           }
           note={!fromField && !fixedImage ? (preview.ogImage ? 'Using the site image (General).' : 'No image: set one here or in General.') : null}
           onFile={(file) => void onFile(file)}
@@ -200,7 +215,7 @@ export function ArticleSeoView(props: ArticleSeoViewProps) {
         {jsonLd}
         <SettingRow
           title="Search engines"
-          description={`Allow indexing of all ${total} ${collectionLabel} ${itemsLabel}.`}
+          description={`Allow indexing of all ${indexingTarget(total, collectionLabel, itemsLabel)}.`}
           checked={allowIndexing}
           disabled={readOnly}
           onCheckedChange={(next) => {
@@ -243,7 +258,7 @@ export function ArticleSeoView(props: ArticleSeoViewProps) {
             />
           </>
         ) : (
-          <p className={styles.muted}>{`Previews appear once a ${itemsLabel.replace(/s$/, '')} is published.`}</p>
+          <p className={styles.muted}>{`Previews appear once a ${itemLabel} is published.`}</p>
         )}
       </div>
     </div>

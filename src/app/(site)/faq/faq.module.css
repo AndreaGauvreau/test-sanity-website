@@ -1,0 +1,28 @@
+/*
+ * Liste de la FAQ, hors maquette : la mise en page de la section FAQ de l'accueil
+ * (components/sections/Faq/Faq.module.css, classes .faq, .heading, .questions, .item, .question, .answer),
+ * sans la carte d'aide. Ici : le lien vers la page de chaque question et l'heure de rendu.
+ */
+.page {
+  align-content: start;
+}
+
+/* Lien vers /faq/:slug sous la réponse (écart : celui des paragraphes de la réponse), style des liens
+   « See more » (souligné orange). */
+.permalink {
+  font: var(--text-label-strong);
+  letter-spacing: var(--text-label-tracking);
+}
+
+.permalink a {
+  color: var(--color-text);
+  text-decoration-line: underline;
+  text-decoration-color: var(--color-accent);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.25rem; /* 4 */
+}
+
+/* Heure de rendu : sous la liste, sur toute la largeur de la grille. */
+.stamp {
+  grid-column: 1 / -1;
+}

@@ -1,4 +1,5 @@
 import { handleAsk } from './ask'
+import { handleClaude } from './claude'
 import { handleEditor, mockEditorHealth } from './editor'
 import { mockNotImplemented } from './not-implemented'
 import { handlePublish } from './publish'
@@ -24,6 +25,8 @@ export async function handleMockEngineRequest(request: MockEngineRequest): Promi
       return handlePublish(request)
     case 'ask':
       return handleAsk(request)
+    case 'claude':
+      return handleClaude(request)
     default:
       return mockNotImplemented(request.segments[0] ?? '')
   }

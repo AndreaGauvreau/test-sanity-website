@@ -37,6 +37,8 @@ shell, pose tokens, polices, toasts et la garde < 1 024 px) : sidebar Claude (ed
 
 ## Comportement
 - Page absente, inconnue ou sans `aiEditor` (ex. `blog`) → 404. Rôle sans `ai.editor` → 404 (garde de auth-core).
+- Entrées : « Open in AI editor » (C1, C2, C6) et, depuis le 2026-09-27, « Edit with AI » sur le site en ligne
+  (question 9, `src/admin/live-edit`).
 - « ‹ Admin » (G1, même page même onglet) : `?back=/admin/pages/home/seo` → `backHref` → `EditorStoreProvider` →
   magasin `backHref` (FOLLOWUPS #29), lu par l'en-tête de la sidebar ; absent → la sidebar revient à `/admin/pages/<id>`.
 - URL d'aperçu en développement : `/admin/editor/harness` si `ENGINE_MOCK=1` ou `?harness=1` (jamais en production) ;
@@ -84,7 +86,10 @@ http://127.0.0.1:4040/admin/editor/mock-scenario` avec le cookie de session (ids
 no-sanity-token, restore-pending).
 
 ## Décisions et « À trancher »
-- Question 9 (ouvrir depuis le site public) : non, l'éditeur ne s'ouvre que depuis l'admin.
+- Question 9 (ouvrir depuis le site public) : **décision changée le 2026-09-27** — oui : le bouton « Edit with AI » du
+  site en ligne (`src/admin/live-edit`, auth-core) ouvre `/admin/editor?page=<id>&back=/admin/pages/<id>` (lien de
+  `GET /admin/api/auth/editor-access`). Rien à changer ici : même route, mêmes gardes ; « ‹ Admin » ramène à l'écran
+  admin de la page (le site public n'est pas un `back` accepté).
 - Pas de layout dédié : celui de /admin suffit (garde < 1 024 px comprise, conforme au Figma).
 
 ## Demandes de contrat

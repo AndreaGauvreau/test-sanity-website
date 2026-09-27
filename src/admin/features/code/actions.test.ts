@@ -370,9 +370,11 @@ describe('validation des entrées côté serveur', () => {
 
   it('règles du script : nom, page du manifeste, code dans des balises', async () => {
     expect(await actions.saveScriptAction({ values: { ...values, name: '' } })).toEqual({ ok: false, error: 'Name is required.', fieldErrors: { name: 'Name is required.' } })
-    expect(await actions.saveScriptAction({ values: { ...values, page: 'testimonials' } })).toMatchObject({ ok: false, fieldErrors: { page: 'Choose a page.' } })
+    expect(await actions.saveScriptAction({ values: { ...values, page: 'pricing' } })).toMatchObject({ ok: false, fieldErrors: { page: 'Choose a page.' } })
     expect(await actions.saveScriptAction({ values: { ...values, code: 'hj()' } })).toMatchObject({ ok: false, fieldErrors: { code: expect.stringContaining('<script>') } })
     expect(mutations).toHaveLength(0)
+    // Les nouvelles pages (Q15 révisée) sont acceptées, page article comprise.
+    expect((await actions.saveScriptAction({ values: { ...values, page: 'faq/slug' } })).ok).toBe(true)
   })
 
   it('balise non fermée : enregistrée quand même (avertissement seulement)', async () => {

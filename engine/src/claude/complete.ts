@@ -3,7 +3,7 @@ import { query as sdkQuery, type HookCallback, type Options, type SDKMessage } f
 import { mkdir } from 'node:fs/promises'
 import path from 'node:path'
 import type { Usage } from '../../../src/admin/core/contracts'
-import type { ClaudeCredential } from './access'
+import { credentialEnv, type ClaudeCredential } from './access'
 import { fatalApiError, RESULT_ERRORS, type QueryFn } from './agent'
 import { addTokens, NO_TOKENS, tokensOf, usageFromTokens, type Tokens } from './cost'
 
@@ -83,7 +83,7 @@ const textOf = (message: Anthropic.Message) =>
 
 function apiErrorMessage(error: unknown): CompleteError {
   if (error instanceof Anthropic.AuthenticationError || error instanceof Anthropic.PermissionDeniedError) {
-    return new CompleteError('Access refused by Anthropic: check the ANTHROPIC_API_KEY in engine/.env.local.', true)
+    return new CompleteError('Access refused by Anthropic: check the API key (Settings › Usage › Claude connection).', true)
   }
   if (error instanceof Anthropic.NotFoundError) return new CompleteError('Model unavailable (ASK_MODEL): unknown or not included in your access.', true)
   if (error instanceof Anthropic.RateLimitError) return new CompleteError('Claude is busy (rate limit): try again in a moment.')
@@ -157,7 +157,7 @@ export function completeOptions(input: CompleteInput, deps: CompleteDeps, abortC
     env: {
       PATH: base.PATH,
       HOME: base.HOME,
-      CLAUDE_CODE_OAUTH_TOKEN: deps.access.secret,
+      ...credentialEnv(deps.access, base),
       CLAUDE_CONFIG_DIR: deps.configDir,
       CLAUDE_AGENT_SDK_CLIENT_APP: 'kuartz-ask-ai/0.1',
       CLAUDE_CODE_MAX_OUTPUT_TOKENS: String(input.maxTokens),

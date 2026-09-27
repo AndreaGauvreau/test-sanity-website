@@ -52,6 +52,14 @@ Test : `npx tsx --test scripts/site-baseline/image-format.test.ts`.
 Vérifié : deux captures successives → **aucune différence** (12 PNG + 3 textes). Les PNG de `apres/` ont été
 recapturés avec ce format (contenu inchangé, textes identiques) ; une capture suivante leur est identique.
 
+## Pages /testimonials et /faq (question 15 révisée, 2026-09-27)
+
+Référence prise juste AVANT le changement (captures du jour : `apres/` diffère déjà sur `home-1280/1440` et `home.txt`
+d'un bouton « Edit with AI » ajouté par un autre chantier, `src/admin/live-edit`), puis recapture après le code, la
+migration (2 pages, 2 modèles SEO, 3 + 9 slugs) et la revalidation : **12 captures sur 12 identiques au pixel, textes
+identiques, HTML sans `data-edit` ni stega** sur `/`, `/blog` et `/blog/carrier-portals-a-checklist`. Aucun lien ajouté
+à l'accueil. Les séries de ce contrôle sont restées hors du dépôt (scratchpad de la session).
+
 ## Rejouer la comparaison
 
 Le serveur de dev doit tourner (http://127.0.0.1:4040, dataset `development`). Chrome installé.

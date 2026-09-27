@@ -30,12 +30,25 @@ Le clone ne voit que le code COMMITÉ de la source : committer avant `sync`.
 
 ## Premier vrai passage de Claude
 
-1. Copier soi-même l'accès Claude dans `engine/.env.local` (jamais dans une conversation) : `ANTHROPIC_API_KEY`, ou pour
-   un essai local la sortie de `claude setup-token` (les DEUX lignes, 108 caractères) dans `CLAUDE_CODE_OAUTH_TOKEN`.
+1. Régler l'accès à Claude dans l'admin (Kuartz ou client) : **Site Settings › Usage › Claude connection**. Rien à
+   redémarrer.
+   - En local (moteur `ENGINE_MODE=local`, admin ouvert sur 127.0.0.1 / localhost) : « Use my Claude subscription »
+     utilise la connexion Claude Code de la machine. Si la carte dit que la machine n'est pas connectée : ouvrir un
+     terminal, lancer `claude`, taper `/login` (compte Claude Pro/Max), puis revenir sur la carte et cliquer
+     « Test connection » (le moteur la voit aussi seul en moins d'une minute). Se servir de Claude Desktop ne suffit pas :
+     c'est la connexion de `claude` en terminal qui compte.
+   - En production (ou pour une clé) : coller une clé API Anthropic (`sk-ant-api…`, console Claude › API keys) dans
+     « Anthropic API key » → « Save and test ». Elle est chiffrée par le moteur (`<ENGINE_WORKSPACE>/data/claude-access.json`)
+     et n'est plus jamais affichée (« Connected · sk-ant-…XXXX », Replace, Disconnect).
+   - Anciennes voies toujours valables dans `engine/.env.local` (copiées soi-même, jamais dans une conversation) :
+     `ANTHROPIC_API_KEY` (prioritaire sur tout, l'écran le signale ; redémarrage du moteur nécessaire) ou, en repli local,
+     `CLAUDE_CODE_OAUTH_TOKEN` (sortie de `claude setup-token`, les DEUX lignes).
+   Le test d'une clé (`GET /v1/models`) est gratuit mais ne vérifie pas le crédit ; celui de l'abonnement fait un tour
+   minimal de Claude (Haiku).
 2. Vérifier que `ENGINE_FAKE_CLAUDE` est commenté dans `engine/.env.local` (sinon Claude est simulé) et `ENGINE_MOCK=0`
    dans `.env.local` (sinon l'admin parle au moteur simulé).
-3. Relancer `npm run engine`, ouvrir `/admin/pages/home` → « ✦ Open in AI editor ». La santé du moteur doit indiquer
-   l'accès (`api-key` ou `subscription`) sans avertissement de faux Claude.
+3. Ouvrir `/admin/pages/home` → « ✦ Open in AI editor ». La santé du moteur doit indiquer l'accès (`api-key` ou
+   `subscription`) sans avertissement de faux Claude (relancer `npm run engine` seulement après avoir changé `engine/.env.local`).
 4. Réglages par défaut : `claude-opus-5-5`, effort `medium`, 24 tours, 1,5 $ par appel et plafond du cumul par demande
    (`EDITOR_MAX_REQUEST_USD`), 2 essais au plus. Chaque demande écrit un document `aiUsage` visible en B5.
 

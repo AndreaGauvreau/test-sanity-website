@@ -7,6 +7,7 @@
 // Accès et réglages
 export {
   accessKind,
+  credentialEnv,
   readAgentSettings,
   resolveClaudeAccess,
   type AccessEnv,
@@ -14,6 +15,7 @@ export {
   type AccessResult,
   type AgentSettings,
   type ClaudeCredential,
+  type MachineLogin,
   type SettingsEnv,
 } from './access'
 

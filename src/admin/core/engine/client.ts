@@ -2,6 +2,8 @@ import type {
   Answer,
   AskRequest,
   AskResponse,
+  ClaudeAccessInput,
+  ClaudeAccessState,
   EditJob,
   EditRequest,
   EditorState,
@@ -93,6 +95,13 @@ export const engineClient = {
     rollback: (number: number, o?: Options) => call<Publication>('POST', `versions/${seg(String(number))}/rollback`, {}, o),
   },
   ask: (request: AskRequest, o?: Options) => call<AskResponse>('POST', 'ask', request, o),
+  /** Connexion à Claude (B5) — droit ai.access. La clé part une fois (POST) et ne revient jamais : seulement `keyHint`. */
+  claude: {
+    access: (o?: Options) => call<ClaudeAccessState>('GET', 'claude/access', undefined, o),
+    save: (input: ClaudeAccessInput, o?: Options) => call<ClaudeAccessState>('POST', 'claude/access', input, o),
+    test: (o?: Options) => call<ClaudeAccessState>('POST', 'claude/access/test', {}, o),
+    clear: (o?: Options) => call<ClaudeAccessState>('POST', 'claude/access/clear', {}, o),
+  },
 }
 
 export type EngineClient = typeof engineClient

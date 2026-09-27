@@ -86,6 +86,81 @@ export type EngineHealth = {
   fakeClaude?: string
 }
 
+// ─── Connexion à Claude (B5 · carte « Claude connection ») ───────────────────
+
+/**
+ * D'où vient l'accès utilisé par le moteur :
+ * - env : variable de `engine/.env.local` (ANTHROPIC_API_KEY, toujours prioritaire ; ou CLAUDE_CODE_OAUTH_TOKEN en repli local) ;
+ * - stored : clé API enregistrée depuis l'admin (chiffrée par le moteur) ;
+ * - machine : abonnement Claude connecté sur la machine du moteur (connexion Claude Code, moteur local seulement) ;
+ * - none : aucun accès utilisable.
+ */
+export type ClaudeAccessSource = 'env' | 'stored' | 'machine' | 'none'
+
+/** Dernier test de connexion (« Test connection ») : date ISO, résultat, message anglais lisible. */
+export type ClaudeAccessTest = { at: string; ok: boolean; message: string }
+
+export type ClaudeAccessState = {
+  mode: 'local' | 'hosted'
+  /**
+   * Abonnement de la machine permis par le MOTEUR (ENGINE_MODE=local écrit). L'admin exige en plus d'être ouvert sur
+   * 127.0.0.1 / localhost pour le proposer (et le relais refuse sinon).
+   */
+  subscriptionAllowed: boolean
+  /** Accès effectivement utilisé par l'éditeur et Ask AI. */
+  access: ClaudeAccess
+  source: ClaudeAccessSource
+  /** Clé API en cours (env ou enregistrée) : « sk-ant-…XXXX » (4 derniers caractères), jamais plus. */
+  keyHint?: string
+  /** Ce qui est enregistré depuis l'admin (peut être masqué par ANTHROPIC_API_KEY de l'environnement). */
+  saved: 'api-key' | 'subscription' | null
+  /** ANTHROPIC_API_KEY présente dans l'environnement du moteur : elle l'emporte sur ce qui est enregistré. */
+  envApiKey: boolean
+  /** Connexion Claude Code de la machine du moteur (présente seulement si l'abonnement est permis). */
+  machine?: { loggedIn: boolean }
+  lastTest?: ClaudeAccessTest
+  /** Pourquoi l'accès n'est pas utilisable, ou avertissement (anglais, sans secret). */
+  problem?: string
+}
+
+export type ClaudeAccessInput = { kind: 'api-key'; apiKey: string } | { kind: 'subscription' }
+
+// Routes (droit `ai.access`, revérifié par le moteur) :
+//   GET  /claude/access                          → ClaudeAccessState
+//   POST /claude/access       ClaudeAccessInput  → ClaudeAccessState · 400 bad_request (clé refusée, sk-ant-oat…) ·
+//                                                  403 forbidden (abonnement hors moteur local / admin hors localhost)
+//   POST /claude/access/test                     → ClaudeAccessState (lastTest rempli ; clé API : GET /v1/models, sans
+//                                                  coût ; abonnement : un tour minimal via l'Agent SDK, modèle Haiku)
+//   POST /claude/access/clear                    → ClaudeAccessState (ce qui était enregistré est effacé)
+// La clé ne revient JAMAIS dans une réponse : seulement `keyHint`.
+
+/** Longueurs admises pour une clé API Anthropic (les clés actuelles font ≈ 108 caractères). */
+export const CLAUDE_API_KEY_MIN = 40
+export const CLAUDE_API_KEY_MAX = 300
+
+/** Clé collée → clé propre (blancs et retours à la ligne retirés : copie sur deux lignes). */
+export const cleanClaudeApiKey = (raw: string) => raw.replace(/\s+/g, '')
+
+/**
+ * Problème d'une clé API collée (anglais, sans jamais citer la clé), ou null si elle a la forme d'une clé API
+ * Anthropic (`sk-ant-api…`). Un jeton d'abonnement `sk-ant-oat…` est refusé avec un message dédié.
+ */
+export function claudeApiKeyProblem(raw: string): string | null {
+  const key = cleanClaudeApiKey(raw)
+  if (!key) return 'Paste your Anthropic API key.'
+  if (key.startsWith('sk-ant-oat')) {
+    return 'This is a Claude subscription token (sk-ant-oat…), not an API key. Create an API key in the Claude Console (Settings › API keys).'
+  }
+  if (!key.startsWith('sk-ant-api')) return 'An Anthropic API key starts with sk-ant-api…'
+  if (key.length < CLAUDE_API_KEY_MIN || key.length > CLAUDE_API_KEY_MAX || !/^sk-ant-api\d{2}-[A-Za-z0-9_-]+$/.test(key)) {
+    return 'This doesn’t look like a complete Anthropic API key. Copy it again from the Claude Console.'
+  }
+  return null
+}
+
+/** « sk-ant-…XXXX » : les 4 derniers caractères seulement. */
+export const claudeKeyHint = (key: string) => `sk-ant-…${cleanClaudeApiKey(key).slice(-4)}`
+
 // ─── Éditeur IA (D1-D3, G1, G2) ──────────────────────────────────────────────
 
 export type Scope = 'style' | 'text'

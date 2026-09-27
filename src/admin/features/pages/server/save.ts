@@ -28,6 +28,7 @@ import {
   type Config,
   type SeoKey,
 } from '../lib/manifest'
+import { defaultArticleTemplate } from '../lib/seo-preview'
 
 /**
  * Cœur des écritures de C1, C2 et C6, SANS la garde de session (faite par actions.ts / la route d'envoi) :
@@ -278,6 +279,10 @@ export async function saveArticleSeo(session: Session, raw: unknown, deps: SaveD
     if (!image.ok) return { ok: false, error: 'OG image must be an image from the media library.' }
     value = image.value
   }
+  // « From field » : seulement un champ image de la collection (témoignages et questions n'en ont pas).
+  if (key === 'ogImageField' && value !== null && value !== undefined && !article.imageFields.some((f) => f.value === value)) {
+    return { ok: false, error: 'This collection has no image field. Upload a fixed image instead.' }
+  }
   if ((key === 'metaTitle' || key === 'metaDescription') && typeof value === 'string') {
     const unknown = unknownVariables(value, article.variables)
     if (unknown.length) return { ok: false, error: `Unknown field {{${unknown[0]}}}. Insert a field from the list.` }
@@ -292,8 +297,10 @@ export async function saveArticleSeo(session: Session, raw: unknown, deps: SaveD
 }
 
 /**
- * Le modèle SEO d'article est un document unique à id fixe, créé par la migration. S'il manque (dataset neuf), on
- * crée son brouillon avec les valeurs par défaut du site (celles qu'il applique sans document).
+ * Le modèle SEO d'article est un document unique à id fixe par collection, créé par la migration. S'il manque
+ * (dataset neuf), on crée son brouillon avec les valeurs par défaut que le site applique sans document pour CETTE
+ * collection (`defaultArticleTemplate` : DEFAULT_ARTICLE_TEMPLATE, DEFAULT_TESTIMONIAL_TEMPLATE, DEFAULT_FAQ_TEMPLATE) ;
+ * les valeurs vides ne sont pas écrites.
  */
 async function ensureTemplateDocument(
   session: Session,
@@ -303,10 +310,8 @@ async function ensureTemplateDocument(
 ): Promise<void> {
   const state = await getDocumentState(ref.id, { store: deps.store })
   if (state.value) return
-  await createDraft(
-    session,
-    ref.type,
-    { collection, metaTitle: '{{title}}', metaDescription: '{{excerpt}}', ogImageField: 'cover', allowIndexing: true },
-    { id: ref.id, store: deps.store },
+  const defaults = Object.fromEntries(
+    Object.entries(defaultArticleTemplate(collection)).filter(([, value]) => value !== null && value !== undefined),
   )
+  await createDraft(session, ref.type, { collection, ...defaults }, { id: ref.id, store: deps.store })
 }

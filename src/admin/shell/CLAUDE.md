@@ -2,7 +2,7 @@
 
 > Propriétaire : shell · Figma : A1 (docs/admin/figma/screens/A1.md), coque en situation B1 (B1.md, B1.ui.png),
 > README « ÉLÉMENTS COMMUNS À TOUS LES ÉCRANS » et « L'admin d'un site selon le rôle », fiches Sidebar, TopBar, NavItem,
-> NavSection (docs/admin/figma/design-system/components/) · Mis à jour : 2026-09-27 (tour de corrections)
+> NavSection (docs/admin/figma/design-system/components/) · Mis à jour : 2026-09-27 (pages /testimonials et /faq, Q15 révisée)
 
 ## Utilité
 
@@ -114,7 +114,7 @@ POST dev-role avec `next`). Entrée de la carte : fondu + échelle 0.98 → 1, 2
 
 ## Forces
 
-- Logique en fonctions pures testées (navigation par rôle, actif selon l'URL, comptes, props client, droit par URL) ; 109 tests.
+- Logique en fonctions pures testées (navigation par rôle, actif selon l'URL, comptes, props client, droit par URL) ; 111 tests.
 - Une page refusée répond une vraie 404 (layout, avant tout streaming) sans dépendre des `loading.tsx` des autres écrans ;
   la table des droits est vérifiée contre les `requireCapability` réels des pages (test de dérive).
 - Fidélité mesurée : A1 = 0,26 % de pixels différents du Figma (anticrénelage du texte seulement, carte identique au pixel) ;
@@ -184,8 +184,8 @@ POST dev-role avec `next`). Entrée de la carte : fondu + échelle 0.98 → 1, 2
 
 ## Tests
 
-`npx vitest run src/admin/shell` — 109 tests : navigation par rôle (kuartz / client / editor), sections et libellés du Figma,
-pages et page article « slug: N », comptes (null si inconnu), actif selon l'URL (22 routes), hub, liens externes ; comptes
+`npx vitest run src/admin/shell` — 111 tests : navigation par rôle (kuartz / client / editor), sections et libellés du Figma,
+pages (Home, /blog, /testimonials, /faq) et une page article « slug: N » sous chaque page listing, comptes (null si inconnu), actif selon l'URL (22 routes), hub, liens externes ; comptes
 (requête paramétrée, erreurs, délai) ; props client sans données sensibles, nom de dev sans rôle répété ; droit par URL
 (préfixes, requête, décodage) + dérive contre chaque `page.tsx` de `(shell)` ; routes (refus par le layout avant l'habillage,
 attrape-tout, 404 dans la coque / plein écran) ; géométrie CSS exposée ; ShellSidebar en jsdom (tags, comptes,
@@ -202,9 +202,10 @@ lien d'évitement, 404 dans la coque.
 ## Décisions et « À trancher »
 
 - Libellé utilisateur = `ROLE_LABEL` du contrat (« Client admin ») et non « Client » du Figma (consigne de l'orchestrateur).
-- Pages de la sidebar = celles du manifeste (Home, /blog) : pas de /page-x, /page-y, /testimonials, /faq, /404 (question 15).
+- Pages de la sidebar = celles du manifeste : Home, /blog, /testimonials, /faq (question 15 révisée le 2026-09-27) ; pas de
+  /page-x, /page-y, /404. Chaque page listing porte sa page article « slug: N » (compte de sa collection).
 - Écran courant affiché (le Figma montre toujours « · Overview », valeur par défaut du composant).
-- Page article de /blog → C6 `/admin/pages/blog/slug/seo` (seule route de la page article).
+- Page article d'une page listing → C6 `/admin/pages/<page>/slug/seo` (blog, testimonials, faq ; seule route de la page article).
 - Comptes en perspective `drafts` : un élément créé en brouillon compte déjà (il apparaît dans la liste C3).
 - Hub : `KUARTZ_HUB_URL`, repli https://kuartz.studio (question 8 du Figma ouverte).
 - Menu de rôle de dev dans le pied de la sidebar (le Figma n'a pas de menu utilisateur) ; A1 : barre de dev hors de la carte.

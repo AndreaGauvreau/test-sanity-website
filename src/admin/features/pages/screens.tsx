@@ -199,12 +199,13 @@ export async function ArticleSeoScreen({ params }: { params: Params }) {
   ]
   const [settings, template, { options, total }, jsonLd] = await Promise.all([
     loadSiteSettings(),
-    loadArticleTemplate(article.documentId),
+    loadArticleTemplate(article.documentId, page.article.collection),
     loadArticleOptions(page.article.collection),
     loadArticleJsonLd(`${page.id}/slug`),
   ])
   const label = collection?.label ?? page.label
-  const items = (collection?.singular ?? 'item').toLowerCase()
+  // « post », « testimonial », « question » (CollectionDef.singular) : « with this question », « 9 FAQ questions ».
+  const item = (collection?.singular ?? 'item').toLowerCase()
   return (
     <PageFrame
       title="slug:"
@@ -220,8 +221,10 @@ export async function ArticleSeoScreen({ params }: { params: Params }) {
         siteName={settings.title || siteName}
         pathPattern={page.article.path}
         collectionLabel={label}
-        itemsLabel={total === 1 ? items : `${items}s`}
+        itemLabel={item}
+        itemsLabel={total === 1 ? item : `${item}s`}
         variables={article.variables}
+        imageFields={article.imageFields}
         initial={template.template}
         settings={settings}
         articles={options}

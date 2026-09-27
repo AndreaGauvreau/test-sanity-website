@@ -70,7 +70,13 @@ describe('ShellSidebar', () => {
     expect(screen.queryByRole('link', { name: /Kuartz hub/ })).toBeNull()
     expect((within(navEl).getByRole('link', { name: /Blog/ })).textContent).toContain('12')
     expect((within(navEl).getByRole('link', { name: /Testimonials/ })).textContent).toContain('3')
-    expect((within(navEl).getByRole('link', { name: /slug:/ })).textContent).toContain('12')
+    // Une page article « slug: » par page listing (/blog, /testimonials, /faq), avec le compte de sa collection.
+    const articles = within(navEl).getAllByRole('link', { name: /slug:/ })
+    expect(articles.map((a) => [a.getAttribute('href'), a.textContent])).toEqual([
+      ['/admin/pages/blog/slug/seo', expect.stringContaining('12')],
+      ['/admin/pages/testimonials/slug/seo', expect.stringContaining('3')],
+      ['/admin/pages/faq/slug/seo', expect.stringContaining('9')],
+    ])
     expect(screen.getByText('Marie · Client admin')).toBeTruthy()
   })
 
@@ -101,15 +107,23 @@ describe('ShellSidebar', () => {
   })
 
   it('page article active : la page listing reste dépliée', () => {
-    setup('client', '/admin/pages/blog/slug/seo')
-    expect((screen.getByRole('link', { name: /slug:/ })).getAttribute('aria-current')).toBe('page')
-    expect((screen.getByRole('button', { name: 'Hide /blog pages' })).getAttribute('aria-expanded')).toBe('true')
+    setup('client', '/admin/pages/testimonials/slug/seo')
+    const current = document.querySelectorAll('[aria-current="page"]')
+    expect(current).toHaveLength(1)
+    expect(current[0].getAttribute('href')).toBe('/admin/pages/testimonials/slug/seo')
+    expect(current[0].textContent).toContain('slug:')
+    expect((screen.getByRole('button', { name: 'Hide /testimonials pages' })).getAttribute('aria-expanded')).toBe('true')
   })
 
   it('le chevron replie la page article', async () => {
     setup('client', '/admin')
     await userEvent.click(screen.getByRole('button', { name: 'Hide /blog pages' }))
-    expect(screen.queryByRole('link', { name: /slug:/ })).toBeNull()
+    // Seule la page article de /blog disparaît ; celles de /testimonials et /faq restent.
+    expect(document.querySelector('a[href="/admin/pages/blog/slug/seo"]')).toBeNull()
+    expect(screen.getAllByRole('link', { name: /slug:/ }).map((a) => a.getAttribute('href'))).toEqual([
+      '/admin/pages/testimonials/slug/seo',
+      '/admin/pages/faq/slug/seo',
+    ])
     expect((screen.getByRole('button', { name: 'Show /blog pages' })).getAttribute('aria-expanded')).toBe('false')
   })
 

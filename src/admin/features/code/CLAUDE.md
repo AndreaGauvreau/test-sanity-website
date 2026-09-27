@@ -1,6 +1,6 @@
 # features/code — LLM context
 
-> Propriétaire : code-usage · Figma : B3 (docs/admin/figma/screens/B3.md), G6 (states/G6.md), fiche Script dialog · Mis à jour : 2026-09-27
+> Propriétaire : code-usage · Figma : B3 (docs/admin/figma/screens/B3.md), G6 (states/G6.md), fiche Script dialog · Mis à jour : 2026-09-27 (pages /testimonials et /faq, Q15 révisée)
 > Possède aussi : `src/app/admin/(shell)/settings/code/` (page + test des droits).
 
 ## Utilité
@@ -81,7 +81,7 @@ Route `/admin/settings/code` ; client et editor reçoivent une 404. N'injecte ri
 - Écritures ciblées par `_key` : un script supprimé entre-temps donne « This item no longer exists. Reload and try again. »
 - SEC-04 : un Editor qui modifie `scripts` dans le Studio ou par l'API n'obtient plus d'exécution sur le site ; aucune action
   de B3 ne signe un code modifié sans revue explicite (Save depuis la fenêtre, ou Re-sign confirmé sur les valeurs vues).
-- 75 tests (logique, signature, actions avec faux Sanity à révisions — écritures concurrentes comprises —, fenêtre et écran
+- 77 tests avec la route (menu Page = manifeste ET `SCRIPT_PAGES` du schéma, vérifié par test ; logique, signature, actions avec faux Sanity à révisions — écritures concurrentes comprises —, fenêtre et écran
   en jsdom, droits de la page).
 
 ## Faiblesses et limites connues
@@ -142,7 +142,8 @@ tests et au rendu de `/admin/settings/code` (les scripts non signés du dataset 
 
 ## Décisions et « À trancher »
 - Question 5 : Code réservé à Kuartz (orchestrateur) — 404 pour les autres rôles.
-- Question 15 : pas de /testimonials ni /faq (le menu Page suit le manifeste).
+- Question 15 (révisée le 2026-09-27) : menu Page = All pages, Home, /blog, slug: (/blog/:slug), /testimonials, slug:
+  (/testimonials/:slug), /faq, slug: (/faq/:slug) ; champs insérables = variables de `articleSeoTemplates` de la collection.
 - Titres « New Script » / « Edit Script » (LLM context B3). Code sans balise = erreur (rien ne s'exécuterait).
 - FOLLOWUPS #40 : ajout par `updateDraftArray` + `insertItem` plutôt que `insertDraftArrayItem`, pour vérifier le plafond
   (50) avec le message de B3 sur le tableau relu ; la clé du script est fixée avant la signature (elle est signée).

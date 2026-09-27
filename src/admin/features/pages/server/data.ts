@@ -6,13 +6,14 @@ import { adminConfig } from '@/admin.config'
 import type { PageDef } from '@/admin/core/contracts'
 import { getReadClient } from '@/admin/core/sanity/clients'
 import { getDocumentState } from '@/admin/core/sanity/drafts'
+import { faqTemplateValues, testimonialTemplateValues } from '@/lib/article-values'
 import type { ArticleTemplate, SiteSettings } from '@/lib/seo'
-import { DEFAULT_ARTICLE_TEMPLATE } from '@/lib/seo'
 import type { TemplateValues } from '@/lib/template-variables'
 import { urlFor } from '@/sanity/lib/image'
 
 import { extractHeadings, extractJsonLd, MAX_HTML_LENGTH, type Heading } from '../lib/html'
 import { collectionByType } from '../lib/manifest'
+import { defaultArticleTemplate } from '../lib/seo-preview'
 
 /**
  * Lectures serveur des écrans C1, C2, C6 (jeton Viewer, sans CDN ni stega). Valeur affichée = brouillon s'il existe,
@@ -145,13 +146,17 @@ export async function loadHeadings(path: string): Promise<{ ok: true; headings: 
 
 export type ArticleOption = {
   id: string
+  /** Libellé de « Preview with » et de « ≈ 43 / 60 with “…” » : titre (post), nom (testimonial), question (faq). */
   title: string
   slug: string
-  /** Valeurs des {{variables}}, comme le site les calcule (src/app/(site)/blog/[slug]/page.tsx). */
+  /** Valeurs des {{variables}}, comme la page article du site les calcule. */
   values: TemplateValues
+  /** Image « From field » (cover d'un post) ; null pour les collections sans image. */
   coverUrl: string | null
   coverAlt: string | null
 }
+
+type Block = { _type?: string; children?: { text?: string | null }[] | null }
 
 type PostRow = {
   _id: string
@@ -164,56 +169,107 @@ type PostRow = {
   image: (ImageValue & { alt?: string | null }) | null
 }
 
+type TestimonialRow = { _id: string; name: string | null; slug: string | null; company: string | null; role: string | null; quote: string | null }
+
+type FaqRow = { _id: string; question: string | null; slug: string | null; answer: Block[] | null }
+
 /**
- * Articles de la collection (publiés, les plus récents d'abord) pour « Preview with ». Les valeurs suivent la
- * fonction `templateValues` de la page article du site : {{date}} = AAAA-MM-JJ, {{cover}} = URL 1200 × 630.
+ * Lecture « Preview with » d'une collection : requête GROQ (100 éléments au plus, ordre de la liste du site),
+ * filtre du compte (mêmes éléments que ceux qui ont une page article) et conversion en ArticleOption.
+ */
+type ArticleSource = { filter: string; query: string; toOption: (row: unknown) => ArticleOption }
+
+/** Typage d'une source : chaque `toOption` reçoit les lignes de SA requête (seul point de conversion). */
+function articleSource<Row>(source: { filter: string; query: string; toOption: (row: Row) => ArticleOption }): ArticleSource {
+  return source as ArticleSource
+}
+
+/** {{date}} = AAAA-MM-JJ, {{cover}} = URL 1200 × 630 (src/app/(site)/blog/[slug]/page.tsx). */
+function postOption(row: PostRow): ArticleOption {
+  const cover = row.image?.asset?._ref
+    ? urlFor(row.image as Parameters<typeof urlFor>[0])
+        .width(1200)
+        .height(630)
+        .url()
+    : null
+  return {
+    id: row._id,
+    title: row.title ?? row.slug ?? row._id,
+    slug: row.slug ?? '',
+    values: {
+      title: row.title,
+      slug: row.slug,
+      date: row.publishedAt ? row.publishedAt.slice(0, 10) : null,
+      excerpt: row.excerpt,
+      cover,
+      author: row.author,
+      category: row.category,
+    },
+    coverUrl: cover,
+    coverAlt: row.image?.alt ?? null,
+  }
+}
+
+const ARTICLE_SOURCES: Record<string, ArticleSource> = {
+  post: articleSource<PostRow>({
+    filter: 'defined(slug.current)',
+    query: `| order(publishedAt desc)[0...100]{
+      _id, title, "slug": slug.current, publishedAt, excerpt, author, category,
+      image{ asset, crop, hotspot, "alt": coalesce(alt, asset->altText) }
+    }`,
+    toOption: postOption,
+  }),
+  // Même ordre que /testimonials (TESTIMONIALS_QUERY) ; seuls les témoignages avec slug ont une page.
+  testimonial: articleSource<TestimonialRow>({
+    filter: 'defined(slug.current)',
+    query: `| order(coalesce(orderRank, "~") asc, _createdAt desc)[0...100]{ _id, name, "slug": slug.current, company, role, quote }`,
+    toOption: (row) => ({
+      id: row._id,
+      title: row.name ?? row.slug ?? row._id,
+      slug: row.slug ?? '',
+      values: testimonialTemplateValues(row),
+      coverUrl: null,
+      coverAlt: null,
+    }),
+  }),
+  // Même ordre que /faq (FAQ_LIST_QUERY) ; une question sans réponse n'a pas de page.
+  faq: articleSource<FaqRow>({
+    filter: 'defined(slug.current) && defined(answer)',
+    query: `| order(coalesce(orderRank, "~") asc, order asc)[0...100]{ _id, question, "slug": slug.current, answer }`,
+    toOption: (row) => ({
+      id: row._id,
+      title: row.question ?? row.slug ?? row._id,
+      slug: row.slug ?? '',
+      values: faqTemplateValues(row),
+      coverUrl: null,
+      coverAlt: null,
+    }),
+  }),
+}
+
+/**
+ * Éléments publiés de la collection qui ont une page article, pour « Preview with ». Les valeurs suivent la page
+ * article du site : `templateValues` du blog, `testimonialTemplateValues` / `faqTemplateValues`
+ * (src/lib/article-values.ts). Collection sans lecture connue : aucun élément.
  */
 export async function loadArticleOptions(type: string): Promise<{ options: ArticleOption[]; total: number }> {
+  const source = ARTICLE_SOURCES[type]
+  if (!source) return { options: [], total: 0 }
   const client = getReadClient({ perspective: 'published' })
   const [rows, total] = await Promise.all([
-    client.fetch<PostRow[]>(
-      `*[_type == $type && defined(slug.current)] | order(publishedAt desc)[0...100]{
-        _id, title, "slug": slug.current, publishedAt, excerpt, author, category,
-        image{ asset, crop, hotspot, "alt": coalesce(alt, asset->altText) }
-      }`,
-      { type },
-    ),
-    client.fetch<number>(`count(*[_type == $type && defined(slug.current)])`, { type }),
+    client.fetch<unknown[]>(`*[_type == $type && ${source.filter}] ${source.query}`, { type }),
+    client.fetch<number>(`count(*[_type == $type && ${source.filter}])`, { type }),
   ])
-  const options = rows.map((row) => {
-    const cover = row.image?.asset?._ref
-      ? urlFor(row.image as Parameters<typeof urlFor>[0])
-          .width(1200)
-          .height(630)
-          .url()
-      : null
-    return {
-      id: row._id,
-      title: row.title ?? row.slug ?? row._id,
-      slug: row.slug ?? '',
-      values: {
-        title: row.title,
-        slug: row.slug,
-        date: row.publishedAt ? row.publishedAt.slice(0, 10) : null,
-        excerpt: row.excerpt,
-        cover,
-        author: row.author,
-        category: row.category,
-      },
-      coverUrl: cover,
-      coverAlt: row.image?.alt ?? null,
-    }
-  })
-  return { options, total }
+  return { options: rows.map((row) => source.toOption(row)), total }
 }
 
 export type ArticleTemplateState = { template: ArticleTemplate; exists: boolean }
 
-/** Modèle SEO d'article (brouillon s'il existe) ; sans document : le modèle par défaut du site. */
-export async function loadArticleTemplate(id: string): Promise<ArticleTemplateState> {
+/** Modèle SEO d'article (brouillon s'il existe) ; sans document : le modèle par défaut du site pour la collection. */
+export async function loadArticleTemplate(id: string, collection: string): Promise<ArticleTemplateState> {
   const state = await getDocumentState<Doc>(id)
   const doc = state.value
-  if (!doc) return { template: DEFAULT_ARTICLE_TEMPLATE, exists: false }
+  if (!doc) return { template: defaultArticleTemplate(collection), exists: false }
   return {
     exists: true,
     template: {

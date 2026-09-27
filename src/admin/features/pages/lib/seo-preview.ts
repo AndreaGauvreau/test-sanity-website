@@ -1,6 +1,15 @@
 import type { Metadata } from 'next'
 
-import { articleMetadata, layoutMetadata, pageMetadata, type ArticleTemplate, type SiteSettings } from '@/lib/seo'
+import {
+  articleMetadata,
+  DEFAULT_ARTICLE_TEMPLATE,
+  DEFAULT_FAQ_TEMPLATE,
+  DEFAULT_TESTIMONIAL_TEMPLATE,
+  layoutMetadata,
+  pageMetadata,
+  type ArticleTemplate,
+  type SiteSettings,
+} from '@/lib/seo'
 import { resolveTemplate, type TemplateValues } from '@/lib/template-variables'
 
 /**
@@ -103,6 +112,16 @@ export function articleSeoPreview({
   const layout = layoutMetadata(settings)
   const page = articleMetadata({ settings, template, values, cover })
   return resolveMetadata(layout, page, false)
+}
+
+/**
+ * Modèle SEO qu'applique le site tant que le document de la collection n'existe pas (C6) : mêmes constantes que
+ * les pages article du site (/blog/:slug, /testimonials/:slug, /faq/:slug). Collection inconnue : celui du blog.
+ */
+export function defaultArticleTemplate(collection: string): ArticleTemplate {
+  if (collection === 'testimonial') return DEFAULT_TESTIMONIAL_TEMPLATE
+  if (collection === 'faq') return DEFAULT_FAQ_TEMPLATE
+  return DEFAULT_ARTICLE_TEMPLATE
 }
 
 /** Longueur estimée d'un champ à variables pour un article (C6 « ≈ 43 / 60 with … »), en points de code. */

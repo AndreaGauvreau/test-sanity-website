@@ -1,6 +1,11 @@
 import { describe, expect, it, vi } from 'vitest'
 
 vi.mock('server-only', () => ({}))
+// `../lib/seo-preview` (modèles par défaut de C6) importe `@/lib/seo` → `urlFor` → variables publiques Sanity.
+vi.hoisted(() => {
+  vi.stubEnv('NEXT_PUBLIC_SANITY_PROJECT_ID', 'test1234')
+  vi.stubEnv('NEXT_PUBLIC_SANITY_DATASET', 'development')
+})
 vi.mock('@/admin/core/auth/session', () => ({
   AdminAuthError: class extends Error {},
   authErrorResponse: () => new Response(null, { status: 401 }),

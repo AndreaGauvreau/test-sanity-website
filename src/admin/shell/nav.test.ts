@@ -45,9 +45,15 @@ describe('buildShellNav — éléments selon le rôle', () => {
     expect(pages.map((p) => [p.label, p.icon, p.href])).toEqual([
       ['Home', 'house', '/admin/pages/home'],
       ['/blog', 'page', '/admin/pages/blog'],
+      ['/testimonials', 'page', '/admin/pages/testimonials'],
+      ['/faq', 'page', '/admin/pages/faq'],
     ])
-    expect(pages[1].children).toEqual([
-      { id: 'page:blog:article', label: 'slug:', icon: 'database', href: '/admin/pages/blog/slug/seo', count: 12 },
+    expect(pages[0].children).toBeUndefined()
+    // Compte de la page article = celui de sa collection (post → blog, testimonial → testimonials, faq → faq).
+    expect(pages.slice(1).map((p) => p.children)).toEqual([
+      [{ id: 'page:blog:article', label: 'slug:', icon: 'database', href: '/admin/pages/blog/slug/seo', count: 12 }],
+      [{ id: 'page:testimonials:article', label: 'slug:', icon: 'database', href: '/admin/pages/testimonials/slug/seo', count: 3 }],
+      [{ id: 'page:faq:article', label: 'slug:', icon: 'database', href: '/admin/pages/faq/slug/seo', count: 9 }],
     ])
   })
 

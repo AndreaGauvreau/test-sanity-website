@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { ENGINE_ROUTES, filterEngineQuery, isSafeSegment, matchEngineRoute } from './routes'
+import { ENGINE_ROUTES, filterEngineQuery, isSafeSegment, matchEngineRoute, requiresLocalAdmin } from './routes'
 
 describe('liste blanche du relais', () => {
   it('reconnaît chaque route du contrat engine.ts', () => {
@@ -24,9 +24,27 @@ describe('liste blanche du relais', () => {
       ['GET', 'versions'],
       ['POST', 'versions/12/rollback'],
       ['POST', 'ask'],
+      ['GET', 'claude/access'],
+      ['POST', 'claude/access'],
+      ['POST', 'claude/access/test'],
+      ['POST', 'claude/access/clear'],
     ]
     for (const [method, path] of cases) expect(matchEngineRoute(method, path.split('/')), `${method} ${path}`).not.toBeNull()
     expect(ENGINE_ROUTES).toHaveLength(cases.length)
+  })
+  it('connexion à Claude : droit ai.access (Kuartz et client), GET/POST seulement', () => {
+    expect(matchEngineRoute('GET', ['claude', 'access'])?.route.capability).toBe('ai.access')
+    expect(matchEngineRoute('POST', ['claude', 'access', 'test'])?.route.capability).toBe('ai.access')
+    expect(matchEngineRoute('POST', ['claude', 'access', 'clear'])?.route.capability).toBe('ai.access')
+    expect(matchEngineRoute('GET', ['claude', 'access', 'test'])).toBeNull()
+    expect(matchEngineRoute('POST', ['claude', 'access', 'key'])).toBeNull()
+  })
+  it('« Use my Claude subscription » exige un admin local ; la clé API non', () => {
+    expect(requiresLocalAdmin('POST', ['claude', 'access'], '{"kind":"subscription"}')).toBe(true)
+    expect(requiresLocalAdmin('POST', ['claude', 'access'], '{"kind":"api-key","apiKey":"x"}')).toBe(false)
+    expect(requiresLocalAdmin('POST', ['claude', 'access', 'test'], '{"kind":"subscription"}')).toBe(false)
+    expect(requiresLocalAdmin('GET', ['claude', 'access'], undefined)).toBe(false)
+    expect(requiresLocalAdmin('POST', ['claude', 'access'], 'not json')).toBe(false)
   })
   it('stage / unstage : POST seulement, droit publish.run', () => {
     expect(matchEngineRoute('POST', ['publish', 'stage'])?.route.capability).toBe('publish.run')

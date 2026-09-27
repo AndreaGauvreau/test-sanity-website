@@ -1,6 +1,6 @@
 # core/engine — LLM context
 
-> Propriétaire : auth-core · Figma : — (sert D1-D3, G1-G4, E1, E2) · Mis à jour : 2026-09-27 (vague 3b-2, FOLLOWUPS #39)
+> Propriétaire : auth-core · Figma : — (sert D1-D3, G1-G4, E1, E2, B5) · Mis à jour : 2026-09-27 (vague 3b-2, FOLLOWUPS #39 ; routes `/claude/access*`)
 > Possède aussi : `src/app/admin/api/engine/[...path]/route.ts` (relais). Voir « Propriété des mocks ».
 
 ## Utilité
@@ -19,7 +19,8 @@ SIMULÉ (`ENGINE_MOCK=1`) pour construire les écrans sans moteur. Aucun accès 
   `PREVIEW_TOKEN_TTL_SECONDS` (15 min).
   Jeton `v1.<exp>.<uid>.<sig>` (HMAC-SHA256 de ENGINE_PREVIEW_SECRET). Émis par le moteur, vérifié par le proxy
   (core/auth/proxy-rules.ts). Écrit par l'orchestrateur, propriété d'auth-core depuis la vague 3 (SEC-09).
-- `routes.ts` — liste blanche `ENGINE_ROUTES` (méthode, segments, droit, type, paramètres de requête, délai), `matchEngineRoute`, `filterEngineQuery`, `isSafeSegment`, `MAX_ENGINE_BODY_BYTES` (64 Kio).
+- `routes.ts` — liste blanche `ENGINE_ROUTES` (méthode, segments, droit, type, paramètres de requête, délai), `matchEngineRoute`, `filterEngineQuery`, `isSafeSegment`, `MAX_ENGINE_BODY_BYTES` (64 Kio),
+  `requiresLocalAdmin` (« Use my Claude subscription » : le relais le refuse en 403 si l'hôte n'est pas 127.0.0.1 / localhost).
 - `errors.ts` — `ENGINE_MESSAGES` (anglais), `EngineRequestError`, `engineErrorBody`, `engineErrorResponse`, `isEngineErrorBody`.
 - `transport.ts` — `callEngine(call, deps)` (sans Next, dépendances injectées), `useMockEngine`, `readBodyCapped`.
 - `server.ts` — SERVEUR : `engineFetch`, `relayEngineRequest` (lient `transport` à `process.env` et au mock).
@@ -27,7 +28,7 @@ SIMULÉ (`ENGINE_MOCK=1`) pour construire les écrans sans moteur. Aucun accès 
 - `mock/index.ts` — répartiteur du moteur simulé ; GET /health y répond `mockEditorHealth()` (editor.ts, FOLLOWUPS #39).
   `mock/health.ts` — `MOCK_HEALTH`, santé de BASE (corrigée par le scénario de l'éditeur simulé). `mock/types.ts` — `MockEngineRequest`,
   `MockEngineResponse`, `MockHandler`. `mock/not-implemented.ts` — réponse 501 (segment inconnu du répartiteur).
-- `mock/editor.ts`, `mock/publish.ts`, `mock/ask.ts` (+ leurs tests) — IMPLÉMENTÉS par d'autres agents (voir ci-dessous).
+- `mock/editor.ts`, `mock/publish.ts`, `mock/ask.ts`, `mock/claude.ts` (+ leurs tests) — IMPLÉMENTÉS par d'autres agents (voir ci-dessous).
 - `*.test.ts` — signature, liste blanche, transport, client, jeton d'aperçu ; `mock/index.test.ts` (GET /health simulé).
 
 ## Contrats
@@ -43,7 +44,8 @@ SIMULÉ (`ENGINE_MOCK=1`) pour construire les écrans sans moteur. Aucun accès 
 - Exports navigateur (`@/admin/core/engine/client`) : `engineClient.health()`, `.editor.{state(page), request(req),
   job(id), answer(id, answers), stop(id), validate(changeId), cancel(changeId), shotUrl(jobId, file)}`,
   `.publish.{status(), run(expected), retry(), discard(item), stage({ kind: 'unpublish' | 'delete', id }), unstage(id),
-  diff(changeId)}`, `.versions.{list(), rollback(number)}`, `.ask(request)` ; chaque appel accepte
+  diff(changeId)}`, `.versions.{list(), rollback(number)}`, `.ask(request)`, `.claude.{access(), save(input), test(),
+  clear()}` (B5 · Claude connection : la clé part une fois en POST, seule `keyHint` revient) ; chaque appel accepte
   `{ signal?, fetchImpl? }` et lève `EngineClientError { status, code, message }`.
 - Exports pour le moteur (`src/admin/core/engine/signature.ts`, import relatif) :
   - `verifyEngineUser(headers: { get(name): string | null } | Record<string, string | string[] | undefined>, publicKeySpkiB64: string, nowSeconds?: number): Promise<EngineUser | null>`
@@ -59,7 +61,7 @@ SIMULÉ (`ENGINE_MOCK=1`) pour construire les écrans sans moteur. Aucun accès 
 ## Comportement
 
 Chaque appel (relais ou `engineFetch`) : `requireSession('route')` (relais) → `matchEngineRoute` (sinon 404
-`not_found`, sans appel) → droit du rôle (`publish.diff` et `versions.rollback` : Kuartz ; `ai.editor`, `ai.ask`,
+`not_found`, sans appel) → droit du rôle (`publish.diff` et `versions.rollback` : Kuartz ; `ai.access` : Kuartz et client ; `ai.editor`, `ai.ask`,
 `publish.run` : tous ; `health` : toute session ; sinon 403) → POST : même origine (sinon 403), corps ≤ 64 Kio lu en
 flux (sinon 413), JSON valide re-sérialisé (sinon 400) → paramètres de requête filtrés (`page` pour `editor/state`
 seulement) → moteur simulé ou réseau.
@@ -68,7 +70,7 @@ Réseau : `ENGINE_URL/<segments>` avec `Authorization: Bearer ENGINE_SECRET`, `x
 ENGINE_IDENTITY_PRIVATE_KEY (constat SEC-10 : la clé d'identité est distincte du Bearer ; le moteur ne détient que la
 clé publique, donc qui vole ENGINE_SECRET ne peut pas forger un rôle). Vérification : signature, `exp` non dépassé,
 `iat` ≤ maintenant + 30 s, 0 < exp − iat ≤ 120 s ; sinon null (401 côté moteur).
-`redirect: 'manual'`, délai 15 s (30 s publication / retour arrière, 60 s Ask). Aucun cookie ni en-tête du navigateur
+`redirect: 'manual'`, délai 15 s (30 s publication / retour arrière, 60 s Ask, 75 s test de connexion à Claude). Aucun cookie ni en-tête du navigateur
 n'est transmis ; aucun en-tête du moteur ne revient.
 Réponses : JSON `no-store` ; captures PNG seulement (`image/png`, `private, max-age=300`) ; erreurs du moteur au format
 du contrat relayées avec leur statut ; réponse illisible, redirection ou 2xx vide → 502 ; injoignable → 502 ; délai → 504 ;
@@ -88,6 +90,7 @@ droits ; le gestionnaire reçoit segments, paramètres validés, corps parsé et
 | `mock/index.ts`, `mock/health.ts`, `mock/types.ts`, `mock/not-implemented.ts` | auth-core | répartiteur par premier segment ; GET /health = `mockEditorHealth()` (scénario de l'éditeur simulé) |
 | `mock/editor.ts` | **editor-sidebar** | implémenté : `handleEditor` (routes `/editor/*`), cycle d'une demande rejoué à l'horloge, scénarios `ENGINE_MOCK_EDITOR` / `setEditorMockScenario()` (défaut « ready ») ; monde sur `globalThis` |
 | `mock/publish.ts` | **publish-ui** | implémenté : `handlePublish` (routes `/publish/*`, dont `stage` / `unstage`, et `/versions/*`), scénarios `pending`, `content-only`, `idle`, `publishing`, `published`, `failed`, `pending-fails`, `hosted`, `empty`, `offline` (`ENGINE_MOCK_PUBLISH` ou `POST /admin/publish/mock-scenario`) |
+| `mock/claude.ts` | **code-usage** | implémenté : `handleClaude` (routes `/claude/access*`), mêmes règles que le moteur (validation du contrat, clé jamais renvoyée), scénarios `ENGINE_MOCK_CLAUDE` = `local` (défaut), `logged-out`, `hosted`, `env-key` ; une clé finissant par `FAIL0` échoue au test |
 | `mock/ask.ts` | **ask-ai** | implémenté : `handleAsk` (route `/ask`), réponses et liens du catalogue du rôle, déclencheurs `[mock:error]`, `[mock:slow]` |
 
 Un gestionnaire peut garder un état en mémoire (redémarrage du serveur = remise à zéro). Aucun n'écrit dans Sanity ni git.
@@ -141,8 +144,8 @@ Un gestionnaire peut garder un état en mémoire (redémarrage du serveur = remi
 
 `npx vitest run src/admin/core/engine` — Ed25519 (signature / vérification, en-têtes `Headers` et Node, interopérabilité
 `node:crypto`, HMAC du Bearer refusé (SEC-10), autre clé, rôle retouché, signature altérée, dates : exp, iat futur,
-durée > 120 s, marge de 30 s, clé PEM, clé absente) ; les 19 routes du contrat reconnues dont `publish/stage` et
-`publish/unstage`, routes / méthodes / segments hostiles refusés ; transport (en-têtes signés avec la clé d'identité,
+durée > 120 s, marge de 30 s, clé PEM, clé absente) ; les 23 routes du contrat reconnues dont `publish/stage`,
+`publish/unstage` et `claude/access*` (droit `ai.access`, abonnement réservé à un admin local), routes / méthodes / segments hostiles refusés ; transport (en-têtes signés avec la clé d'identité,
 filtrage, 404/403 sans appel, 400/413, relais d'erreur, 401 → 503, 502/504, PNG, configuration ou clé absente → 503) ;
 moteur simulé (santé cohérente, GET /health = `mockEditorHealth()` selon le scénario de l'éditeur, publication simulée
 relayée, droits, refus en production) ; client navigateur (URL, POST, stage / unstage, erreurs). Jeton d'aperçu :

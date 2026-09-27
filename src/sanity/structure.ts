@@ -7,7 +7,7 @@ import { HomeIcon } from '@sanity/icons/Home'
 import { SearchIcon } from '@sanity/icons/Search'
 import type { StructureBuilder, StructureResolver } from 'sanity/structure'
 
-import { SINGLETON_IDS } from './schemaTypes'
+import { ARTICLE_SEO_IDS, SINGLETON_IDS } from './schemaTypes'
 
 // Colonne de gauche du Studio (/studio, Kuartz), rangée comme la sidebar de l'admin :
 // réglages, pages (documents uniques à id fixe), puis les collections dans leur ordre manuel.
@@ -18,6 +18,14 @@ const singleton = (S: StructureBuilder, type: keyof typeof SINGLETON_IDS, title:
     .id(SINGLETON_IDS[type])
     .icon(icon)
     .child(S.document().schemaType(type).documentId(SINGLETON_IDS[type]).title(title))
+
+// Modèle SEO des pages article d'une collection (document articleSeoTemplate à id fixe).
+const articleSeo = (S: StructureBuilder, collection: keyof typeof ARTICLE_SEO_IDS, title: string) =>
+  S.listItem()
+    .title(title)
+    .id(ARTICLE_SEO_IDS[collection])
+    .icon(SearchIcon)
+    .child(S.document().schemaType('articleSeoTemplate').documentId(ARTICLE_SEO_IDS[collection]).title(title))
 
 const collection = (S: StructureBuilder, type: string, title: string, icon: typeof HomeIcon) =>
   S.listItem()
@@ -35,7 +43,11 @@ export const structure: StructureResolver = (S) =>
       S.divider().title('Pages'),
       singleton(S, 'dockSchedulingPage', 'Home — Dock Scheduling (/)', HomeIcon),
       singleton(S, 'blogPage', 'Blog (/blog)', DocumentsIcon),
-      singleton(S, 'articleSeoTemplate', 'Article du blog — SEO (/blog/:slug)', SearchIcon),
+      articleSeo(S, 'post', 'Article du blog — SEO (/blog/:slug)'),
+      singleton(S, 'testimonialsPage', 'Témoignages (/testimonials)', BlockquoteIcon),
+      articleSeo(S, 'testimonial', 'Page d’un témoignage — SEO (/testimonials/:slug)'),
+      singleton(S, 'faqPage', 'FAQ (/faq)', HelpCircleIcon),
+      articleSeo(S, 'faq', 'Page d’une question — SEO (/faq/:slug)'),
       S.divider().title('Collections'),
       // Blog : même ordre que le site (du plus récent au plus ancien) ; ordre manuel via le menu de tri.
       S.listItem()

@@ -68,7 +68,8 @@ Pas à ce module : Rich text field (cms-media), Script dialog (code-usage), AI e
 - **Sorties** : composants et utilitaires exportés par `@/admin/ui` (catalogues ci-dessous) ; CSS `tokens.css` + `base.css`.
 - **Dépend de** : `motion` (motion/react), `next/font` (fonts.ts seulement). **Utilisé par** : shell (`src/admin/shell`,
   `src/app/admin/layout.tsx`, `(shell)`), features `ai-editor`, `ask-ai`, `cms`, `code`, `general`, `media`, `overview`,
-  `pages`, `publish`, `team`, `usage`.
+  `pages`, `publish`, `team`, `usage` ; `src/admin/live-edit` (site en ligne) importe SEULEMENT `icons/Icon` (pas
+  l'index, pas `tokens.css`) : `Icon.module.css` doit rester autonome (repli `currentColor` hors de l'admin).
 
 ### Mise en place (layout de l'admin, propriété de shell — en place)
 

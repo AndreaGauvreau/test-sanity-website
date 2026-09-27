@@ -1,0 +1,73 @@
+/*
+ * Liste des témoignages, hors maquette : marges de /blog, en-tête des sections, cartes sur fond clair.
+ * Citation au style des titres moyens (18), auteur au style de la légende de la section Témoignage.
+ */
+.page {
+  padding-block: var(--section-space);
+  padding-inline: var(--page-inset);
+}
+
+.heading {
+  margin-block-end: 2.75rem; /* 44, comme le titre de /blog */
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr));
+  gap: 1.25rem; /* 20 */
+  padding: 0;
+  list-style: none;
+}
+
+.card {
+  position: relative;
+  display: grid;
+  grid-template-rows: 1fr auto;
+  row-gap: 1.75rem; /* 28, citation → auteur, comme la section Témoignage */
+  block-size: 100%;
+  padding: 1.5rem; /* 24 */
+  background: var(--color-surface-subtle);
+}
+
+.quote {
+  font: var(--text-title-md);
+  letter-spacing: var(--text-title-md-tracking);
+}
+
+.author {
+  display: grid;
+  row-gap: 0.25rem; /* 4 */
+}
+
+.link,
+.name {
+  font: var(--text-body-strong);
+  letter-spacing: var(--text-body-tracking);
+}
+
+.link {
+  text-decoration: none;
+  text-decoration-thickness: from-font;
+  text-underline-position: from-font;
+}
+
+/* Le lien du nom couvre toute la carte, comme la carte d'article (PostCard). */
+.link::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+
+.card:hover .link {
+  text-decoration-line: underline;
+}
+
+.role {
+  color: var(--color-text-muted);
+}
+
+@media (min-width: 50.625rem) { /* 810 */
+  .card {
+    padding: 2rem; /* 32, comme la carte d'aide de la FAQ */
+  }
+}

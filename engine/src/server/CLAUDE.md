@@ -23,7 +23,8 @@ Ids : `^[a-z]{2,4}_[a-z0-9]{8,40}$` (`job_…`, `chg_…`), compatibles avec la 
 `/health` : `EngineHealth` + `warnings?: string[]` et `fakeClaude?: string` quand ENGINE_FAKE_CLAUDE est actif
 (additifs, hors contrat pour l'instant ; l'admin les ignore).
 `EngineContext` : config, router, store (editor + publications), repo (WorkRepo), lock (`runPublish`), editor
-(`validatedDesign()`, `blocker()`), sanity (port robot ou null), texts, preview, access (accès Claude RÉEL), settings,
+(`validatedDesign()`, `blocker()`), sanity (port robot ou null), texts, preview, access (accès Claude RÉEL, ACCESSEUR relu
+à chaque lecture : rechargé depuis l'admin), claudeAccess (service `engine/src/access` : routes `/claude/access*`), settings,
 `ports.usage` (UsageRecorder) et `ports.pendingTotal` à brancher.
 
 ## Comportement

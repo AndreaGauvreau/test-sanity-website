@@ -77,14 +77,16 @@ export type Capability =
   /** Éditeur IA (D) et Ask AI (G4). */
   | 'ai.editor'
   | 'ai.ask'
+  /** B5 · carte « Claude connection » : voir et changer l'accès du moteur à Claude (clé API, abonnement local). */
+  | 'ai.access'
   /** Publish (E1, Top bar). */
   | 'publish.run'
   /** Modifier réglages, pages, CMS, médias. */
   | 'content.write'
 
 export const CAPABILITIES: Readonly<Record<AdminRole, readonly Capability[]>> = {
-  kuartz: ['settings.code', 'hub.link', 'publish.diff', 'versions.rollback', 'ai.editor', 'ai.ask', 'publish.run', 'content.write'],
-  client: ['settings.team', 'ai.editor', 'ai.ask', 'publish.run', 'content.write'],
+  kuartz: ['settings.code', 'hub.link', 'publish.diff', 'versions.rollback', 'ai.editor', 'ai.ask', 'ai.access', 'publish.run', 'content.write'],
+  client: ['settings.team', 'ai.editor', 'ai.ask', 'ai.access', 'publish.run', 'content.write'],
   editor: ['ai.editor', 'ai.ask', 'publish.run', 'content.write'],
 }
 

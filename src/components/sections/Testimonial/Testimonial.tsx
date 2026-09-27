@@ -23,7 +23,16 @@ const sceneSizes =
 // à partir de 810 px, le texte à droite, sur la photo. Citation, auteur et lien par défaut :
 // collection Témoignages (le témoignage choisi, sinon le plus récent) ; bouton et titre
 // invisible : onglet Témoignage de la page. Sans témoignage, pas de section.
-export function Testimonial({ data }: { data: StegaBranded<TestimonialData> }) {
+// Aussi le corps de la page d'un témoignage (/testimonials/:slug) : `pageDoc` = null, car le bouton et le
+// titre invisible n'y viennent pas de la page d'accueil (pas de zone de page pour l'éditeur IA).
+export function Testimonial({
+  data,
+  pageDoc = HOME_DOCUMENT_ID,
+}: {
+  data: StegaBranded<TestimonialData>
+  /** Document qui porte le bouton et le titre de la section (zones testimonial, testimonial.cta). */
+  pageDoc?: string | null
+}) {
   const { item, cta, title } = data
   if (!item) return null
 
@@ -33,7 +42,7 @@ export function Testimonial({ data }: { data: StegaBranded<TestimonialData> }) {
     <section
       className={styles.testimonial}
       aria-labelledby="testimonial-title"
-      {...editAttrs('testimonial', { doc: HOME_DOCUMENT_ID })}
+      {...(pageDoc ? editAttrs('testimonial', { doc: pageDoc }) : {})}
     >
       {/* Pas de titre visible dans le Figma : annoncé aux lecteurs d'écran seulement. */}
       <h2 id="testimonial-title" className="visually-hidden">
@@ -72,7 +81,7 @@ export function Testimonial({ data }: { data: StegaBranded<TestimonialData> }) {
           variant="secondary"
           tone="inverse"
           className={styles.cta}
-          edit={editAttrs('testimonial.cta', { doc: HOME_DOCUMENT_ID })}
+          edit={pageDoc ? editAttrs('testimonial.cta', { doc: pageDoc }) : undefined}
         >
           {cta.label}
         </Button>

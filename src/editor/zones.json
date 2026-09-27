@@ -1068,7 +1068,7 @@
         "testimonial.quote",
         "testimonial.cta"
       ],
-      "reach": "the home page"
+      "reach": "the home page and every testimonial page (/testimonials/:slug)"
     },
     "testimonial.quote": {
       "label": "Quote",
@@ -1101,7 +1101,7 @@
         "testimonial.quote.text",
         "testimonial.quote.author"
       ],
-      "reach": "the home page"
+      "reach": "the home page and every testimonial page (/testimonials/:slug)"
     },
     "testimonial.quote.text": {
       "label": "Quote text",
@@ -1129,7 +1129,7 @@
           "quote": 320
         }
       },
-      "reach": "the home page"
+      "reach": "the home page and every testimonial page (/testimonials/:slug)"
     },
     "testimonial.quote.author": {
       "label": "Author",
@@ -1158,7 +1158,7 @@
           "company": 60
         }
       },
-      "reach": "the home page"
+      "reach": "the home page and every testimonial page (/testimonials/:slug)"
     },
     "testimonial.cta": {
       "label": "Button",
@@ -1184,7 +1184,7 @@
           "testimonial.cta.label": 30
         }
       },
-      "reach": "the home page"
+      "reach": "the home page and every testimonial page (/testimonials/:slug)"
     },
     "integrations": {
       "label": "Section",
@@ -1498,7 +1498,7 @@
         "faq.item",
         "faq.support"
       ],
-      "reach": "the home page"
+      "reach": "the home page and /faq (same layout and accordion styles)"
     },
     "faq.eyebrow": {
       "label": "Eyebrow",
@@ -1582,7 +1582,7 @@
         "faq.item.question",
         "faq.item.answer"
       ],
-      "reach": "the home page"
+      "reach": "the home page and /faq (same accordion styles)"
     },
     "faq.item.question": {
       "label": "Question text",
@@ -1610,7 +1610,7 @@
           "question": 100
         }
       },
-      "reach": "the home page"
+      "reach": "the home page and /faq (same accordion styles)"
     },
     "faq.item.answer": {
       "label": "Answer",
@@ -1628,7 +1628,7 @@
         "align"
       ],
       "hint": "Answers are rich text: edit their wording in CMS › FAQ.",
-      "reach": "the home page"
+      "reach": "the home page and /faq (same accordion styles)"
     },
     "faq.support": {
       "label": "Help card",

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import adminConfig from '@/admin.config'
+import { SCRIPT_PAGES } from '@/sanity/schemaTypes/siteSettings'
 
 import {
   checkScript,
@@ -18,7 +19,7 @@ import {
   toSanityScript,
 } from './scripts'
 
-const OPTIONS = pageOptions(adminConfig, { blog: 12 })
+const OPTIONS = pageOptions(adminConfig, { blog: 12, testimonials: 3, faq: 9 })
 const JSON_LD = `<script type="application/ld+json">
 { "headline": "{{title}}", "description": "{{excerpt}}", "image": "{{ cover }}", "x": "{{title}}" }
 </script>`
@@ -30,7 +31,26 @@ describe('pageOptions (menu Page de G6, depuis le manifeste)', () => {
       ['home', 'Home', '/', 0],
       ['blog', '/blog', '/blog', 0],
       ['blog/slug', 'slug:', '/blog/:slug', 1],
+      ['testimonials', '/testimonials', '/testimonials', 0],
+      ['testimonials/slug', 'slug:', '/testimonials/:slug', 1],
+      ['faq', '/faq', '/faq', 0],
+      ['faq/slug', 'slug:', '/faq/:slug', 1],
     ])
+  })
+
+  it('mêmes valeurs que SCRIPT_PAGES du schéma (le Studio et le site lisent la même liste)', () => {
+    expect(OPTIONS.map((o) => o.value).sort()).toEqual(SCRIPT_PAGES.map((p) => p.value).sort())
+  })
+
+  it('pages article des témoignages et de la FAQ : compte et champs de leur collection', () => {
+    const testimonial = OPTIONS.find((o) => o.value === 'testimonials/slug')!
+    expect(testimonial.count).toBe(3)
+    expect(testimonial.article?.collectionLabel).toBe('Testimonials')
+    expect(testimonial.article?.fields.map((f) => f.token)).toEqual(['name', 'slug', 'company', 'role', 'quote'])
+    const faq = OPTIONS.find((o) => o.value === 'faq/slug')!
+    expect(faq.count).toBe(9)
+    expect(faq.article?.collectionLabel).toBe('FAQ')
+    expect(faq.article?.fields.map((f) => f.token)).toEqual(['question', 'slug', 'answer'])
   })
 
   it('page article : nombre d’articles et champs du modèle (Blog fields)', () => {
@@ -44,7 +64,9 @@ describe('pageOptions (menu Page de G6, depuis le manifeste)', () => {
   it('libellés du tableau', () => {
     expect(pageLabel(OPTIONS, 'all')).toBe('All pages')
     expect(pageLabel(OPTIONS, 'blog/slug')).toBe('/blog/:slug')
-    expect(pageLabel(OPTIONS, 'faq')).toBe('faq')
+    expect(pageLabel(OPTIONS, 'faq/slug')).toBe('/faq/:slug')
+    // Page disparue du manifeste : valeur brute.
+    expect(pageLabel(OPTIONS, 'pricing')).toBe('pricing')
     expect(placementLabel('headEnd')).toBe('End of <head>')
     expect(placementLabel('bodyStart')).toBe('Start of <body>')
     expect(runLabel('everyPageVisit')).toBe('On every page visit')
@@ -85,7 +107,7 @@ describe('checkScript (validation d’un script)', () => {
   })
 
   it('valeurs fermées : emplacement, exécution, page du manifeste', () => {
-    const check = checkScript({ ...base, placement: 'footer' as never, run: 'always' as never, page: 'testimonials' }, OPTIONS)
+    const check = checkScript({ ...base, placement: 'footer' as never, run: 'always' as never, page: 'pricing' }, OPTIONS)
     expect(Object.keys(check.errors).sort()).toEqual(['page', 'placement', 'run'])
   })
 

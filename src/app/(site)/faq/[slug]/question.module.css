@@ -1,0 +1,30 @@
+/*
+ * Page d'une question, hors maquette : colonne de lecture de 720 px des articles du blog
+ * (app/(site)/blog/[slug]/article.module.css), réponse au style du texte long des articles.
+ */
+.article {
+  display: grid;
+  justify-items: start;
+  max-inline-size: calc(45rem + 2 * var(--gutter));
+  margin-inline: auto;
+  padding: var(--section-space) var(--gutter);
+}
+
+.answer {
+  margin-block-start: 2.5rem; /* 40 */
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.answer > * + * {
+  margin-block-start: 1em;
+}
+
+.answer a {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.back {
+  margin-block-start: 2.5rem; /* 40 */
+}

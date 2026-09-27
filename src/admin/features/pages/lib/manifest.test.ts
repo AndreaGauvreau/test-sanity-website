@@ -34,6 +34,16 @@ describe('findPage', () => {
     expect(article.documentId).toBe('articleSeo-post')
     expect(article.variables.map((v) => v.token)).toContain('excerpt')
     expect(articleOf(home)).toBeNull()
+    expect(article.imageFields).toEqual([{ value: 'cover', label: 'Cover' }])
+    // Pages listing de la question 15 révisée : collection, variables et modèle propres, pas d'image « From field ».
+    const faq = articleOf(findPage('faq')!)!
+    expect([faq.collection?.id, faq.documentId, faq.path]).toEqual(['faq', 'articleSeo-faq', '/faq/:slug'])
+    expect(faq.variables.map((v) => v.token)).toEqual(['question', 'slug', 'answer'])
+    expect(faq.imageFields).toEqual([])
+    const testimonial = articleOf(findPage('testimonials')!)!
+    expect([testimonial.collection?.id, testimonial.documentId]).toEqual(['testimonials', 'articleSeo-testimonial'])
+    expect(testimonial.variables.map((v) => v.token)).toEqual(['name', 'slug', 'company', 'role', 'quote'])
+    expect(testimonial.imageFields).toEqual([])
   })
 })
 

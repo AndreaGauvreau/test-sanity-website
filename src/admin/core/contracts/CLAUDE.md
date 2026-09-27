@@ -9,11 +9,11 @@ moteur, formats d'affichage de la consommation. Ce dossier n'importe ni React, n
 rester utilisable partout (composants serveur et client, route handlers, moteur, tests).
 
 ## Fichiers
-- `roles.ts` — rôles de l'admin (kuartz, client, editor), correspondance avec les rôles Sanity, liste blanche de Kuartz (`resolveAdminRole`, `KUARTZ_ALLOWLIST`, SEC-05), droits (`can`, `CAPABILITIES`), libellés.
+- `roles.ts` — rôles de l'admin (kuartz, client, editor), correspondance avec les rôles Sanity, liste blanche de Kuartz (`resolveAdminRole`, `KUARTZ_ALLOWLIST`, SEC-05), droits (`can`, `CAPABILITIES` ; `ai.access` = Kuartz et client, carte Claude connection de B5), libellés.
 - `session.ts` — `Session` (serveur, avec le jeton Sanity de l'utilisateur), `PublicSession` (client, sans jeton), `EngineUser` (identité signée envoyée au moteur).
 - `manifest.ts` — `AdminConfig` : pages, sections, champs (`FieldDef`), collections, modèles SEO d'article. Instance : `src/admin.config.ts`.
 - `zones.ts` — zones de l'éditeur IA (`ZonesFile`, `ZoneDef`, liaisons de texte Sanity ou code), `TokensFile`. Instances : `src/editor/zones.json`, `src/styles/tokens.json`.
-- `engine.ts` — API HTTP du moteur : santé, éditeur (demandes, modifications en attente, fil), publication, versions, Ask AI, journal `aiUsage`. Les routes sont listées en commentaire à côté des types.
+- `engine.ts` — API HTTP du moteur : santé, connexion à Claude (`ClaudeAccessState`, `ClaudeAccessInput`, routes `/claude/access*`, validation pure `claudeApiKeyProblem` / `cleanClaudeApiKey` / `claudeKeyHint` partagée par l'écran, le mock et le moteur), éditeur (demandes, modifications en attente, fil), publication, versions, Ask AI, journal `aiUsage`. Les routes sont listées en commentaire à côté des types.
 - `format.ts` — formats de la consommation (« 18.2k input · 1.1k output · $0.07 », « Opus 5.5 », durées, cumul).
 - `index.ts` — exports publics.
 

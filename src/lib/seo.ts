@@ -119,6 +119,27 @@ export const DEFAULT_ARTICLE_TEMPLATE: ArticleTemplate = {
 }
 
 /**
+ * Modèles par défaut des pages /testimonials/:slug et /faq/:slug, tant que leur document (articleSeo-testimonial,
+ * articleSeo-faq) n'existe pas ; la migration crée les documents avec ces mêmes valeurs. Pas d'image « From
+ * field » : ces collections n'ont pas d'image (image fixe du modèle, sinon image de partage du site).
+ */
+export const DEFAULT_TESTIMONIAL_TEMPLATE: ArticleTemplate = {
+  metaTitle: 'Testimonial from {{name}}, {{company}}',
+  metaDescription: '{{quote}}',
+  ogImageField: null,
+  ogImage: null,
+  allowIndexing: true,
+}
+
+export const DEFAULT_FAQ_TEMPLATE: ArticleTemplate = {
+  metaTitle: '{{question}}',
+  metaDescription: '{{answer}}',
+  ogImageField: null,
+  ogImage: null,
+  allowIndexing: true,
+}
+
+/**
  * Métadonnées d'une page article (C6) : variables {{…}} remplacées par les valeurs de l'article ; une
  * variable vide fait retomber le champ sur la valeur du site (C6, proposé).
  */

@@ -1,6 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('server-only', () => ({}))
+// `../lib/seo-preview` (modèles par défaut de C6) importe `@/lib/seo` → `urlFor` → variables publiques Sanity.
+vi.hoisted(() => {
+  vi.stubEnv('NEXT_PUBLIC_SANITY_PROJECT_ID', 'test1234')
+  vi.stubEnv('NEXT_PUBLIC_SANITY_DATASET', 'development')
+})
 
 import { adminConfig } from '@/admin.config'
 import type { Session } from '@/admin/core/contracts'
@@ -297,5 +302,56 @@ describe('saveArticleSeo (C6)', () => {
       },
     ])
     expect(f.mutations[1].at(-1)).toEqual({ patch: { id: 'drafts.articleSeo-post', set: { allowIndexing: false } } })
+  })
+
+  it('témoignages et FAQ : modèle absent créé avec les valeurs par défaut de LEUR collection (sans image « From field »)', async () => {
+    const f = fakeStore({})
+    expect(await saveArticleSeo(session, { pageId: 'testimonials', key: 'metaTitle', value: '{{name}} on Conduit' }, { store: f.store })).toEqual({ ok: true })
+    expect(f.mutations[0]).toEqual([
+      {
+        create: {
+          collection: 'testimonial',
+          metaTitle: 'Testimonial from {{name}}, {{company}}',
+          metaDescription: '{{quote}}',
+          allowIndexing: true,
+          _id: 'drafts.articleSeo-testimonial',
+          _type: 'articleSeoTemplate',
+        },
+      },
+    ])
+    expect(f.mutations[1].at(-1)).toEqual({ patch: { id: 'drafts.articleSeo-testimonial', set: { metaTitle: '{{name}} on Conduit' } } })
+
+    expect(await saveArticleSeo(session, { pageId: 'faq', key: 'allowIndexing', value: false }, { store: f.store })).toEqual({ ok: true })
+    expect(f.mutations[2]).toEqual([
+      {
+        create: {
+          collection: 'faq',
+          metaTitle: '{{question}}',
+          metaDescription: '{{answer}}',
+          allowIndexing: true,
+          _id: 'drafts.articleSeo-faq',
+          _type: 'articleSeoTemplate',
+        },
+      },
+    ])
+  })
+
+  it('témoignages et FAQ : leurs variables seulement, pas de « From field »', async () => {
+    const f = fakeStore({
+      'articleSeo-testimonial': { _id: 'articleSeo-testimonial', _type: 'articleSeoTemplate', collection: 'testimonial' },
+      'articleSeo-faq': { _id: 'articleSeo-faq', _type: 'articleSeoTemplate', collection: 'faq' },
+    })
+    expect(await saveArticleSeo(session, { pageId: 'faq', key: 'metaDescription', value: '{{answer}}' }, { store: f.store })).toEqual({ ok: true })
+    expect(await saveArticleSeo(session, { pageId: 'faq', key: 'metaTitle', value: '{{title}}' }, { store: f.store })).toEqual({
+      ok: false,
+      error: 'Unknown field {{title}}. Insert a field from the list.',
+    })
+    expect(await saveArticleSeo(session, { pageId: 'testimonials', key: 'metaTitle', value: '{{excerpt}}' }, { store: f.store })).toMatchObject({ ok: false })
+    expect(await saveArticleSeo(session, { pageId: 'testimonials', key: 'ogImageField', value: 'cover' }, { store: f.store })).toEqual({
+      ok: false,
+      error: 'This collection has no image field. Upload a fixed image instead.',
+    })
+    expect(await saveArticleSeo(session, { pageId: 'faq', key: 'ogImageField', value: null }, { store: f.store })).toEqual({ ok: true })
+    expect(f.mutations).toHaveLength(2)
   })
 })

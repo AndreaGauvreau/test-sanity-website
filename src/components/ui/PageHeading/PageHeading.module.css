@@ -1,0 +1,21 @@
+/*
+ * En-tête d'une page listing ou article hors maquette : mêmes écarts que les en-têtes des sections
+ * (sur-titre → titre 24 px, titre → chapeau 24 px, comme « Conduit System »).
+ */
+.heading {
+  display: grid;
+  justify-items: start;
+  row-gap: 1.5rem; /* 24 */
+}
+
+.title {
+  max-inline-size: 45rem; /* 720 : la colonne de lecture des articles */
+  font: var(--text-title-xl);
+  letter-spacing: var(--text-title-xl-tracking);
+  text-wrap: balance;
+}
+
+.lede {
+  max-inline-size: 28.75rem; /* 460, comme les chapeaux des sections */
+  color: var(--color-text-muted);
+}

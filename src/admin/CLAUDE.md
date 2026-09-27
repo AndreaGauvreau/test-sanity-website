@@ -32,17 +32,21 @@ site Kuartz. Le site n'est connu que par `src/admin.config.ts` (type `AdminConfi
 | `features/ai-editor/canvas` | Aperçu, sélection, barre d'outils | D1-D3, G1 |
 | `features/ask-ai` | Assistant en lecture seule | G4 |
 | `editor-bridge/` | Pont monté DANS le site en mode aperçu (`KZ_EDITOR_PREVIEW`) | D1-D3 |
+| `live-edit/` | Bouton « Edit with AI » monté DANS le site en ligne (hors aperçu et Draft Mode), question 9 | D0, G1 |
 
 Le moteur IA est hors de ce dossier : `engine/` (voir `engine/CLAUDE.md`).
 
 ## Invariants
 
-- Chaque page serveur, server action et route handler commence par `requireSession()` ou `requireCapability()`.
+- Chaque page serveur, server action et route handler commence par `requireSession()` ou `requireCapability()`
+  (exceptions publiques d'auth-core : `/admin/api/auth/*` — connexion, et `editor-access` qui ne répond que
+  `{ canEdit }` au bouton du site).
 - Le jeton Sanity de l'utilisateur ne quitte jamais le serveur ; l'accès à Claude n'existe que dans le moteur.
 - Structure figée : l'admin modifie des valeurs et des éléments de collection, jamais le schéma.
 - Rien n'est en ligne sans Publish ; l'éditeur IA n'écrit que dans des brouillons (Sanity) et sur `draft` (git).
 - Les contrats de `core/contracts/` ne changent que par l'orchestrateur (« Demandes de contrat » des modules).
-- CSS Modules + tokens `--k-*` ; le CSS de l'admin ne s'importe que sous `src/app/admin/`.
+- CSS Modules + tokens `--k-*` ; le CSS de l'admin ne s'importe que sous `src/app/admin/`. Seule exception :
+  `live-edit/` (CSS Module local aux valeurs recopiées + `Icon` du kit), chargé à la demande sur le site.
 
 ## Chaque module
 

@@ -1,12 +1,12 @@
 import { createClient } from '@sanity/client'
 import path from 'node:path'
 import type { AdminConfig } from '../../../src/admin/core/contracts'
-import { createComplete } from '../claude'
+import { CompleteError, createComplete } from '../claude'
 import type { Router } from '../server/http'
 import type { EngineContext, EngineModule } from '../server/modules'
 import { askUsageRecorderOf } from '../usage'
 import type { AskReader } from './context'
-import { createAskService, type AskService, type AskServiceDeps } from './service'
+import { ASK_MESSAGES, createAskService, type AskService, type AskServiceDeps } from './service'
 import { sanityAskUsageRecorder, type AskUsageRecorder } from './usage'
 
 /**
@@ -64,7 +64,8 @@ export type AskModuleOptions = {
 
 /**
  * Module du moteur (`EngineModule`), dans `MODULES` de main.ts APRÈS `usageModule` (le journal commun doit exister).
- * - accès Claude : `context.access` (resolveClaudeAccess) → `createComplete({ access, configDir: <workspace>/claude/ask })` ;
+ * - accès Claude : `context.access` relu à chaque question (rechargé depuis l'admin, engine/src/access) →
+ *   `createComplete({ access, configDir: <workspace>/claude/ask })` ;
  * - modèle : `context.config.models.ask` (ASK_MODEL) ;
  * - lecture : jeton de lecture Sanity de la config ;
  * - journal : `options.usage`, sinon le journal commun (`askUsageRecorderOf(context)`), sinon `context.sanity` (robot),
@@ -77,12 +78,17 @@ export function askModule(options: AskModuleOptions = {}): EngineModule {
       const log = (line: string) => console.log(`${new Date().toISOString().slice(11, 19)} ${line}`)
       const config = options.config ?? (await loadAdminConfig())
       const { sanity } = context.config
-      const complete =
+      // Accès relu à CHAQUE question (`context.access` est un accesseur) : une clé enregistrée depuis l'admin (B5) sert
+      // aussitôt, sans redémarrage. Sans accès : erreur 503 avec le message d'Ask AI.
+      const configDir = path.join(context.config.paths.claude, 'ask')
+      const complete: AskServiceDeps['complete'] =
         options.complete !== undefined
           ? options.complete
-          : context.access.ok
-            ? createComplete({ access: context.access.access, configDir: path.join(context.config.paths.claude, 'ask') })
-            : null
+          : (input) => {
+              const current = context.access
+              if (!current.ok) return Promise.reject(new CompleteError(ASK_MESSAGES.noAccess, true))
+              return createComplete({ access: current.access, configDir })(input)
+            }
       const reader =
         options.reader !== undefined
           ? options.reader

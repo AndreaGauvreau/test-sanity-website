@@ -131,3 +131,61 @@ export const ARTICLE_SEO_QUERY = defineQuery(`*[_type == "articleSeoTemplate" &&
   ogImage,
   allowIndexing
 }`)
+
+// Pages /testimonials et /faq : textes de l'en-tête et SEO (documents uniques « testimonialsPage », « faqPage »).
+export const TESTIMONIALS_PAGE_QUERY = defineQuery(`*[_type == "testimonialsPage" && _id == "testimonialsPage"][0]{
+  _id,
+  content,
+  seo
+}`)
+
+export const FAQ_PAGE_QUERY = defineQuery(`*[_type == "faqPage" && _id == "faqPage"][0]{
+  _id,
+  content,
+  seo
+}`)
+
+// Liste de /testimonials : ordre manuel (orderRank), puis le plus récent (même ordre que le témoignage par
+// défaut de la page d'accueil). Un témoignage sans slug est listé, sans lien vers sa page.
+export const TESTIMONIALS_QUERY = defineQuery(`*[_type == "testimonial"] | order(coalesce(orderRank, "~") asc, _createdAt desc){
+  _id,
+  quote,
+  name,
+  role,
+  company,
+  "slug": slug.current
+}`)
+
+export const TESTIMONIAL_QUERY = defineQuery(`*[_type == "testimonial" && slug.current == $slug][0]{
+  _id,
+  quote,
+  name,
+  role,
+  company,
+  caseStudyUrl,
+  "slug": slug.current
+}`)
+
+export const TESTIMONIAL_SLUGS_QUERY = defineQuery(`*[_type == "testimonial" && defined(slug.current)]{
+  "slug": slug.current
+}`)
+
+// Liste de /faq : mêmes questions et même ordre que la section FAQ de l'accueil (FAQS_QUERY), avec le slug.
+export const FAQ_LIST_QUERY = defineQuery(`*[_type == "faq" && defined(answer)] | order(coalesce(orderRank, "~") asc, order asc){
+  _id,
+  question,
+  answer,
+  "slug": slug.current
+}`)
+
+// Page d'une question : sans réponse, pas de page (comme sur la liste).
+export const FAQ_QUERY = defineQuery(`*[_type == "faq" && slug.current == $slug && defined(answer)][0]{
+  _id,
+  question,
+  answer,
+  "slug": slug.current
+}`)
+
+export const FAQ_SLUGS_QUERY = defineQuery(`*[_type == "faq" && defined(slug.current) && defined(answer)]{
+  "slug": slug.current
+}`)

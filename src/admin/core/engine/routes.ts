@@ -55,6 +55,12 @@ export const ENGINE_ROUTES: readonly EngineRouteDef[] = [
   { method: 'POST', pattern: ['versions', ':number', 'rollback'], capability: 'versions.rollback', timeoutMs: 30_000 },
   // Ask AI (G4)
   { method: 'POST', pattern: ['ask'], capability: 'ai.ask', timeoutMs: 60_000 },
+  // Connexion à Claude (B5 · carte « Claude connection ») : Kuartz et client. Le test d'un abonnement lance un tour
+  // minimal de Claude Code (jusqu'à ≈ 60 s).
+  { method: 'GET', pattern: ['claude', 'access'], capability: 'ai.access' },
+  { method: 'POST', pattern: ['claude', 'access'], capability: 'ai.access' },
+  { method: 'POST', pattern: ['claude', 'access', 'test'], capability: 'ai.access', timeoutMs: 75_000 },
+  { method: 'POST', pattern: ['claude', 'access', 'clear'], capability: 'ai.access' },
 ]
 
 export const DEFAULT_ENGINE_TIMEOUT_MS = 15_000
@@ -89,6 +95,21 @@ export function matchEngineRoute(method: string, segments: readonly string[]): E
     if (ok) return { route, params }
   }
   return null
+}
+
+/**
+ * Demande qui n'a de sens que depuis un admin ouvert sur CETTE machine : « Use my Claude subscription » (abonnement
+ * Claude connecté sur la machine du moteur). Le relais la refuse (403) si l'hôte de la requête n'est pas
+ * 127.0.0.1 / localhost ; le moteur, lui, la refuse hors ENGINE_MODE=local écrit. `body` : JSON brut relayé.
+ */
+export function requiresLocalAdmin(method: string, segments: readonly string[], body: string | undefined): boolean {
+  if (method !== 'POST' || segments.length !== 2 || segments[0] !== 'claude' || segments[1] !== 'access') return false
+  try {
+    const parsed = JSON.parse(body ?? '') as unknown
+    return typeof parsed === 'object' && parsed !== null && (parsed as { kind?: unknown }).kind === 'subscription'
+  } catch {
+    return false
+  }
 }
 
 /** Garde seulement les paramètres de requête permis par la route (valeurs bornées). */

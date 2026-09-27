@@ -10,14 +10,19 @@ interface de l'admin : seulement schéma, requêtes, client, structure du Studio
 
 ## Fichiers
 - `env.ts` — projet, dataset, apiVersion, `studioUrl = '/studio'` (stega, basePath du Studio).
-- `schemaTypes/index.ts` — liste des types, `SINGLETON_IDS` (ids fixes), `singletonTypes`, `hiddenCreationTypes`.
+- `schemaTypes/index.ts` — liste des types, `SINGLETON_IDS` (ids fixes), `ARTICLE_SEO_IDS` (modèle SEO par collection),
+  `singletonTypes`, `hiddenCreationTypes`.
 - `schemaTypes/siteSettings.ts` — réglages (B2, B3/G6) + listes `SCRIPT_PLACEMENTS`, `SCRIPT_RUNS`, `SCRIPT_PAGES`.
 - `schemaTypes/dockSchedulingPage.ts` — page d'accueil : 11 sections (un champ objet par section) + `seo`.
 - `schemaTypes/blogPage.ts` — page /blog : `content { title, emptyText }` + `seo`.
-- `schemaTypes/articleSeoTemplate.ts` — modèle SEO des pages article (C6) + `POST_TEMPLATE_VARIABLES`.
+- `schemaTypes/listingPage.ts` — pages /testimonials et /faq (`testimonialsPage`, `faqPage`) : `content { eyebrow (30),
+  title (60), lede (200), emptyText (80) }` + `seo` ; textes par défaut dans src/lib/page-defaults.ts (pur).
+- `schemaTypes/articleSeoTemplate.ts` — modèle SEO des pages article (C6) + variables par collection
+  (`POST_`, `TESTIMONIAL_`, `FAQ_TEMPLATE_VARIABLES`, `ARTICLE_TEMPLATE_VARIABLES`).
 - `schemaTypes/objects/seo.ts` — objet `seo { metaTitle, metaDescription, ogImage, allowIndexing }` (C2).
 - `schemaTypes/objects/cta.ts`, `sections/*.ts` — bouton et sections de la page, avec leurs longueurs max.
-- `schemaTypes/post.ts`, `testimonial.ts`, `faq.ts` — collections, `orderRank` (ordre manuel), `post.author`.
+- `schemaTypes/post.ts`, `testimonial.ts`, `faq.ts` — collections, `orderRank` (ordre manuel), `post.author`, `slug` sur les
+  trois (testimonial : source nom + entreprise ; faq : question ; 96, requis).
 - `schemaTypes/aiUsage.ts` — journal de consommation IA (contrat `AiUsageDoc`, dont `request` ≤ 120), privé, hors structure.
 - `schemaTypes/schema.test.ts` — champs ajoutés à la relecture : `scripts[].signature`, `aiUsage.request`, projection des scripts.
 - `schemaTypes/shared.ts` — `altField` (repli sur l'altText de l'asset), `linkAnnotation`, `maxLength()`, `orderRankField()`.
@@ -44,6 +49,8 @@ interface de l'admin : seulement schéma, requêtes, client, structure du Studio
   | `siteSettings` | siteSettings | `title` (60), `description` (160), `faviconLight`, `faviconDark`, `socialImage`, `allowIndexing`, `scripts[]` |
   | `dockSchedulingPage` | dockSchedulingPage | `hero`…`getStarted` (11 objets), `seo` |
   | `blogPage` | blogPage | `content { title (40), emptyText (80) }`, `seo` |
+  | `testimonialsPage`, `faqPage` | testimonialsPage, faqPage | `content { eyebrow (30), title (60), lede (200), emptyText (80) }`, `seo` |
+  | `articleSeo-testimonial`, `articleSeo-faq` | articleSeoTemplate | `collection: 'testimonial'` / `'faq'`, mêmes champs ; `ogImageField` masqué (pas d'image) |
   | `articleSeo-post` | articleSeoTemplate | `collection: 'post'`, `metaTitle` (60), `metaDescription` (160), `ogImageField` ('cover' = image de l'article ; vide = `ogImage` fixe), `ogImage`, `allowIndexing` |
   | `aiUsage.<id>` | aiUsage | écrit par le moteur, privé (le point), champs = `AiUsageDoc` |
 - `siteSettings.scripts[]` (`siteScript`) : `_key`, `name` (60), `placement` (`headEnd`·`bodyStart`·`bodyEnd`),
@@ -55,8 +62,10 @@ interface de l'admin : seulement schéma, requêtes, client, structure du Studio
   sont les `{{…}}` du code (`scriptVariables()`, src/lib/site-scripts.ts).
 - `SITE_SETTINGS_QUERY` : scripts actifs (`enabled != false`) avec `enabled` et `signature` (vérification au rendu).
 - `aiUsage.request` : chaîne ≤ 120 (colonne « Request » de B5), écrite par le moteur (engine-publish).
-- Variables des pages article (C6, G6) : `title`, `slug`, `date` (AAAA-MM-JJ), `excerpt`, `cover` (URL 1200 × 630),
-  `author`, `category`. Mêmes noms dans `POST_TEMPLATE_VARIABLES`, src/admin.config.ts et src/lib/template-variables.ts.
+- Variables des pages article (C6, G6) — post : `title`, `slug`, `date` (AAAA-MM-JJ), `excerpt`, `cover` (URL 1200 × 630),
+  `author`, `category` ; testimonial : `name`, `slug`, `company`, `role`, `quote` ; faq : `question`, `slug`, `answer`
+  (texte brut, 160 caractères au plus). Mêmes noms dans `ARTICLE_TEMPLATE_VARIABLES`, src/admin.config.ts,
+  src/lib/article-values.ts (testimonial, faq ; testé) et la page du blog (post).
 - Ordre manuel : `orderRank` (chaîne, fractional-indexing, masqué dans le Studio) sur post, testimonial, faq. Le site
   trie la FAQ et choisit le témoignage par défaut par `orderRank` ; le blog reste trié par date (l'ordre manuel du Blog
   ne sert qu'à l'admin). Un document créé dans le Studio reçoit une clé après la dernière.
@@ -83,11 +92,17 @@ interface de l'admin : seulement schéma, requêtes, client, structure du Studio
 3. documents uniques créés s'ils manquent (`siteSettings` : titre « Conduit », description, image de partage recadrée
    dans `distribution-center-night.jpg`, aucun favicon faute de fichier ; `blogPage` ; `articleSeo-post` avec
    `{{title}}`/`{{excerpt}}`/cover, qui reproduit les métadonnées d'avant) ; `blogPage` à l'ancien format
-   (textes à la racine) converti en `content` ;
+   (textes à la racine) converti en `content` ; `testimonialsPage`, `faqPage` (textes par défaut),
+   `articleSeo-testimonial` (`Testimonial from {{name}}, {{company}}` / `{{quote}}`), `articleSeo-faq`
+   (`{{question}}` / `{{answer}}`) ;
 4. `--demo` : suppression LyonDrive + données de démonstration ;
-5. (toujours) signature des scripts d'exemple de `siteSettings` (publié + brouillon) dont les champs signés sont
+5. (toujours, après la démo) slug des témoignages (slugify nom + entreprise) et des questions (slugify question) qui
+   n'en ont pas : unique dans la collection, même valeur sur publié et brouillon, jamais remplacé (slugify/uniqueSlug de
+   src/admin/features/cms/lib/slug.ts, format de l'admin) ;
+6. (toujours) signature des scripts d'exemple de `siteSettings` (publié + brouillon) dont les champs signés sont
    IDENTIQUES à `demoScripts` (`seed/demo-script-signatures.ts`), avec `SCRIPTS_SIGNING_SECRET` ; secret absent : sautée.
-Exécutée sur `development` le 2026-09-27 (structure, puis `--demo`). **Pas sur production.** L'étape 5 (ajoutée à la
+Exécutée sur `development` le 2026-09-27 (structure, puis `--demo`), relancée le même jour pour la question 15 révisée
+(2 pages, 2 modèles, 3 + 9 slugs ; deuxième passage : rien à faire). **Pas sur production.** L'étape 5 (ajoutée à la
 relecture) n'a été lancée qu'à blanc (« 2 script(s) d'exemple à signer ») : tant que `npm run migrate:admin` n'est pas
 relancé, le JSON-LD d'exemple n'est plus injecté sur les pages article de development.
 
@@ -103,7 +118,9 @@ relancé, le JSON-LD d'exemple n'est plus injecté sur les pages article de deve
 - Pas de favicon : `siteSettings.faviconLight/Dark` vides (aucun fichier dans le dépôt).
 - Images de démo dérivées des photos du site : licence à confirmer avant tout usage hors démo.
 - Les articles et témoignages de démo sont réécrits (createOrReplace) à chaque `--demo` : une retouche manuelle de ces
-  documents en development est écrasée.
+  documents en development est écrasée (le slug est reposé par l'étape 5, même valeur si nom et entreprise n'ont pas changé).
+- `production` n'a ni slug sur testimonial / faq, ni `testimonialsPage` / `faqPage` : /testimonials et /faq y listeraient
+  sans liens, et les pages article y seraient toutes en 404 tant que la migration n'y est pas faite.
 
 ## Points sensibles
 - JAMAIS d'écriture dans `production` : `assertNotProduction` (refus si le dataset ou `NEXT_PUBLIC_SANITY_DATASET` /
@@ -143,7 +160,8 @@ zones ↔ schéma, champs `signature` / `request`, tags de Live bornés, plan de
 - Q13 : texte alternatif sur l'asset, `alt` de l'image en priorité (compatibilité) — site-adapter.
 - `seo.metaTitle` sans suffixe : le site ajoute « — Conduit » (comportement d'avant l'admin) ; `siteSettings.title` est
   le titre par défaut, pas le suffixe (le suffixe est `siteName` dans src/lib/site.ts).
-- Q15 : pas de pages /testimonials ni /faq ; le menu Page des scripts contient all, home, blog, blog/slug.
+- Q15 (révisée le 2026-09-27) : pages /testimonials, /testimonials/:slug, /faq, /faq/:slug ; `SCRIPT_PAGES` = all, home,
+  blog, blog/slug, testimonials, testimonials/slug, faq, faq/slug.
 
 ## Demandes de contrat
 - ~~`.env.example` : documenter `KZ_EDITOR_PREVIEW` et `NEXT_PUBLIC_SITE_LAUNCHED_AT`~~ — **fait** (vérifié le 2026-09-27).

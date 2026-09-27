@@ -36,9 +36,10 @@ sont refusées avec le texte du Figma et un lien vers l'éditeur IA. Indépendan
   `data/usage-pending.jsonl` + rejeu si Sanity échoue ou sans jeton d'écriture).
 
 ## Câblage
-Branché : `engine/src/main.ts` → `MODULES = [usageModule, publishModule, versionsModule, askModule()]`. `askModule()` DOIT
+Branché : `engine/src/main.ts` → `MODULES = [usageModule, publishModule, versionsModule, askModule(), accessModule]`. `askModule()` DOIT
 rester après `usageModule` (il lit le journal commun à l'enregistrement). Il prend dans le contexte : `context.access`
-(resolveClaudeAccess ; absent → 503 clair), `context.config.models.ask` (ASK_MODEL), `context.config.sanity.readToken`
+RELU À CHAQUE QUESTION (accesseur sur l'accès rechargeable d'`engine/src/access` : une clé ou l'abonnement choisis dans
+B5 servent aussitôt, sans redémarrage ; absent → 503 avec `ASK_MESSAGES.noAccess`), `context.config.models.ask` (ASK_MODEL), `context.config.sanity.readToken`
 (jeton de LECTURE) et `context.config.paths.claude` (+ `/ask`, CLAUDE_CONFIG_DIR de la voie abonnement).
 Journal, par ordre de préférence : `askModule({ usage })` (tests) → journal commun `askUsageRecorderOf(context)` →
 `sanityAskUsageRecorder(context.sanity)` (moteur sans `usageModule`) → aucun (avertissement au démarrage).

@@ -26,6 +26,10 @@ export const SCRIPT_PAGES = [
   { title: 'Home (/)', value: 'home' },
   { title: 'Blog (/blog)', value: 'blog' },
   { title: 'Article du blog (/blog/:slug)', value: 'blog/slug' },
+  { title: 'Témoignages (/testimonials)', value: 'testimonials' },
+  { title: 'Page d’un témoignage (/testimonials/:slug)', value: 'testimonials/slug' },
+  { title: 'FAQ (/faq)', value: 'faq' },
+  { title: 'Page d’une question (/faq/:slug)', value: 'faq/slug' },
 ]
 
 // Réglages du site (B2 General, B3 Code) : document unique, id fixe « siteSettings ».
@@ -120,7 +124,7 @@ export const siteSettings = defineType({
               title: 'Page',
               type: 'string',
               description:
-                'Page article (/blog/:slug) : {{title}}, {{slug}}, {{date}}, {{excerpt}}, {{cover}}, {{author}}, {{category}} sont remplacés par les valeurs de l’article.',
+                'Pages article : leurs {{variables}} sont remplacées par les valeurs de l’élément. /blog/:slug : {{title}}, {{slug}}, {{date}}, {{excerpt}}, {{cover}}, {{author}}, {{category}} ; /testimonials/:slug : {{name}}, {{slug}}, {{company}}, {{role}}, {{quote}} ; /faq/:slug : {{question}}, {{slug}}, {{answer}}.',
               options: { list: SCRIPT_PAGES },
               initialValue: 'all',
               validation: (rule) => rule.required(),

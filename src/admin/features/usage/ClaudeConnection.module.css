@@ -1,0 +1,119 @@
+/* B5 · carte « Claude connection » (pas de maquette) : même carte que Recent requests — bg/elevated, border/default,
+   radius/lg ; en-tête pad 16 20 12 20 ; corps pad 0 20 16 20, gap 12. */
+.card {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--k-border-default);
+  border-radius: var(--k-radius-lg);
+  background-color: var(--k-bg-elevated);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: var(--k-space-8);
+  padding: var(--k-space-16) var(--k-space-20) var(--k-space-12);
+}
+
+.icon {
+  flex: none;
+  color: var(--k-text-secondary);
+}
+
+.title {
+  margin: 0;
+  color: var(--k-text-primary);
+  font: var(--k-text-label);
+  letter-spacing: var(--k-text-label-tracking);
+}
+
+.mode {
+  flex: 1 1 auto;
+  color: var(--k-text-muted);
+  font: var(--k-text-body-small);
+  letter-spacing: var(--k-text-body-small-tracking);
+}
+
+.card > [role='alert'] {
+  margin: 0 var(--k-space-20) var(--k-space-16);
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--k-space-12);
+  max-width: 640px;
+  padding: 0 var(--k-space-20) var(--k-space-16);
+}
+
+.current {
+  margin: 0;
+  padding: 0 var(--k-space-20) var(--k-space-16);
+  color: var(--k-text-secondary);
+  font: var(--k-text-body);
+  letter-spacing: var(--k-text-body-tracking);
+}
+
+.body > .current {
+  padding: 0;
+}
+
+.actions {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: var(--k-space-8);
+}
+
+.keyForm {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--k-space-12);
+}
+
+.keyForm > :first-child {
+  align-self: stretch;
+}
+
+.link {
+  align-self: flex-start;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--k-text-link);
+  font: var(--k-text-body-small);
+  letter-spacing: var(--k-text-body-small-tracking);
+  cursor: pointer;
+}
+
+.link:hover:not(:disabled) {
+  text-decoration: underline;
+}
+
+.link:focus-visible {
+  border-radius: var(--k-radius-sm);
+  outline: 2px solid var(--k-border-focus);
+  outline-offset: 2px;
+}
+
+.link:disabled {
+  color: var(--k-text-disabled);
+  cursor: default;
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--k-space-12);
+  padding-top: var(--k-space-12);
+  border-top: 1px solid var(--k-border-subtle);
+}
+
+.lastTest {
+  min-width: 0;
+  color: var(--k-text-muted);
+  font: var(--k-text-body-small);
+  letter-spacing: var(--k-text-body-small-tracking);
+}

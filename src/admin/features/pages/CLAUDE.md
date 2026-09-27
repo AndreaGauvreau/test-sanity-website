@@ -1,6 +1,6 @@
 # features/pages — LLM context
 
-> Propriétaire : pages · Figma : C1, C2, C6, G1 (docs/admin/figma/screens/C1.md, C2.md, C6.md, states/G1.md) · Mis à jour : 2026-09-27 (FOLLOWUPS #40)
+> Propriétaire : pages · Figma : C1, C2, C6, G1 (docs/admin/figma/screens/C1.md, C2.md, C6.md, states/G1.md) · Mis à jour : 2026-09-27 (C6 générique : testimonials, faq)
 > Possède aussi : `src/app/admin/(shell)/pages/**` (routes minces).
 
 ## Utilité
@@ -10,8 +10,9 @@
   enregistrement automatique en brouillon, aperçu schématique à droite.
 - **C2** `/admin/pages/<page>/seo` : `seo.{metaTitle, metaDescription, ogImage, allowIndexing}`, aperçus Google / réseaux
   sociaux calculés comme le site, JSON-LD en lecture seule et arbre des titres lus dans le HTML public de la page.
-- **C6** `/admin/pages/<page>/slug/seo` : modèle SEO des pages article d'une page listing (document `articleSeo-post`), avec
-  variables `{{…}}` (VariableInput) et aperçu sur un article réel choisi (« Preview with »).
+- **C6** `/admin/pages/<page>/slug/seo` : modèle SEO des pages article d'une page listing (documents `articleSeo-post`,
+  `articleSeo-testimonial`, `articleSeo-faq`), avec variables `{{…}}` (VariableInput) et aperçu sur un élément réel choisi
+  (« Preview with »). Pages listing : /blog (post), /testimonials (testimonial), /faq (faq).
 - `/admin/pages/<page>/slug` redirige vers C6 ; `/admin/pages/<page>/image` (POST) reçoit les images (C1, C2, C6).
 - « Open in AI editor » (G1) → `/admin/editor?page=<id>&back=<écran courant>` (C1 : `/admin/pages/<id>`, C2 :
   `/admin/pages/<id>/seo`) quand `PageDef.aiEditor` et le droit `ai.editor` ; « ‹ Admin » de l'éditeur y revient.
@@ -21,11 +22,11 @@ Ne fait pas : publier (E1), éditer les collections (C3/C4, cms-media), le rich 
 
 - `screens.tsx` — SERVEUR : `PageContentScreen` (C1), `PageSeoScreen` (C2), `ArticleSeoScreen` (C6). Session d'abord, page du manifeste (inconnue → `notFound()`), lectures, états vides.
 - `metadata.ts` — titre de l'onglet du navigateur (« Home · SEO »).
-- `lib/manifest.ts` — PUR : `findPage`, liens (`pageHref`, `pageSeoHref`, `articleSeoHref`, `editorHref(pageId, back?)`), `articleOf`, **`resolveFieldAtPath`** (liste blanche des écritures), `sectionSummary`, `sectionSource` (→ `SectionSource { label, href, linkLabel }`), `SEO_FIELDS`, `ARTICLE_SEO_FIELDS`, `SEO_LIMITS`, `seoPathOf`, `unknownVariables`.
+- `lib/manifest.ts` — PUR : `findPage`, liens (`pageHref`, `pageSeoHref`, `articleSeoHref`, `editorHref(pageId, back?)`), `articleOf` (dont `imageFields`), `ARTICLE_IMAGE_FIELDS` (post : cover), **`resolveFieldAtPath`** (liste blanche des écritures), `sectionSummary`, `sectionSource` (→ `SectionSource { label, href, linkLabel }`), `SEO_FIELDS`, `ARTICLE_SEO_FIELDS`, `SEO_LIMITS`, `seoPathOf`, `unknownVariables`.
 - `lib/form.ts` — PUR : chemins (`joinPath`, `itemPath`), éléments de tableau (`newArrayItem(siblings, random?, itemType?)`, `arrayItems`, `isFixedLength`), opérations par clé (`ArrayOp`, `previousSavedKey`, `moveTarget`, `mergeArrayItems`), `setAtPath`, conversions référence / image, `IMAGE_ASSET_ID`.
 - `lib/html.ts` — PUR : `extractJsonLd`, `extractHeadings`, `analyzeHeadings` (alertes C2), `decodeEntities`, `textOf`.
-- `lib/seo-preview.ts` — PUR (client aussi) : `pageSeoPreview`, `articleSeoPreview` (appellent `src/lib/seo.ts`), `resolveMetadata` (règles Next), `estimatedLength`, `displayUrl`, `articlePath`.
-- `server/data.ts` — SERVEUR : `loadPageDocument`, `loadSiteSettings` (sans scripts), `loadReferenceOptions`, `loadPageHtml` / `loadJsonLd` / `loadHeadings`, `loadArticleOptions`, `loadArticleTemplate`, `loadArticleJsonLd`, `publicUrl`.
+- `lib/seo-preview.ts` — PUR (client aussi) : `pageSeoPreview`, `articleSeoPreview` (appellent `src/lib/seo.ts`), `resolveMetadata` (règles Next), `defaultArticleTemplate(collection)` (DEFAULT_ARTICLE / TESTIMONIAL / FAQ_TEMPLATE), `estimatedLength`, `displayUrl`, `articlePath`.
+- `server/data.ts` — SERVEUR : `loadPageDocument`, `loadSiteSettings` (sans scripts), `loadReferenceOptions`, `loadPageHtml` / `loadJsonLd` / `loadHeadings`, `loadArticleOptions(type)` (une source par collection : requête, filtre, valeurs), `loadArticleTemplate(id, collection)`, `loadArticleJsonLd`, `publicUrl`.
 - `server/save.ts` — SERVEUR, cœur testable des écritures (zod + manifeste + FieldDef) : `savePageField`, `savePageArray` (tableaux par clé), `savePageSeo`, `saveArticleSeo`, `SaveResult`, `ArraySaveResult`.
 - `server/actions.ts` — `'use server'` : `savePageFieldAction`, `savePageArrayAction`, `savePageSeoAction`, `saveArticleSeoAction` (garde `content.write` EN PREMIER).
 - `server/upload.ts` — SERVEUR : `uploadPageImage` (cœur, asset par `uploadImageAsset` de core/sanity), `handleImageUpload` (route : garde, CSRF, taille, type par signature), `sniffImageType`.
@@ -34,10 +35,10 @@ Ne fait pas : publier (E1), éditer les collections (C3/C4, cms-media), le rich 
 - `components/fields.tsx` (+ css) — un composant par `FieldKind` (dont `VariableArrayField` + `ArrayItemCard`) ; `FormContext.tsx` (contexte : `saveField`, `saveArray`, `uploadImage` ; `postImage`) ; `useFieldSave.ts` (debounce + autosave).
 - `components/DraftPreview.tsx` (+ css) — plan schématique de la page, section ouverte surlignée et amenée à l'écran.
 - `components/SeoView.tsx` (+ `SeoView.module.css`, partagé avec C6) — C2 ; `Counter`, `imageUrl`.
-- `components/ArticleSeoView.tsx` — C6. `components/OgImageRow.tsx` — ligne « OG image » (C2, C6).
+- `components/ArticleSeoView.tsx` — C6 (+ `indexingTarget`). `components/OgImageRow.tsx` — ligne « OG image » (C2, C6).
 - `components/PageHtmlBlocks.tsx` — SERVEUR : `PageJsonLd`, `PageHeadingStructure` (+ vues pures et squelettes pour `<Suspense>`).
 - `components/PageSkeleton.tsx` (+ css) — état de chargement des trois routes.
-- Tests : `lib/*.test.ts`, `server/{save,actions,upload}.test.ts`, `components/views.test.tsx` (jsdom).
+- Tests : `lib/*.test.ts`, `server/{save,actions,upload,data}.test.ts`, `components/views.test.tsx` (jsdom).
 - Routes : `src/app/admin/(shell)/pages/[pageId]/{page.tsx, loading.tsx, seo/page.tsx, slug/page.tsx, slug/seo/page.tsx, image/route.ts}`.
 
 ## Contrats
@@ -91,10 +92,18 @@ Ne fait pas : publier (E1), éditer les collections (C3/C4, cms-media), le rich 
   JSON-LD et titres : `fetch` du HTML public (`adminConfig.site.url` + chemin), sous `<Suspense>` ; alertes « No H1 / 2 H1s »,
   « H4 after an H2 », « Empty heading », résumé « ✓ One H1 · ⚠ A level is skipped · ✓ No empty heading ».
 - **C6** : VariableInput (puces violettes, `{{` ouvre la liste, variable inconnue = puce rouge + erreur, pas d'envoi) ;
-  « ≈ 43 / 60 with “<article>” », « ≈ 89 / 160 with this post » ; OG image « From field [cover] » (× → image fixe / du site),
-  « Use the cover » pour revenir au champ, Upload = image fixe (et `ogImageField` vidé) ; « Allow indexing of all N Blog
-  posts. » ; « Preview with » = articles publiés (100 plus récents). JSON-LD = blocs `application/ld+json` des scripts du
-  site pour `blog/slug` ou `all` (avec leurs `{{…}}`). Onglet Content → `/admin/cms/<collection>`.
+  « ≈ 43 / 60 with “<élément>” » (titre du post, nom du témoignage, question), « ≈ 89 / 160 with this post | testimonial |
+  question » (`CollectionDef.singular`) ; OG image « From field [cover] » (× → image fixe / du site), « Use the cover » pour
+  revenir au champ — seulement pour une collection qui a un champ image (`ARTICLE_IMAGE_FIELDS` : post) ; testimonial et
+  faq : image fixe ou image du site, et le serveur refuse tout `ogImageField` (« This collection has no image field… ») ;
+  Upload = image fixe (et `ogImageField` vidé) ; « Allow indexing of all 12 Blog posts. » / « all 3 testimonials. » /
+  « all 9 FAQ questions. » (`indexingTarget` : nom de collection non répété). « Preview with » = éléments publiés qui ont
+  une page (100 au plus) : post par date ; testimonial avec slug, ordre de /testimonials ; faq avec slug ET réponse, ordre
+  de /faq. Valeurs = celles du site (`templateValues` du blog ; `testimonialTemplateValues` / `faqTemplateValues` de
+  `src/lib/article-values.ts`, {{answer}} = texte brut ≤ 160). Sans document : modèle par défaut de LA collection
+  (lecture et création du brouillon par `ensureTemplateDocument`, valeurs nulles non écrites). JSON-LD = blocs
+  `application/ld+json` des scripts du site pour `<page>/slug` ou `all` (avec leurs `{{…}}`). Onglet Content →
+  `/admin/cms/<collection>`.
 - **États** : page inconnue → 404 ; page sans `document` → « This page has no editable content » ; document absent de
   Sanity → « This page has no content in Sanity yet » ; sans `content.write` → champs désactivés + Callout ; chargement →
   `PageSkeleton` (route) et squelettes JSON-LD / titres ; HTML illisible → « Couldn't read the page. <raison> ».
@@ -108,7 +117,8 @@ Ne fait pas : publier (E1), éditer les collections (C3/C4, cms-media), le rich 
   FieldDef du manifeste valide la valeur ; zod valide la forme (clés inconnues refusées, 32 Ko max).
 - Aperçus fidèles par construction : mêmes fonctions que le site + règles de résolution de Next (testées).
 - HTML lu comme du texte : aucun script exécuté, aucun HTML réinjecté (React échappe tout).
-- 68 tests : tableaux par clé (insert / update / remove / move, ajout concurrent conservé après 409 sur un faux Sanity à
+- 80 tests : C6 par collection (sources de « Preview with », modèles par défaut, « From field » refusé sans image,
+  libellés FAQ), tableaux par clé (insert / update / remove / move, ajout concurrent conservé après 409 sur un faux Sanity à
   révisions, tableau entier refusé, file et fusion côté navigateur), envoi par `uploadImageAsset` (nom nettoyé, 403
   traduit, réponse sans id d'image refusée), manifeste (dont `editorHref` avec `back`, `SectionDef.source`), HTML, aperçus, form, cœur des écritures (faux magasin), actions (faux Next + faux client), envoi
   d'image (types, tailles, cibles), composants en jsdom (génération, accordéon, validation, debounce, autosave, aperçus).
@@ -150,7 +160,9 @@ Ne fait pas : publier (E1), éditer les collections (C3/C4, cms-media), le rich 
   (`AlreadyRemoved`, `not_found`), jamais renvoyer le tableau inchangé (écriture inutile).
 - `Tabs` reçoit `Link` en `linkAs` : impossible depuis un Server Component (fonction non sérialisable) → `PageTabs` client.
 - `next dev` : la première lecture du HTML public compile la page du site (quelques secondes) → `<Suspense>` + délai 12 s.
-- `@/lib/seo` importe `urlFor` → `src/sanity/env.ts` exige les variables publiques Sanity (tests : `vi.stubEnv`).
+- `@/lib/seo` importe `urlFor` → `src/sanity/env.ts` exige les variables publiques Sanity (tests : `vi.stubEnv`) ; `server/save.ts`
+  l'importe aussi (via `lib/seo-preview`, modèles par défaut) → `vi.hoisted(() => vi.stubEnv(…))` dans les tests serveur
+  qui l'importent statiquement (actions, upload).
 - Next dispatche les server actions une par une par client : pas de `Promise.all` d'actions.
 - Un `<section>` nommé devient une région : ne pas nommer la section ET le panneau (doublon de landmark).
 - Le scratchpad de captures peut être partagé avec d'autres agents : garder ses scripts dans un sous-dossier propre.
@@ -159,7 +171,9 @@ Ne fait pas : publier (E1), éditer les collections (C3/C4, cms-media), le rich 
 
 - **Nouveau genre de champ** : `FieldKind` (contrat) → `validate.ts` (core/sanity) → un composant + un `case` dans
   `FieldControl` (`components/fields.tsx`) → `resolveFieldAtPath` si le genre a des sous-champs → test dans `views.test.tsx`.
-- **Nouvelle page** : seulement `src/admin.config.ts` (site-adapter) ; rien à changer ici.
+- **Nouvelle page** : seulement `src/admin.config.ts` (site-adapter) ; rien à changer ici, sauf si sa page article porte une
+  NOUVELLE collection : source dans `ARTICLE_SOURCES` (`server/data.ts` : filtre, requête, valeurs comme le site), modèle
+  par défaut dans `defaultArticleTemplate` (`lib/seo-preview.ts`), champ image éventuel dans `ARTICLE_IMAGE_FIELDS`.
 - **Changer un libellé** : textes anglais dans `components/*` (recopiés du Figma) ; messages serveur dans `server/save.ts` et `server/upload.ts`.
 - **Délai d'enregistrement** : 3e argument de `useFieldSave` (600 ms par défaut).
 - **Retour depuis l'éditeur IA** : `frameProps(session, page, active)` dans `screens.tsx` choisit `back` selon l'onglet ;
@@ -169,10 +183,11 @@ Ne fait pas : publier (E1), éditer les collections (C3/C4, cms-media), le rich 
 
 ## Tests
 
-`npx vitest run src/admin/features/pages` — 8 fichiers, 68 tests (voir Forces). Non couvert : le vrai aller-retour Sanity
+`npx vitest run src/admin/features/pages` — 9 fichiers, 80 tests (voir Forces). Non couvert : le vrai aller-retour Sanity
 (vérifié à la main le 2026-09-27 sur `development` : écriture du Hero, du meta title et du modèle d'article, brouillons de
 test supprimés ensuite), l'envoi d'image réel, le rendu serveur des écrans.
-À la main : `/admin/pages/home`, `/admin/pages/home/seo`, `/admin/pages/blog`, `/admin/pages/blog/slug/seo`, en rôle
+À la main : `/admin/pages/home`, `/admin/pages/home/seo`, `/admin/pages/blog`, `/admin/pages/blog/slug/seo`,
+`/admin/pages/testimonials`, `/admin/pages/testimonials/slug/seo`, `/admin/pages/faq/slug/seo` (vus sur 4040 le 2026-09-27), en rôle
 kuartz puis client (`POST /admin/api/auth/dev-role { role: 'client' }`) ; `/admin/pages/nope` → 404.
 
 ## Décisions et « À trancher »
