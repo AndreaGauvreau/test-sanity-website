@@ -8,6 +8,8 @@ import type { EngineErrorBody, EngineErrorCode } from '../contracts/engine'
 export const ENGINE_MESSAGES = {
   notConfigured: 'The AI engine is not configured.',
   unavailable: "The AI engine isn't responding. Try again in a moment.",
+  /** Développement local seulement : le moteur n'écoute pas (le plus souvent, il n'est pas lancé). */
+  notRunningDev: "The AI engine isn't running. Start it with `npm run engine` in a terminal, then try again.",
   timeout: 'The AI engine took too long to respond. Try again in a moment.',
   badResponse: 'The AI engine sent an unexpected response.',
   notFound: 'Not found',

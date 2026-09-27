@@ -179,7 +179,10 @@ export async function callEngine(call: EngineCall, deps: EngineTransportDeps): P
     })
   } catch (err) {
     const timeout = (err as { name?: string })?.name === 'TimeoutError'
-    return engineErrorResponse(timeout ? 504 : 502, 'unavailable', timeout ? ENGINE_MESSAGES.timeout : ENGINE_MESSAGES.unavailable)
+    if (timeout) return engineErrorResponse(504, 'unavailable', ENGINE_MESSAGES.timeout)
+    // En local, un moteur injoignable est presque toujours un moteur non lancé : le dire tel quel.
+    const message = process.env.NODE_ENV === 'development' ? ENGINE_MESSAGES.notRunningDev : ENGINE_MESSAGES.unavailable
+    return engineErrorResponse(502, 'unavailable', message)
   }
 
   // 401 du moteur = Bearer ou identité refusés : ENGINE_SECRET différent des deux côtés, clés d'identité qui ne vont

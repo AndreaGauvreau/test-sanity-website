@@ -93,7 +93,17 @@ describe('callEngine — moteur réel', () => {
     const down = engine(() => {
       throw new TypeError('fetch failed')
     })
-    expect((await callEngine({ method: 'GET', segments: ['health'], user: client }, down.deps)).status).toBe(502)
+    const downRes = await callEngine({ method: 'GET', segments: ['health'], user: client }, down.deps)
+    expect(downRes.status).toBe(502)
+    // Sous Vitest, NODE_ENV = 'test' : message générique ; en développement, il dit de lancer le moteur.
+    expect((await downRes.json()).error.message).toBe("The AI engine isn't responding. Try again in a moment.")
+    vi.stubEnv('NODE_ENV', 'development')
+    try {
+      const devRes = await callEngine({ method: 'GET', segments: ['health'], user: client }, down.deps)
+      expect((await devRes.json()).error.message).toMatch(/isn't running\. Start it with `npm run engine`/)
+    } finally {
+      vi.unstubAllEnvs()
+    }
     const slow = engine(() => {
       throw Object.assign(new Error('timeout'), { name: 'TimeoutError' })
     })
