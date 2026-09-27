@@ -242,7 +242,7 @@ describe('test de connexion (faux réseau, faux Claude Code)', () => {
     assert.equal((await testApiKey(API_KEY, fakeFetch(new TypeError('fetch failed')).impl)).message, TEST_MESSAGES.network)
   })
 
-  it('abonnement : un tour minimal, modèle le moins cher, 16 jetons ; machine non connectée → marche à suivre', async () => {
+  it('abonnement : un tour minimal, modèle le moins cher, 256 jetons ; réponse coupée = succès ; machine non connectée → marche à suivre', async () => {
     const access = { kind: 'subscription' as const, secret: null, machineLogin: { storageDir: '' } }
     const complete = fakeComplete('ok')
     assert.deepEqual(await testSubscription({ access, model: 'claude-haiku-4-5-20251001', configDir: '/tmp/x', complete }), {
@@ -250,7 +250,9 @@ describe('test de connexion (faux réseau, faux Claude Code)', () => {
       message: TEST_MESSAGES.subscriptionOk,
     })
     assert.equal(complete.calls[0].model, 'claude-haiku-4-5-20251001')
-    assert.equal(complete.calls[0].maxTokens, 16)
+    assert.equal(complete.calls[0].maxTokens, 256)
+    const cut = fakeComplete(new CompleteError("API Error: Claude's response exceeded the 256 output token maximum."))
+    assert.deepEqual(await testSubscription({ access, model: 'm', configDir: '/tmp/x', complete: cut }), { ok: true, message: TEST_MESSAGES.subscriptionOk })
     const loggedOut = fakeComplete(new CompleteError('Not logged in · Please run /login'))
     assert.equal((await testSubscription({ access, model: 'm', configDir: '/tmp/x', complete: loggedOut })).message, TEST_MESSAGES.notSignedIn)
   })

@@ -6,7 +6,8 @@ import { CompleteError, createComplete, type ClaudeCredential, type CompleteInpu
  *   pas le crédit du compte (limite connue : un compte sans crédit passe ce test).
  * - Abonnement (machine ou jeton) : UN tour minimal par l'Agent SDK, sans outil (`complete` d'engine-claude : tools [],
  *   hook qui refuse tout, settingSources [], strictMcpConfig, maxTurns 1, persistSession false, env minimal), modèle le
- *   moins cher (ASK_MODEL, Haiku 4.5), 16 jetons de sortie au plus.
+ *   moins cher (ASK_MODEL, Haiku 4.5), 256 jetons de sortie au plus. Claude Code fait parfois dépasser une borne très
+ *   basse (16 : « exceeded the 16 output token maximum », 2026-09-28) : Claude a alors bien répondu, le test réussit.
  */
 
 /** `detail` : message brut de l'échec (journal du moteur seulement, masqué et tronqué par le service), jamais montré tel quel. */
@@ -15,6 +16,7 @@ export type ConnectionResult = { ok: boolean; message: string; detail?: string }
 export const MODELS_URL = 'https://api.anthropic.com/v1/models?limit=1'
 const API_TIMEOUT_MS = 15_000
 const SUBSCRIPTION_TIMEOUT_MS = 60_000
+export const TEST_MAX_TOKENS = 256
 
 export const TEST_MESSAGES = {
   apiOk: 'Connected — the API key was accepted by Anthropic.',
@@ -69,7 +71,7 @@ export async function testSubscription(input: {
       model: input.model,
       system: 'This is a connection test. Reply with the single word OK.',
       messages: [{ role: 'user', content: 'Connection test: reply OK.' }],
-      maxTokens: 16,
+      maxTokens: TEST_MAX_TOKENS,
       signal: AbortSignal.timeout(SUBSCRIPTION_TIMEOUT_MS),
     })
     return result.text || result.stopReason ? { ok: true, message: TEST_MESSAGES.subscriptionOk } : { ok: false, message: 'Claude stopped without an answer.' }
@@ -80,6 +82,8 @@ export async function testSubscription(input: {
     if (input.access.secret === null && /not logged in|\/login|invalid api key|oauth/i.test(message)) {
       return { ok: false, message: TEST_MESSAGES.notSignedIn, detail }
     }
+    // Réponse coupée par la borne de sortie : l'abonnement a répondu, la connexion marche.
+    if (/exceeded the \d+ output token maximum|max_tokens/i.test(message)) return { ok: true, message: TEST_MESSAGES.subscriptionOk }
     if (/Request stopped/i.test(message)) return { ok: false, message: TEST_MESSAGES.timeout, detail }
     return { ok: false, message: detail || 'Claude couldn’t answer.', detail }
   }

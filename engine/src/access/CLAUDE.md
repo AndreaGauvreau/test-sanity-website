@@ -19,7 +19,7 @@ Ne fait pas : lancer Claude pour une demande (engine-claude), l'écran (features
   clé AES-256-GCM (clé HKDF-SHA256 d'ENGINE_SECRET, sel 16 o par enregistrement, IV 12 o, AAD) ; `seal` / `unseal`.
 - `machine.ts` — `detectMachineLogin`, `systemProbe` (`claude auth status --json` du binaire de l'Agent SDK, repli
   trousseau / fichier), `machineLoginOf`, `keychainService`, `keychainAccount`, `claudeBinary`.
-- `connection-test.ts` — `testApiKey` (GET /v1/models, gratuit), `testSubscription` (un tour `complete`, Haiku, 16 jetons).
+- `connection-test.ts` — `testApiKey` (GET /v1/models, gratuit), `testSubscription` (un tour `complete`, Haiku, 256 jetons ; réponse coupée par la borne = succès).
 - `index.ts` — `accessModule` (routes, sonde démarrée/arrêtée), `registerAccessRoutes`, exports.
 - `access.test.ts` — 23 tests (magasin, ordre, machine, tests de connexion, service, routes et droits).
 
@@ -47,7 +47,7 @@ ou pour l'écran (GET/POST) ; sonde périodique de 60 s quand l'abonnement est c
 
 ## Faiblesses et limites connues
 - Test d'une clé API : `GET /v1/models` vérifie la clé et le réseau, PAS le crédit (un compte sans crédit passe).
-- Test de l'abonnement : un vrai tour (Haiku, ≈ 30 jetons) décompté de l'abonnement.
+- Test de l'abonnement : un vrai tour (Haiku, quelques dizaines de jetons) décompté de l'abonnement.
 - ENGINE_SECRET changé → clé enregistrée illisible (message clair, à ressaisir).
 - Rejeu d'une identité signée (60 s) : un client pourrait rejouer un POST de clé pendant ce délai (canal local).
 
