@@ -42,7 +42,8 @@ Pas à ce module : Rich text field (cms-media), Script dialog (code-usage), AI e
 - `Chip/Chip.css.test.ts` — contrôle statique des règles de survol du Chip (jsdom ne simule pas `:hover`).
 - Dossiers de composants : Button, IconButton, Chip, Tag, Kbd, Tooltip, ProgressBar, Callout, Toast, EmptyState,
   PublishButton, Input, Textarea, Select, SearchField, Checkbox, Radio, Switch, SettingRow, ImageUpload, CodeBlock,
-  RemoveBadge, FaviconPreview, ImagePreview, VariableChip, VariableInput, Avatar — chacun `Nom.tsx`, `Nom.module.css`,
+  RemoveBadge, FaviconPreview (+ `favicon-bg-light.png` / `favicon-bg-dark.png`, fonds Figma @2x), ImagePreview,
+  VariableChip, VariableInput, Avatar — chacun `Nom.tsx`, `Nom.module.css`,
   `index.ts`, `Nom.test.tsx` quand interactif.
 - `index.ts` — exports publics (fondations en haut ; section « ui-composites » à la suite).
 - `src/app/admin/kit/` — galerie de dev : `layout.tsx` (racine admin de la galerie), `page.tsx`, `KitGallery.tsx` (`NAV`),
@@ -115,7 +116,7 @@ import '@/admin/ui/base.css'
 | `ImageUpload` | Envoi d'image | `onFile` (obligatoire), `value {src,name,size}`, `uploading {name,progress}`, `onRemove`, `onReject`, `actions` (ex. « Choose from Media »), `accept`, `maxSize`, `hint`, `error`, `height` | ImageUpload.md |
 | `CodeBlock` | Code | `value`/`defaultValue`/`onValueChange`, `readOnly`, `readOnlyNote`, `highlight`, `lineNumbers`, `minLines`, `error` ; `tokenizeCode()` | CodeBlock.md |
 | `RemoveBadge` | Pastille ✕ 18 px | `label`, `corner` (coin haut droit du parent relatif) | RemoveBadge.md |
-| `FaviconPreview` | Favicon dans un onglet | `theme` light/dark, `src`, `onFile`, `onRemove`, `label` | FaviconPreview.md |
+| `FaviconPreview` | Favicon sur le fond navigateur du Figma (image) | `theme` light/dark, `src` (repli si absent ou illisible), `onFile`, `onRemove` (si `src`), `label`, `accept`, `disabled` | FaviconPreview.md |
 | `ImagePreview` | Image 1200 × 630 | `src`, `alt`, `ratio`, `width`, `onRemove`, `emptyLabel` | ImagePreview.md |
 | `VariableChip` | Champ CMS dans un texte | `name`, `label`, `invalid` | VariableChip.md |
 | `VariableInput` | Texte + puces `{{champ}}` | `variables: {name,label,icon}[]`, `value`/`defaultValue`/`onValueChange` (texte avec `{{…}}`), `helper`, `error`, `name` ; `parseVariables`, `serializeVariables`, `variablesIn`, `resolveVariables` | VariableInput.md |
@@ -221,8 +222,8 @@ import '@/admin/ui/base.css'
 - VariableInput : `role="textbox"` contentEditable, `aria-autocomplete="list"`, liste d'insertion au clavier (↑ ↓, Entrée / Tab).
 
 **Conventions**
-- CSS Modules + `var(--k-*)` uniquement (aucune couleur en dur, sauf l'illustration du navigateur de FaviconPreview et les
-  ombres du Remove badge, codées en dur dans Figma aussi ; mélanges `color-mix` de tokens admis). Styles de texte :
+- CSS Modules + `var(--k-*)` uniquement (aucune couleur en dur, sauf la pastille de repli de FaviconPreview (posée sur
+  l'image claire / sombre du Figma) et les ombres du Remove badge, codées en dur dans Figma aussi ; mélanges `color-mix` de tokens admis). Styles de texte :
   `font: var(--k-text-body); letter-spacing: var(--k-text-body-tracking);`.
 - Couleur d'icône : le composant pose `--k-icon-current` (ou `data-icon-color="…"` sur un parent) ; `<Icon>` lit `color: var(--k-icon-current)`.
 - Jeu d'icônes : les fiches Figma posent souvent le jeu **18** réduit (Button small 12, Chip 12, Tag 10, Input 16) : `set={18}`.
@@ -231,7 +232,8 @@ import '@/admin/ui/base.css'
   `ref` en prop (React 19) ; `className` transmis à la racine ; autres props HTML étalées sur l'élément natif principal.
 - Composants purs (sans hook) : Button, Tag, Kbd, Callout, EmptyState, ProgressBar, RemoveBadge, ImagePreview, VariableChip, Field, Icon
   → utilisables tels quels dans un Server Component. Les autres sont `'use client'`.
-- Pas d'import Next dans les composants (sauf `fonts.ts`) : images en `<img>` (le kit ne connaît pas next/image).
+- Pas d'import Next dans les composants (sauf `fonts.ts`) : images en `<img>` (le kit ne connaît pas next/image) ; une image
+  statique du kit s'importe (`import bg from './x.png'`) et se lit `typeof bg === 'string' ? bg : bg.src` (Next / vitest).
 - Couches (`--k-z-*`) : contenu < `panel` 800 (panneau flottant non modal, Ask AI) < `overlay` 900 (Modal, Drawer) <
   `popover` 1000 (Select, Menu, Tooltip… ouverts dans une modale passent devant) < `toast` 1100.
 
@@ -335,7 +337,10 @@ import '@/admin/ui/base.css'
 - Écarts assumés au Figma : Chip « on » garde son contour (couleur du fond) → 66×25 au lieu de 64×23 (pas de saut à la bascule) ;
   Chip « on » survolé inventé (pas de variante Figma) ; Search field « filled » reste à 30 px (le ✕ déborde de 2 px) au lieu
   de 34 ; Callout et Setting row fluides (400 / 560 px dans Figma).
-- FaviconPreview : le navigateur est redessiné en CSS (le Figma utilise une capture) ; onglets voisins neutres (pas de logos tiers).
+- FaviconPreview : le fond est l'image du Figma (calque « browser », exportée @2x : `favicon-bg-light.png` /
+  `favicon-bg-dark.png`, onglets voisins Gmail et Kuartz compris) ; seul le favicon (x 72, y 35, 16 × 16) est dynamique.
+  Si le fond change dans Figma, réexporter le calque « browser » de chaque variante (sans le favicon) et remplacer les PNG.
+  Repli sans favicon / image illisible : pastille neutre 16 px (pas d'état vide dans Figma).
 - CodeBlock : coloration minimale (balises, accolades, `{{…}}`), pas d'éditeur complet (pas d'indentation automatique, Tab ne s'insère pas).
 - VariableInput : contentEditable maison — une seule ligne, collage en texte brut, pas d'annulation fine (Ctrl+Z natif seulement
   sur la frappe) ; la position du curseur est restaurée par décompte de caractères après transformation d'un `{{champ}}` tapé.
@@ -483,11 +488,12 @@ import '@/admin/ui/base.css'
 
 ## Tests
 
-- `npx vitest run src/admin/ui` (138 tests au 2026-09-27) :
-  - fondations (91) : Button, Icon (+ fidélité aux SVG), position, Popover, Tooltip, Select, Chip (+ `Chip.css.test.ts` :
+- `npx vitest run src/admin/ui` (143 tests au 2026-09-27) :
+  - fondations (96) : Button, Icon (+ fidélité aux SVG), position, Popover, Tooltip, Select, Chip (+ `Chip.css.test.ts` :
     survol limité à l'état), Switch + SettingRow, Checkbox + RadioGroup, SearchField (+ taille small) + Input, ImageUpload
     (+ emplacement `actions`), `motion.test.tsx` (hydratation en mouvement réduit, `reducedVariants`), Toast,
-    PublishButton (dont l'annonce par étape, QA-3), CodeBlock, VariableInput, Avatar, `tokens.test.ts` (couches) ;
+    PublishButton (dont l'annonce par étape, QA-3), CodeBlock, VariableInput, Avatar, FaviconPreview (fond Figma par thème,
+    favicon 16 × 16, repli si absent / illisible, Upload / Remove), `tokens.test.ts` (couches) ;
   - composites : Modal (+ `useModalDialog` : fenêtre montée tard, focus déjà placé), Drawer (dont ouvert au montage), Tabs,
     Menu (dont focus initial d'un panneau encore masqué), SegmentedControl, StatusSelect, CMSCell (poignée focalisable,
     remplissage avant Row open), SelectionBar (balisage serveur identique avec / sans mouvement réduit), ListItem (`textGap`),

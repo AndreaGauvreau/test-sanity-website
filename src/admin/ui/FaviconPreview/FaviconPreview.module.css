@@ -1,8 +1,7 @@
 /*
- * Figma « Favicon preview » 410:1592 : 180 × hug, V gap 10 ; preview 180×110 (frame radius/lg, bg/input, clip ;
- * favicon 16 à x 72 / y 35 ; edge border/edge 0,91 px) ; footer space-between (Body Small text/primary + Upload).
- * Les couleurs du navigateur simulé sont celles d'un navigateur clair / sombre (illustration), pas des tokens :
- * l'aperçu clair doit rester clair dans l'admin sombre.
+ * Figma « Favicon preview » 410:1592 : 180 × hug, V gap 10 ; preview 180×110 (frame radius/lg, bg/input, clip) ;
+ * calque « browser » 180×110 = image du Figma (favicon-bg-light|dark.png, @2x) ; calque « favicon » 16×16 à
+ * x 72 / y 35, rayon 0 (remplissage FILL) ; edge border/edge 0,91 px ; footer space-between (Body Small + Upload).
  */
 .favicon {
   display: flex;
@@ -21,53 +20,45 @@
 .frame {
   position: absolute;
   inset: 0;
-  display: flex;
-  flex-direction: column;
   border-radius: var(--k-radius-lg);
   background-color: var(--k-bg-input);
   overflow: hidden;
 }
 
-.chrome {
-  position: relative;
-  display: flex;
-  align-items: flex-end;
-  gap: 0;
-  height: 60px;
-  padding: 0 0 0 12px;
+/* Fond Figma, dimensions exactes du calque « browser ». */
+.browser {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: block;
+  width: 180px;
+  height: 110px;
+  max-width: none;
+  user-select: none;
+  pointer-events: none;
 }
 
-.tab {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 44px;
-  height: 34px;
-  border-radius: 9px 9px 0 0;
-}
-
-/* Onglet actif : favicon 16 × 16 à x 72, y 35 comme dans le Figma. */
-.active {
-  width: 44px;
-  margin: 0 2px;
-}
-
-.icon,
-.placeholder {
+/* Favicon de l'utilisateur, à la place exacte du calque « favicon » du Figma. */
+.icon {
+  position: absolute;
+  top: 35px;
+  left: 72px;
+  display: block;
   width: 16px;
   height: 16px;
-  border-radius: 3px;
-  object-fit: contain;
+  max-width: none;
+  object-fit: cover;
+  user-select: none;
 }
 
-.ghostIcon {
-  width: 12px;
-  height: 12px;
+/* Repli sans favicon : pastille neutre (couleur illustrée selon l'onglet, comme le fond). */
+.placeholder {
   border-radius: 3px;
+  background-color: rgb(0 0 0 / 12%);
 }
 
-.page {
-  flex: 1 1 auto;
+[data-theme-preview='dark'] .placeholder {
+  background-color: rgb(255 255 255 / 16%);
 }
 
 .edge {
@@ -76,48 +67,6 @@
   border-radius: var(--k-radius-lg);
   box-shadow: inset 0 0 0 0.91px var(--k-border-edge);
   pointer-events: none;
-}
-
-/* ── Navigateur clair ── */
-.light .chrome {
-  background: linear-gradient(180deg, #eaf4fe 0%, #d7e9fb 100%);
-}
-
-.light .active {
-  background-color: #ffffff;
-}
-
-.light .side .ghostIcon {
-  background-color: #b8c6d4;
-}
-
-.light .placeholder {
-  background-color: #d0d7de;
-}
-
-.light .page {
-  background-color: #ffffff;
-}
-
-/* ── Navigateur sombre ── */
-.dark .chrome {
-  background: linear-gradient(180deg, #243140 0%, #151c24 100%);
-}
-
-.dark .active {
-  background-color: #000000;
-}
-
-.dark .side .ghostIcon {
-  background-color: #3a4652;
-}
-
-.dark .placeholder {
-  background-color: #2f363d;
-}
-
-.dark .page {
-  background-color: #000000;
 }
 
 .footer {
