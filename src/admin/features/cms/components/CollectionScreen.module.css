@@ -1,0 +1,114 @@
+/* C3 : le tableau vient du kit (CMSTable / CMSRow / CMSCell). Composé ici : la cellule « handle » avec une
+   poignée FOCALISABLE (le kit la dessine décorative) — mêmes mesures que CMS cell type=handle : 64 × 44,
+   pad 0 10, gap 8, trait droit border/subtle, poignée 12 en text/disabled. */
+
+.handle {
+  position: relative;
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: var(--k-space-8);
+  width: 64px;
+  height: 44px;
+  padding: 0 var(--k-space-10);
+  border-right: 1px solid var(--k-border-subtle);
+}
+
+.grip {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 12px;
+  height: 24px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--k-radius-sm);
+  background: none;
+  cursor: grab;
+  touch-action: none;
+  --k-icon-current: var(--k-text-disabled);
+  transition: color var(--k-duration-fast) ease;
+}
+
+.grip:hover:not([aria-disabled]),
+.grip[aria-pressed='true'] {
+  --k-icon-current: var(--k-icon-active);
+}
+
+.grip[aria-disabled] {
+  cursor: default;
+}
+
+.grip:focus-visible {
+  outline: 2px solid var(--k-border-focus);
+  outline-offset: 2px;
+}
+
+.gripSpace {
+  flex-shrink: 0;
+  width: 12px;
+}
+
+/* Remplit la ligne quand les colonnes sont plus étroites que le tableau. */
+.filler {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* Glisser au pointeur : les voisines glissent (déplacement à l'écran → ease-in-out, 150 ms) ; la ligne
+   saisie suit le pointeur sans transition, au-dessus des autres. */
+.shifting {
+  transition: transform var(--k-duration-fast) var(--k-ease-in-out);
+}
+
+.dragging {
+  z-index: 2;
+  background-color: var(--k-bg-input-hover);
+  box-shadow: var(--k-elevation-popover);
+  cursor: grabbing;
+}
+
+.dragging .grip {
+  cursor: grabbing;
+}
+
+/* Une image après le dépôt : pas de transition (sinon les lignes repartiraient de leur ancien décalage). */
+.settling [data-row] {
+  transition: none;
+}
+
+/* Cellules non modifiables sur place (image, texte riche, liste) : un clic ouvre le panneau sur ce champ. */
+.clickable {
+  cursor: pointer;
+}
+
+.cellError {
+  box-shadow: inset 0 0 0 1.5px var(--k-interactive-danger);
+}
+
+.empty {
+  align-self: center;
+  margin-top: var(--k-space-40);
+}
+
+.lockNote {
+  display: inline-flex;
+  flex-shrink: 1;
+  align-items: center;
+  gap: var(--k-space-4);
+  min-width: 0;
+  color: var(--k-text-muted);
+  font: var(--k-text-body-small);
+  letter-spacing: var(--k-text-body-small-tracking);
+  white-space: nowrap;
+  --k-icon-current: var(--k-icon-muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shifting,
+  .grip {
+    transition: none;
+  }
+}

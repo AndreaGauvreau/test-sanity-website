@@ -1,0 +1,19 @@
+/* Figma « Editor toolbar » 340:1486 : H gap 6, pad 4, radius/lg, bg/elevated, border/default (1 px intérieur),
+   Elevation/Popover ; séparateur 1 × 20 border/default. 181 × 40. */
+.toolbar {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--k-space-6);
+  padding: var(--k-space-4);
+  border: 1px solid var(--k-border-default);
+  border-radius: var(--k-radius-lg);
+  background-color: var(--k-bg-elevated);
+  box-shadow: var(--k-elevation-popover);
+}
+
+.divider {
+  flex: none;
+  width: 1px;
+  height: 20px;
+  background-color: var(--k-border-default);
+}

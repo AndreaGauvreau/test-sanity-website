@@ -1,0 +1,40 @@
+/* Poignée sur le bord droit de la sidebar (G2 « Redimensionner la sidebar ») : zone de saisie de 8 px centrée
+   sur le trait ; au survol, au glisser et au focus, un filet interactive/primary de 2 px (repère Figma : 4 px). */
+.handle {
+  position: absolute;
+  top: 0;
+  right: -4px;
+  bottom: 0;
+  z-index: 2;
+  width: 8px;
+  cursor: col-resize;
+  touch-action: none;
+  outline: none;
+}
+
+.handle::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 3px;
+  width: 2px;
+  background-color: transparent;
+  transition: background-color var(--k-duration-fast) ease;
+}
+
+.handle:hover::after,
+.handle:active::after,
+.handle[data-dragging]::after {
+  background-color: var(--k-interactive-primary);
+}
+
+.handle:focus-visible::after {
+  background-color: var(--k-border-focus);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .handle::after {
+    transition: none;
+  }
+}

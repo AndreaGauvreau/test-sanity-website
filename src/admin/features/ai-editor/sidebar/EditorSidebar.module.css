@@ -1,0 +1,42 @@
+/* Figma D1-D3 « ai-sidebar » : 320 px par défaut (260 à 480, poignée à droite), toute la hauteur, bg/primary,
+   trait droit border/subtle. Fil : pad 16 12 12 12, défilement vertical, calé en bas. Composer : pad 0 12 12 12. */
+.sidebar {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  height: 100%;
+  min-height: 0;
+  border-right: 1px solid var(--k-border-subtle);
+  background-color: var(--k-bg-primary);
+  color: var(--k-text-primary);
+}
+
+.scroll {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  padding: var(--k-space-16) var(--k-space-12) var(--k-space-12);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.composerWrap {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  gap: var(--k-space-8);
+  padding: 0 var(--k-space-12) var(--k-space-12);
+}
+
+.loading {
+  margin: auto 0 0;
+  color: var(--k-text-muted);
+  font: var(--k-text-body-small);
+  letter-spacing: var(--k-text-body-small-tracking);
+}
+
+.callout {
+  margin-top: auto;
+}

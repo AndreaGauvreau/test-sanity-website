@@ -1,0 +1,117 @@
+/* Champs composés du panneau C4 : image (Image upload + « Choose from Media ») et choix dans la médiathèque. */
+
+.imageField {
+  display: flex;
+  flex-direction: column;
+  gap: var(--k-space-4);
+  outline: none;
+}
+
+.imageActions {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.picker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--k-space-12);
+  min-height: 240px;
+}
+
+.pickerGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
+  gap: var(--k-space-10);
+  max-height: 360px;
+  overflow-y: auto;
+  padding: 2px;
+}
+
+.pickerItem {
+  display: flex;
+  flex-direction: column;
+  gap: var(--k-space-6);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.pickerThumb {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 3 / 2;
+  overflow: hidden;
+  border-radius: var(--k-radius-md);
+  background-color: var(--k-bg-subtle);
+  box-shadow: inset 0 0 0 1px transparent;
+  transition: box-shadow var(--k-duration-fast) ease;
+  --k-icon-current: var(--k-icon-muted);
+}
+
+.pickerThumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.pickerItem:hover .pickerThumb {
+  box-shadow: inset 0 0 0 1px var(--k-border-strong);
+}
+
+.pickerItemSelected .pickerThumb,
+.pickerItemSelected:hover .pickerThumb {
+  box-shadow: inset 0 0 0 2px var(--k-border-focus);
+}
+
+.pickerItem:focus-visible {
+  outline: 2px solid var(--k-border-focus);
+  outline-offset: 2px;
+  border-radius: var(--k-radius-md);
+}
+
+.pickerCurrent {
+  position: absolute;
+  left: 6px;
+  bottom: 6px;
+  padding: 0 6px;
+  border-radius: var(--k-radius-sm);
+  background-color: var(--k-bg-scrim);
+  color: var(--k-text-primary);
+  font: var(--k-text-caption);
+  letter-spacing: var(--k-text-caption-tracking);
+}
+
+.pickerName {
+  overflow: hidden;
+  color: var(--k-text-secondary);
+  font: var(--k-text-body-small);
+  letter-spacing: var(--k-text-body-small-tracking);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pickerLoading {
+  display: flex;
+  flex-direction: column;
+  gap: var(--k-space-8);
+  color: var(--k-text-tertiary);
+  font: var(--k-text-body-small);
+}
+
+.pickerError {
+  margin: 0;
+  color: var(--k-interactive-danger);
+  font: var(--k-text-body-small);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pickerThumb {
+    transition: none;
+  }
+}

@@ -1,0 +1,21 @@
+/*
+ * Position du panneau flottant Ask AI : à droite de la Sidebar (240 px), sous la Top bar (48 px), à la hauteur du
+ * bouton « ✦ Ask AI » ; la Top bar (état de publication, Review) reste visible.
+ * Pas de voile : le panneau n'est pas modal, l'écran reste utilisable derrière.
+ * Couche : sous les modales / drawers (--k-z-overlay, 900) et les popovers (1000), au-dessus du contenu.
+ */
+.host {
+  position: fixed;
+  top: calc(48px + var(--k-space-8));
+  left: calc(240px + var(--k-space-8));
+  bottom: var(--k-space-8);
+  z-index: calc(var(--k-z-popover) - 200);
+  display: flex;
+  align-items: flex-start;
+  pointer-events: none;
+  transform-origin: top left;
+}
+
+.host > * {
+  pointer-events: auto;
+}

@@ -1,0 +1,43 @@
+/*
+ * B3 · Code (Figma UI 359:745). L'en-tête du Figma est un « Section header » (titre Heading 4 + description + « Add ») :
+ * on garde le Page header du kit (vrai h1 de l'écran) avec le style de titre du Section header.
+ */
+.header h1 {
+  font: var(--k-text-heading-4);
+  letter-spacing: var(--k-text-heading-4-tracking);
+}
+
+/* Section header : titre et description à 2 px (Page header : 4). */
+.header p {
+  margin-top: -2px;
+}
+
+.table {
+  width: 100%;
+}
+
+.row {
+  cursor: pointer;
+}
+
+/* Nom du script : bouton « Edit » au clavier, rendu comme le texte de la cellule title (text/primary, Body). */
+.nameButton {
+  max-width: 100%;
+  overflow: hidden;
+  padding: 0;
+  border: 0;
+  border-radius: var(--k-radius-sm);
+  background: none;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-align: start;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.nameButton:focus-visible {
+  outline: 2px solid var(--k-border-focus);
+  outline-offset: 2px;
+}

@@ -1,0 +1,70 @@
+/* Fil (Figma D1-D3 « thread ») : V gap 12, calé en bas (align=MAX) ; chaque demande = message, en-tête de Claude,
+   étapes, question, carte de validation, tous séparés de 12 px. Le défilement est porté par la sidebar. */
+.thread {
+  display: flex;
+  flex-direction: column;
+  gap: var(--k-space-12);
+  margin: auto 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.entry {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--k-space-12);
+  min-width: 0;
+}
+
+.question {
+  display: flex;
+  flex-direction: column;
+  gap: var(--k-space-12);
+  min-width: 0;
+}
+
+.questionText {
+  margin: 0;
+  color: var(--k-text-secondary);
+  font: var(--k-text-body-small);
+  letter-spacing: var(--k-text-body-small-tracking);
+  overflow-wrap: anywhere;
+}
+
+.topic {
+  color: var(--k-text-tertiary);
+}
+
+.options {
+  display: flex;
+  flex-direction: column;
+  gap: var(--k-space-12);
+}
+
+.stopRow {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.message,
+.detail {
+  margin: 0;
+  font: var(--k-text-body-small);
+  letter-spacing: var(--k-text-body-small-tracking);
+  overflow-wrap: anywhere;
+}
+
+.message {
+  color: var(--k-text-secondary);
+  white-space: pre-line;
+}
+
+.detail {
+  color: var(--k-text-tertiary);
+}

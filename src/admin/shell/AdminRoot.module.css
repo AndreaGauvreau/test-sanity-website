@@ -1,0 +1,46 @@
+/* Racine de l'admin : fond bg/app sur toute la fenêtre (le layout racine est partagé avec le site). */
+.root {
+  min-height: 100vh;
+  min-height: 100dvh;
+  background-color: var(--k-bg-app);
+  color: var(--k-text-primary);
+}
+
+.app {
+  min-height: inherit;
+}
+
+/* Garde « This admin is designed for a computer. » (README Figma, A1) : visible seulement sous 1 024 px. */
+.guard {
+  display: none;
+}
+
+@media (max-width: 1023.98px) {
+  .app {
+    display: none;
+  }
+
+  .guard {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--k-space-12);
+    min-height: 100vh;
+    min-height: 100dvh;
+    padding: var(--k-space-24) var(--k-space-16);
+    text-align: center;
+    --k-icon-current: var(--k-icon-default);
+  }
+}
+
+.guardIcon {
+  flex-shrink: 0;
+}
+
+.guardText {
+  max-width: 320px;
+  color: var(--k-text-secondary);
+  font: var(--k-text-body-large);
+  letter-spacing: var(--k-text-body-large-tracking);
+}

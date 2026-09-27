@@ -1,0 +1,19 @@
+/* Bloc de chargement : fond bg/elevated, pulsation d'opacité discrète (coupée en mouvement réduit). */
+.block {
+  width: 100%;
+  border-radius: var(--k-radius-lg);
+  background-color: var(--k-bg-elevated);
+  animation: pulse 1.6s var(--k-ease-in-out) infinite;
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.55;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .block {
+    animation: none;
+  }
+}

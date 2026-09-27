@@ -260,8 +260,13 @@ export type PendingContentItem = {
   type: string
   /** « Home › Hero · Title », « Blog › Carrier portals: a checklist » */
   path: string
-  /** Nouvelle valeur, ou « Body and excerpt edited ». */
+  /** Nouvelle valeur (entre guillemets, déjà mis par le moteur), ou « Body and excerpt edited ». */
   summary: string
+  /**
+   * Ce que Publish fera de ce document : publier le brouillon (défaut), le dépublier ou le supprimer.
+   * unpublish / delete sont demandés depuis le CMS (C3/C4) et ne s'appliquent qu'au prochain Publish.
+   */
+  action?: 'publish' | 'unpublish' | 'delete'
   author?: string
   updatedAt: string
   /** Chemin public où voir le brouillon. */
@@ -276,6 +281,8 @@ export type PendingDesignItem = {
   validatedBy: string
   validatedAt: string
   files: string[]
+  /** Chemin public de la page modifiée (View ↗ → /admin/editor?page=…). */
+  page?: string
 }
 
 export type PublishState = 'idle' | 'pending' | 'publishing' | 'published' | 'failed'
@@ -315,6 +322,8 @@ export type PublishStatus = {
 //   POST /publish/retry                                   → PublishStatus
 //   POST /publish/discard  { kind: 'content', id } | { kind: 'design', changeId } → PublishStatus
 //   GET  /publish/diff/:changeId                          → { diff: string }   (Kuartz seulement)
+//   POST /publish/stage    { kind: 'unpublish' | 'delete', id } → PublishStatus (programmé pour le prochain Publish)
+//   POST /publish/unstage  { id }                         → PublishStatus
 
 export type Publication = {
   number: number

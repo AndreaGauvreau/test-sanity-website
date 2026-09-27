@@ -1,0 +1,187 @@
+/*
+ * Figma « Ask AI panel » 340:1586 (+ G4 359:2358) : 360 px, V gap 12, pad 12, radius/lg, bg/elevated,
+ * border/default 1 px, Elevation/Popover. Le fil défile entre l'en-tête et le champ quand la conversation est longue.
+ */
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--k-space-12);
+  width: 360px;
+  max-height: 100%;
+  padding: var(--k-space-12);
+  border: 1px solid var(--k-border-default);
+  border-radius: var(--k-radius-lg);
+  background-color: var(--k-bg-elevated);
+  box-shadow: var(--k-elevation-popover);
+  overflow: hidden;
+  outline: none;
+}
+
+/* En-tête 28 px : icône ai 16, « Ask AI » (Label, fill), modèle (Model usage small), ✕ (Icon button small ghost). */
+.header {
+  display: flex;
+  align-items: center;
+  gap: var(--k-space-6);
+  flex-shrink: 0;
+  min-height: 28px;
+  --k-icon-current: var(--k-icon-default);
+}
+
+.headerIcon {
+  flex-shrink: 0;
+}
+
+.title {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  color: var(--k-text-primary);
+  font: var(--k-text-label);
+  letter-spacing: var(--k-text-label-tracking);
+}
+
+.help {
+  flex-shrink: 0;
+  margin: 0;
+  color: var(--k-text-tertiary);
+  font: var(--k-text-body-small);
+  letter-spacing: var(--k-text-body-small-tracking);
+}
+
+/* Fil : défile seul ; marge négative + padding pour que l'anneau de focus des liens ne soit pas rogné. */
+.log {
+  display: flex;
+  flex-direction: column;
+  gap: var(--k-space-12);
+  flex: 1 1 auto;
+  min-height: 0;
+  margin: calc(-1 * var(--k-space-4));
+  padding: var(--k-space-4);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.turn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--k-space-12);
+}
+
+/* Question = « Message » type adjustment : pad 8 10, bg/subtle, radius/md, Body text/primary. */
+.question {
+  align-self: stretch;
+  margin: 0;
+  padding: var(--k-space-8) var(--k-space-10);
+  border-radius: var(--k-radius-md);
+  background-color: var(--k-bg-subtle);
+  color: var(--k-text-primary);
+  font: var(--k-text-body);
+  letter-spacing: var(--k-text-body-tracking);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.answer {
+  margin: 0;
+  color: var(--k-text-secondary);
+  font: var(--k-text-body);
+  letter-spacing: var(--k-text-body-tracking);
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+/* Liens : Buttons ghost small, gap 4. */
+.links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--k-space-4);
+}
+
+.cost {
+  flex-shrink: 0;
+}
+
+.thinking {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--k-space-6);
+  margin: 0;
+  color: var(--k-text-tertiary);
+  font: var(--k-text-body-small);
+  letter-spacing: var(--k-text-body-small-tracking);
+  --k-icon-current: var(--k-icon-muted);
+}
+
+/* Champ : H gap 6, pad 4 4 4 10, bg/input, border/default, radius/md ; envoyer = Icon button primary small. */
+.input {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--k-space-6);
+  flex-shrink: 0;
+  padding: var(--k-space-4) var(--k-space-4) var(--k-space-4) var(--k-space-10);
+  border: 1px solid var(--k-border-default);
+  border-radius: var(--k-radius-md);
+  background-color: var(--k-bg-input);
+  transition: border-color var(--k-duration-fast) ease;
+}
+
+.input:focus-within {
+  border-color: var(--k-border-focus);
+}
+
+.input[data-disabled] {
+  opacity: 0.6;
+}
+
+.textarea {
+  flex: 1 1 auto;
+  min-width: 0;
+  /* Une ligne Body (16 px) centrée sur le bouton de 28 px. */
+  min-height: 28px;
+  padding: 6px 0;
+  border: 0;
+  background: none;
+  color: var(--k-text-primary);
+  font: var(--k-text-body);
+  letter-spacing: var(--k-text-body-tracking);
+  line-height: 16px;
+  resize: none;
+  outline: none;
+}
+
+.textarea::placeholder {
+  color: var(--k-text-muted);
+  opacity: 1;
+}
+
+.textarea:disabled {
+  cursor: not-allowed;
+}
+
+/* Pied : H gap 6 ; « This month: … » (Caption text/muted, fill) + « Usage ↗ » (Button ghost small). */
+.footer {
+  display: flex;
+  align-items: center;
+  gap: var(--k-space-6);
+  flex-shrink: 0;
+  min-height: 27px;
+}
+
+.month {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: var(--k-text-muted);
+  font: var(--k-text-caption);
+  letter-spacing: var(--k-text-caption-tracking);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .input {
+    transition: none;
+  }
+}

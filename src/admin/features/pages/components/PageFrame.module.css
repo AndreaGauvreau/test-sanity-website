@@ -1,0 +1,4 @@
+/* Figma C1 / C2 / C6 « content » : pad 24 40 (C2 / C6 : 16 en bas), gap 20. */
+.content {
+  min-height: 100%;
+}

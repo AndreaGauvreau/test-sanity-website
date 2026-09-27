@@ -1,0 +1,177 @@
+/*
+ * B2 · General (Figma UI 359:717) : « content » H gap 32, pad 28 40 40 40 ; colonne formulaire (fill, V gap 20) ;
+ * colonne des aperçus fixe 440 (V gap 16). Site images : V gap 32 ; rangées H gap 16 (méta fill + aperçus).
+ */
+.layout {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--k-space-32);
+  width: 100%;
+  max-width: calc(1120px + 2 * var(--k-space-40));
+  min-width: 0;
+  padding: 28px var(--k-space-40) var(--k-space-40) var(--k-space-40);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--k-space-20);
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.siteImages {
+  display: flex;
+  flex-direction: column;
+  gap: var(--k-space-32);
+}
+
+.imageRow {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--k-space-16);
+  min-width: 0;
+}
+
+.meta {
+  display: flex;
+  flex-direction: column;
+  gap: var(--k-space-10);
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.labels {
+  display: flex;
+  flex-direction: column;
+  gap: var(--k-space-4);
+}
+
+.imageLabel {
+  margin: 0;
+  color: var(--k-text-primary);
+  font: var(--k-text-body-small);
+  letter-spacing: var(--k-text-body-small-tracking);
+}
+
+.dimensions {
+  margin: 0;
+  color: var(--k-text-tertiary);
+  font: var(--k-text-body-small);
+  letter-spacing: var(--k-text-body-small-tracking);
+}
+
+.faviconColumn,
+.socialColumn {
+  display: flex;
+  flex-direction: column;
+  gap: var(--k-space-8);
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+.faviconColumn {
+  width: calc(2 * 180px + var(--k-space-16));
+}
+
+.socialColumn {
+  width: 375px;
+}
+
+.favicons {
+  display: flex;
+  gap: var(--k-space-16);
+}
+
+.divider {
+  height: 1px;
+  background-color: var(--k-border-default);
+}
+
+.socialFrame {
+  position: relative;
+  border-radius: var(--k-radius-lg);
+}
+
+.socialFrame[data-dropping] {
+  outline: 2px dashed var(--k-border-focus);
+  outline-offset: 2px;
+}
+
+.socialUploading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--k-space-10);
+  border-radius: var(--k-radius-lg);
+  background-color: color-mix(in srgb, var(--k-bg-input) 88%, transparent);
+  color: var(--k-text-secondary);
+  font: var(--k-text-body-small);
+  letter-spacing: var(--k-text-body-small-tracking);
+}
+
+.uploading {
+  display: flex;
+  align-items: center;
+  gap: var(--k-space-10);
+  color: var(--k-text-tertiary);
+  font: var(--k-text-body-small);
+  letter-spacing: var(--k-text-body-small-tracking);
+}
+
+.progress {
+  width: 120px;
+}
+
+.formats {
+  margin: 0;
+  margin-top: var(--k-space-2);
+  color: var(--k-text-muted);
+  font: var(--k-text-caption);
+  letter-spacing: var(--k-text-caption-tracking);
+}
+
+.notice,
+.error {
+  margin: 0;
+  font: var(--k-text-body-small);
+  letter-spacing: var(--k-text-body-small-tracking);
+}
+
+.notice {
+  color: var(--k-text-tertiary);
+}
+
+.error {
+  color: var(--k-interactive-danger);
+}
+
+/* Compteur au-delà de la limite (Figma B2 : « chiffre en orange, sans bloquer la saisie ») : ton d'avertissement du DS. */
+.over {
+  color: var(--k-interactive-warning);
+}
+
+.previews {
+  display: flex;
+  flex-direction: column;
+  gap: var(--k-space-16);
+  flex: 0 0 440px;
+  width: 440px;
+  min-width: 0;
+}
+
+.previewTitle {
+  margin: 0;
+  color: var(--k-text-primary);
+  font: var(--k-text-label);
+  letter-spacing: var(--k-text-label-tracking);
+}
+
+/* Les aperçus remplissent la colonne de 440 (le kit les borne à 560 / 400 hors de cet écran). */
+.searchPreview,
+.socialPreview {
+  max-width: none;
+}

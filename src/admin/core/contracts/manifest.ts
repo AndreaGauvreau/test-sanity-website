@@ -52,6 +52,10 @@ export type FieldDef = {
   itemLabel?: string
   /** Zone de l'éditeur IA qui affiche ce champ (voir zones.ts), pour les liens « Open in AI editor ». */
   zone?: string
+  /** array / object : type Sanity des éléments (pour les créer bien typés). */
+  itemType?: string
+  /** portableText : ce que l'éditeur de texte riche propose (noms Sanity). */
+  richText?: { styles?: readonly string[]; lists?: readonly string[]; decorators?: readonly string[]; annotations?: readonly string[]; blocks?: readonly string[] }
 }
 
 export type DocumentRef = { type: string; id: string }
@@ -63,6 +67,8 @@ export type SectionDef = {
   /** Zone racine de la section dans l'éditeur IA. */
   zone?: string
   fields: readonly FieldDef[]
+  /** Section alimentée par une collection (« From CMS › Blog », « 4 latest Blog posts »). */
+  source?: { collection: string; label?: string }
 }
 
 /** Chemins des champs SEO dans le document de la page (C2). */
@@ -134,6 +140,8 @@ export type AdminConfig = {
     domain: string
     /** URL publique (View site ↗). */
     url: string
+    /** Date de mise en ligne (ISO), pour B5 « since launch ». */
+    launchedAt?: string
   }
   /** Document unique des réglages du site (B2, B3). */
   settings: DocumentRef

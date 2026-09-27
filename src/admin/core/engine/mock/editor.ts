@@ -438,8 +438,10 @@ export function createEditorMock(options: { now?: () => number } = {}): EditorMo
       const phase = sim.phase
       sim.applied += 1
       event.run(at)
-      // Changement de phase ou fin : on repart de la nouvelle liste (ou on s'arrête).
-      if (sim.phase !== phase || !ACTIVE.has(job.status) || job.status === 'waiting') return advance(sim, t)
+      // Changement de phase, question ou fin : on repart de la nouvelle liste (ou on s'arrête).
+      // `run` a pu changer le statut : relu sans le rétrécissement de type fait plus haut.
+      const status = job.status as EditJob['status']
+      if (sim.phase !== phase || !ACTIVE.has(status) || status === 'waiting') return advance(sim, t)
     }
   }
 

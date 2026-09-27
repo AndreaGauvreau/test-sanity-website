@@ -1,0 +1,134 @@
+/* Figma « Composer » : V gap 10, pad 10, radius/lg, bg/elevated + border/default ; working / waiting : bg/subtle.
+   Sélection : puces (wrap, gap 4) à gauche, portée Style / Text (gap 4) à droite. Texte Body (text/primary ;
+   indication text/muted). Pied H gap 6 : Kbd « ⌘ ↵ », « to apply » Caption text/muted (remplit), Apply small. */
+.composer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--k-space-10);
+  padding: var(--k-space-10);
+  border: 1px solid var(--k-border-default);
+  border-radius: var(--k-radius-lg);
+  background-color: var(--k-bg-elevated);
+  transition: border-color var(--k-duration-fast) ease;
+}
+
+.composer[data-state='working'],
+.composer[data-state='waiting'] {
+  background-color: var(--k-bg-subtle);
+}
+
+.composer:focus-within:not([data-state='working'], [data-state='waiting'], [data-state='empty']) {
+  border-color: var(--k-border-strong);
+}
+
+.selection {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--k-space-6);
+}
+
+.elements {
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--k-space-4);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* La puce (19 px) est centrée sur la hauteur des Chips de portée (23-25 px). */
+.elements > li {
+  display: flex;
+  min-width: 0;
+  max-width: 100%;
+  padding-top: 2px;
+}
+
+.scope {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: var(--k-space-4);
+  margin-left: auto;
+}
+
+.text {
+  display: block;
+  width: 100%;
+  min-height: 16px;
+  max-height: 176px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  outline: none;
+  resize: none;
+  overflow-y: auto;
+  background: transparent;
+  color: var(--k-text-primary);
+  font: var(--k-text-body);
+  letter-spacing: var(--k-text-body-tracking);
+  field-sizing: content;
+}
+
+.text::placeholder {
+  color: var(--k-text-muted);
+  opacity: 1;
+}
+
+.text:disabled {
+  cursor: default;
+}
+
+/* Focus visible : le contour du Composer passe à border/strong (le champ n'a pas de cadre propre). */
+.composer:has(.text:focus-visible) {
+  border-color: var(--k-border-focus);
+}
+
+.error,
+.note {
+  margin: 0;
+  font: var(--k-text-body-small);
+  letter-spacing: var(--k-text-body-small-tracking);
+}
+
+.error {
+  color: var(--k-interactive-danger);
+}
+
+.note {
+  color: var(--k-text-tertiary);
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  gap: var(--k-space-6);
+}
+
+.hint {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: var(--k-text-muted);
+  font: var(--k-text-caption);
+  letter-spacing: var(--k-text-caption-tracking);
+}
+
+.count {
+  color: var(--k-text-muted);
+  font: var(--k-text-caption);
+  letter-spacing: var(--k-text-caption-tracking);
+  font-variant-numeric: tabular-nums;
+}
+
+.count[data-over] {
+  color: var(--k-interactive-danger);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .composer {
+    transition: none;
+  }
+}

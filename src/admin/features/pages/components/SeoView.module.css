@@ -1,0 +1,196 @@
+/* Figma C2 / C6 « body » : H gap 32 ; « fields » V gap 16 (largeur libre, 588 à 1 440 px) ; « previews » 500 fixe, gap 16. */
+.body {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--k-space-32);
+  min-width: 0;
+}
+
+.fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--k-space-16);
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.previews {
+  display: flex;
+  flex-direction: column;
+  gap: var(--k-space-16);
+  flex: 0 0 500px;
+  width: 500px;
+  min-width: 0;
+}
+
+/* Le kit borne Social preview à 400 (fiche du composant) ; l'écran C2 la montre sur toute la colonne (500). */
+.social {
+  max-width: none;
+}
+
+.over {
+  color: var(--k-interactive-warning);
+}
+
+/* « og-row » : H gap 16 ; « meta » V gap 10 ; « labels » V gap 4. */
+.ogRow {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--k-space-16);
+  min-width: 0;
+}
+
+.ogMeta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--k-space-10);
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.ogLabels {
+  display: flex;
+  flex-direction: column;
+  gap: var(--k-space-4);
+}
+
+.ogLabel {
+  color: var(--k-text-primary);
+  font: var(--k-text-body-small);
+  letter-spacing: var(--k-text-body-small-tracking);
+}
+
+.ogDimensions,
+.ogFrom {
+  color: var(--k-text-tertiary);
+  font: var(--k-text-body-small);
+  letter-spacing: var(--k-text-body-small-tracking);
+}
+
+.ogFrom {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ogNote {
+  margin: 0;
+  color: var(--k-text-muted);
+  font: var(--k-text-caption);
+  letter-spacing: var(--k-text-caption-tracking);
+}
+
+.ogError {
+  margin: 0;
+  color: var(--k-interactive-danger);
+  font: var(--k-text-body-small);
+  letter-spacing: var(--k-text-body-small-tracking);
+}
+
+.ogPreview {
+  flex: none;
+  border-radius: var(--k-radius-lg);
+  outline: 2px dashed transparent;
+  outline-offset: 2px;
+  transition: outline-color var(--k-duration-fast) ease;
+}
+
+.ogPreview[data-dragover] {
+  outline-color: var(--k-border-focus);
+}
+
+/* Carte « Heading structure » : pad 12, gap 2, bg/elevated, border/default, radius/lg. */
+.headingCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--k-space-2);
+  padding: var(--k-space-12);
+  border: 1px solid var(--k-border-default);
+  border-radius: var(--k-radius-lg);
+  background-color: var(--k-bg-elevated);
+}
+
+.headingHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--k-space-8);
+  padding: var(--k-space-2) var(--k-space-4) var(--k-space-8);
+}
+
+.headingTitle {
+  flex: 1 1 auto;
+  margin: 0;
+  color: var(--k-text-primary);
+  font: var(--k-text-label);
+  letter-spacing: var(--k-text-label-tracking);
+}
+
+.headingList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--k-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.headingSummary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--k-space-12);
+  margin: 0;
+  padding: var(--k-space-8) var(--k-space-4) 0;
+  list-style: none;
+  font: var(--k-text-caption);
+  letter-spacing: var(--k-text-caption-tracking);
+}
+
+.summaryItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.summaryOk {
+  color: var(--k-interactive-success);
+}
+
+.summaryWarn {
+  color: var(--k-interactive-warning);
+}
+
+.muted {
+  margin: 0;
+  padding: var(--k-space-4);
+  color: var(--k-text-muted);
+  font: var(--k-text-body-small);
+  letter-spacing: var(--k-text-body-small-tracking);
+}
+
+/* Chargement (lecture du HTML de la page) : barres statiques, sans animation. */
+.skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--k-space-8);
+  padding: var(--k-space-4);
+}
+
+.skeletonLine {
+  height: 12px;
+  border-radius: 3px;
+  background-color: var(--k-bg-input-hover);
+}
+
+.jsonLd {
+  display: flex;
+  flex-direction: column;
+  gap: var(--k-space-10);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ogPreview {
+    transition: none;
+  }
+}

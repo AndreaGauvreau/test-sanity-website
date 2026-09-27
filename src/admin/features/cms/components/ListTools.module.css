@@ -1,0 +1,40 @@
+/* Barre d'outils G5 : icônes 28 × 28 (gap 4 posé par le Page header) ; recherche en ligne 240 px. */
+
+.filter {
+  position: relative;
+  display: inline-flex;
+}
+
+/* Filtres actifs : point interactive/primary en haut à droite de l'icône. */
+.dot {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 6px;
+  height: 6px;
+  border-radius: var(--k-radius-full);
+  background-color: var(--k-interactive-primary);
+  box-shadow: 0 0 0 2px var(--k-bg-app);
+  pointer-events: none;
+}
+
+.search {
+  width: 240px;
+  /* Champ de 30 px dans une barre d'icônes de 28 : pas de saut de l'en-tête à l'ouverture. */
+  margin-block: -1px;
+  animation: searchIn var(--k-duration-fast) var(--k-ease-out);
+  transform-origin: right center;
+}
+
+@keyframes searchIn {
+  from {
+    opacity: 0;
+    transform: scaleX(0.96);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .search {
+    animation: none;
+  }
+}

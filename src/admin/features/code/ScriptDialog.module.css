@@ -1,0 +1,182 @@
+/*
+ * Figma « Script dialog » 445:1957 (G6) : 800 px, pad 0 10, radius/xl, bg/input, Elevation/Modal.
+ * En-tête 50 px + trait border/strong ; corps V gap 20, pad-top 10 ; pied pad-top 10, rangée 51 px (pad 10 0) + trait.
+ */
+.layer {
+  position: fixed;
+  inset: 0;
+  z-index: var(--k-z-overlay, 900);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--k-space-32) var(--k-space-16);
+}
+
+.motion {
+  position: relative;
+  display: flex;
+  width: 800px;
+  max-width: 100%;
+  max-height: 100%;
+}
+
+.dialog {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-height: 100%;
+  overflow: hidden;
+  padding: 0 var(--k-space-10);
+  border-radius: var(--k-radius-xl);
+  background-color: var(--k-bg-input);
+  box-shadow: var(--k-elevation-modal);
+  --k-icon-current: var(--k-icon-default);
+}
+
+.dialog:focus-visible {
+  outline: none;
+}
+
+.header {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  height: 50px;
+  margin-bottom: var(--k-space-10);
+  border-bottom: 1px solid var(--k-border-strong);
+}
+
+.title {
+  margin: 0;
+  color: var(--k-text-primary);
+  font: var(--k-text-label);
+  letter-spacing: var(--k-text-label-tracking);
+}
+
+/*
+ * Champs sur bg/input-hover (la fenêtre est déjà sur bg/input) : on redéfinit localement les tokens que lisent
+ * Input, Select et CodeBlock du kit, plutôt que de réécrire leurs styles.
+ */
+.body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: var(--k-space-20);
+  min-height: 0;
+  padding-top: var(--k-space-10);
+  padding-bottom: var(--k-space-2);
+  overflow-y: auto;
+  --k-bg-input: var(--k-bg-input-hover);
+  --k-border-default: var(--k-border-subtle);
+}
+
+.row {
+  display: flex;
+  gap: var(--k-space-10);
+}
+
+.cell {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.muted {
+  color: var(--k-text-tertiary);
+}
+
+.pageValue {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--k-space-6);
+  min-width: 0;
+}
+
+.codeField {
+  display: flex;
+  flex-direction: column;
+  gap: var(--k-space-6);
+}
+
+.codeHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 27px;
+}
+
+.codeLabel {
+  color: var(--k-text-secondary);
+  font: var(--k-text-body-small);
+  letter-spacing: var(--k-text-body-small-tracking);
+}
+
+/* Éditeur : radius/sm, sans contour visible au repos (Figma code-editor), focus = border/focus du kit. */
+.editor > div:not(:first-child) {
+  border-radius: var(--k-radius-sm);
+}
+
+.warnings {
+  display: flex;
+  flex-direction: column;
+  gap: var(--k-space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--k-text-secondary);
+  font: var(--k-text-body-small);
+  letter-spacing: var(--k-text-body-small-tracking);
+  --k-icon-current: var(--k-icon-warning);
+}
+
+.warnings li {
+  display: flex;
+  align-items: center;
+  gap: var(--k-space-6);
+}
+
+.warnings li > svg {
+  flex-shrink: 0;
+}
+
+.serverError:focus-visible {
+  outline: 2px solid var(--k-border-focus);
+  outline-offset: 2px;
+}
+
+.footer {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--k-space-16);
+  margin-top: var(--k-space-10);
+  padding: var(--k-space-10) 0;
+  border-top: 1px solid var(--k-border-strong);
+}
+
+.hint {
+  display: flex;
+  align-items: center;
+  gap: var(--k-space-10);
+  min-width: 0;
+  margin: 0;
+  color: var(--k-text-tertiary);
+  font: var(--k-text-body-small);
+  letter-spacing: var(--k-text-body-small-tracking);
+}
+
+.hintIcon {
+  flex-shrink: 0;
+  --k-icon-current: var(--k-text-disabled);
+}
+
+.code {
+  font: var(--k-text-code);
+  letter-spacing: var(--k-text-code-tracking);
+}
+
+.actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: var(--k-space-10);
+}

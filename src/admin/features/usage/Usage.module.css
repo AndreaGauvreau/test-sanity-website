@@ -1,0 +1,80 @@
+/* B5 · Usage (Figma UI 359:892) : rangée de deux cartes (gap 24, largeurs égales), puis la carte Recent requests. */
+.cards {
+  display: flex;
+  align-items: stretch;
+  gap: var(--k-space-24);
+}
+
+.card {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+/* Recent requests : bg/elevated, border/default, radius/lg ; en-tête pad 16 20 12 20 ; tableau pad 0 8. */
+.requests {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--k-border-default);
+  border-radius: var(--k-radius-lg);
+  background-color: var(--k-bg-elevated);
+}
+
+.requestsHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--k-space-8);
+  padding: var(--k-space-16) var(--k-space-20) var(--k-space-12);
+}
+
+.requestsTitle {
+  flex: 1 1 auto;
+  margin: 0;
+  color: var(--k-text-primary);
+  font: var(--k-text-label);
+  letter-spacing: var(--k-text-label-tracking);
+}
+
+.requestsPeriod {
+  color: var(--k-text-muted);
+  font: var(--k-text-body-small);
+  letter-spacing: var(--k-text-body-small-tracking);
+}
+
+.tableWrap {
+  padding: 0 var(--k-space-8);
+}
+
+/* Dernière ligne sans trait : la carte a déjà son contour. */
+.tableWrap tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.request {
+  color: var(--k-text-primary);
+}
+
+.status {
+  color: var(--k-text-muted);
+}
+
+.empty {
+  margin: 0;
+  padding: var(--k-space-24) var(--k-space-20) var(--k-space-32);
+  color: var(--k-text-tertiary);
+  font: var(--k-text-body);
+  letter-spacing: var(--k-text-body-tracking);
+  text-align: center;
+}
+
+.more {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--k-space-12);
+  padding: var(--k-space-12) var(--k-space-20);
+  border-top: 1px solid var(--k-border-subtle);
+  color: var(--k-text-muted);
+  font: var(--k-text-body-small);
+  letter-spacing: var(--k-text-body-small-tracking);
+}

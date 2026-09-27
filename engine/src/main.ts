@@ -11,6 +11,7 @@ import { createEngineLock } from './jobs/lock'
 import { createEditorService } from './jobs/service'
 import type { JobRunAgent } from './jobs/types'
 import { createPreviewProcess, type SpawnFn } from './preview/process'
+import { askModule } from './ask'
 import { publishModule } from './publish'
 import { usageModule } from './usage'
 import { versionsModule } from './versions'
@@ -34,7 +35,8 @@ import { checkWorkspace, engineRunning, PID_FILE, WorkspaceError } from './works
  */
 // ─── Section engine-publish (transfert d'engine-core) : journal aiUsage, publication, versions ───
 // Ordre : `usage` d'abord (il pose `ports.usage` ; ask-ai y écrit via `getUsageJournal(context)`).
-export const MODULES: EngineModule[] = [usageModule, publishModule, versionsModule]
+// Ask AI après usageModule : il écrit sa consommation dans le journal commun.
+export const MODULES: EngineModule[] = [usageModule, publishModule, versionsModule, askModule()]
 
 /** Remplacements pour les tests (jamais utilisés par `npm run engine`). */
 export type EngineOverrides = {

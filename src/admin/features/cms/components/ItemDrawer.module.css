@@ -1,0 +1,50 @@
+/* Panneau C4 : les champs viennent du kit (Input, Select, Textarea en layout inline ; Image upload et texte riche empilés). */
+
+.date {
+  color-scheme: dark;
+}
+
+.unsupported {
+  display: flex;
+  gap: var(--k-space-12);
+  color: var(--k-text-muted);
+  font: var(--k-text-body-small);
+  letter-spacing: var(--k-text-body-small-tracking);
+}
+
+.unsupportedLabel {
+  flex: 0 0 120px;
+  color: var(--k-text-secondary);
+}
+/* Squelette du panneau C4 : lignes « libellé 120 + champ 34 » comme les champs en layout inline. */
+.loading {
+  display: flex;
+  flex-direction: column;
+  gap: var(--k-space-12);
+}
+
+.row {
+  display: flex;
+  gap: var(--k-space-12);
+  align-items: center;
+}
+
+.label {
+  flex: 0 0 120px;
+  height: 12px;
+  max-width: 64px;
+  border-radius: var(--k-radius-sm);
+  background-color: var(--k-bg-subtle);
+}
+
+.control {
+  flex: 1;
+  height: 34px;
+  border-radius: var(--k-radius-md);
+  background-color: var(--k-bg-input);
+}
+
+.state {
+  align-self: center;
+  margin-top: var(--k-space-48);
+}

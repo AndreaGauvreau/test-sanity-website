@@ -1,0 +1,86 @@
+/* Figma D1 « canvas » : fill bg/app, aperçu à 20 px des bords ; « site-draft » radius 10 + ombre 40 (valeurs brutes du
+   Figma, sans token) ; barre « to-validate » à 36 px du haut, Editor toolbar à 40 px du bas, centrées sur l'aperçu. */
+.canvas {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 100%;
+  overflow: hidden;
+  overflow: clip;
+  background-color: var(--k-bg-app);
+}
+
+.stage {
+  position: absolute;
+  inset: var(--k-space-20);
+  display: flex;
+  justify-content: center;
+  overflow: hidden;
+  overflow: clip;
+}
+
+.frame {
+  position: relative;
+  flex: none;
+  overflow: hidden;
+  overflow: clip;
+  border-radius: 10px;
+  background-color: var(--k-bg-primary);
+  box-shadow: 0 0 40px rgba(0, 0, 0, 0.4);
+}
+
+.iframe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: block;
+  border: 0;
+  transform-origin: 0 0;
+  /* Le site peint son propre fond ; blanc tant que la page se charge (pas de flash sombre sous le site). */
+  background-color: #ffffff;
+}
+
+/* Chargement et erreurs : par-dessus l'iframe (qui continue de charger dessous). */
+.status {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--k-bg-primary);
+}
+
+.loading {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--k-space-8);
+  margin: 0;
+  color: var(--k-text-tertiary);
+  font: var(--k-text-body-small);
+  letter-spacing: var(--k-text-body-small-tracking);
+  --k-icon-current: var(--k-icon-default);
+}
+
+.top,
+.bottom {
+  position: absolute;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  /* La bande ne capte pas les clics : seul son contenu les reçoit. */
+  pointer-events: none;
+  z-index: 1;
+}
+
+.top {
+  top: 36px;
+}
+
+.bottom {
+  bottom: 40px;
+}
+
+.floating {
+  pointer-events: auto;
+}

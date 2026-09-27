@@ -1,0 +1,38 @@
+/* Figma « Editor header » : V, bg/primary, trait bas border/subtle ; ligne du haut 44 px, H gap 6, pad 0 6 ;
+   ligne d'usage pad 0 12 10 20 (Model usage small). locked : Publish désactivé (opacité 0.4). */
+.header {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--k-border-subtle);
+  background-color: var(--k-bg-primary);
+}
+
+.top {
+  display: flex;
+  align-items: center;
+  gap: var(--k-space-6);
+  height: 44px;
+  padding: 0 var(--k-space-6);
+}
+
+.spacer {
+  flex: 1 1 auto;
+}
+
+.usage {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  min-height: 22px;
+  padding: 0 var(--k-space-12) var(--k-space-10) var(--k-space-20);
+  overflow: hidden;
+}
+
+.placeholder {
+  display: block;
+  width: 160px;
+  height: 12px;
+  border-radius: var(--k-radius-sm);
+  background-color: var(--k-bg-subtle);
+}

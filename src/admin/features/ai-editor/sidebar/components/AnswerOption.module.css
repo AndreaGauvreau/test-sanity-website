@@ -1,0 +1,95 @@
+/* Figma « Answer option » : H gap 8, pad 6 10, radius/md, bg/input + border/default ; hover bg/input-hover +
+   border/strong ; point 8 (recommended interactive/success, neutral text/muted, risky interactive/danger) ;
+   libellé Body Small text/primary. Choisi (aria-pressed) : contour border/focus. */
+.option {
+  display: flex;
+  align-items: center;
+  gap: var(--k-space-8);
+  width: 100%;
+  padding: var(--k-space-6) var(--k-space-10);
+  border: 1px solid var(--k-border-default);
+  border-radius: var(--k-radius-md);
+  background-color: var(--k-bg-input);
+  color: var(--k-text-primary);
+  font: var(--k-text-body-small);
+  letter-spacing: var(--k-text-body-small-tracking);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background-color var(--k-duration-fast) ease,
+    border-color var(--k-duration-fast) ease,
+    transform var(--k-duration-fast) var(--k-ease-out);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .option:hover:not(:disabled) {
+    background-color: var(--k-bg-input-hover);
+    border-color: var(--k-border-strong);
+  }
+}
+
+.option:active:not(:disabled) {
+  transform: scale(0.99);
+}
+
+.option[aria-pressed='true'] {
+  border-color: var(--k-border-focus);
+  background-color: var(--k-bg-input-hover);
+}
+
+.option:focus-visible {
+  outline: 2px solid var(--k-border-focus);
+  outline-offset: 2px;
+}
+
+.option:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.dot {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: var(--k-radius-full);
+  background-color: var(--k-interactive-success);
+}
+
+.option[data-kind='neutral'] .dot {
+  background-color: var(--k-text-muted);
+}
+
+.option[data-kind='discouraged'] .dot {
+  background-color: var(--k-interactive-danger);
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--k-space-2);
+  min-width: 0;
+}
+
+.label {
+  overflow-wrap: anywhere;
+}
+
+.description {
+  color: var(--k-text-tertiary);
+}
+
+.code {
+  align-self: flex-start;
+  padding: 0 var(--k-space-4);
+  border-radius: var(--k-radius-sm);
+  background-color: var(--k-bg-tint-danger);
+  color: var(--k-text-secondary);
+  font: var(--k-text-code);
+  letter-spacing: var(--k-text-code-tracking);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .option {
+    transition: none;
+  }
+}

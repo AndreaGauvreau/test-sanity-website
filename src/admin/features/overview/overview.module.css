@@ -1,0 +1,164 @@
+/*
+ * B1 · Overview (Figma UI 359:696) : content V gap 24, pad 28 40 40 ; stats H gap 16 (4 Stat cards fill, 110 px) ;
+ * site-preview fill (1120 × 602 à 1440 × 900) : bg/elevated, border/default, radius/lg ; browser-bar 38 px bg/primary.
+ */
+.content {
+  min-height: 100%;
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--k-space-16);
+}
+
+.cell,
+.cardLink {
+  display: flex;
+  min-width: 0;
+}
+
+.card {
+  flex: 1 1 auto;
+  /* Figma : 110 px (pad 16, gap 8) ; la hauteur suit le contenu, alignée sur la rangée. */
+  min-height: 110px;
+  transition: border-color var(--k-duration-fast) ease, background-color var(--k-duration-fast) ease;
+}
+
+.cardLink {
+  border-radius: var(--k-radius-lg);
+  color: inherit;
+  text-decoration: none;
+}
+
+.cardLink:hover .card {
+  border-color: var(--k-border-strong);
+  background-color: var(--k-bg-subtle);
+}
+
+.cardLink:focus-visible {
+  outline: 2px solid var(--k-border-focus);
+  outline-offset: 2px;
+}
+
+.valueMuted {
+  color: var(--k-text-tertiary);
+}
+
+.valueError {
+  color: var(--k-interactive-danger);
+}
+
+.cardSkeleton {
+  height: 110px;
+}
+
+.preview {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  /* Remplit la hauteur restante de l'écran : 900 − 48 (top bar) − 28 − 24 − 24 − 110 − 24 − 40 = 602. */
+  min-height: max(360px, calc(100vh - 298px));
+  overflow: hidden;
+  border: 1px solid var(--k-border-default);
+  border-radius: var(--k-radius-lg);
+  background-color: var(--k-bg-elevated);
+}
+
+.browserBar {
+  display: flex;
+  align-items: center;
+  gap: var(--k-space-8);
+  padding: var(--k-space-8) var(--k-space-12);
+  border-bottom: 1px solid var(--k-border-subtle);
+  background-color: var(--k-bg-primary);
+}
+
+.dots {
+  display: flex;
+  gap: var(--k-space-8);
+}
+
+.dots > span {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--k-radius-full);
+  background-color: var(--k-border-strong);
+}
+
+.url {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--k-space-6);
+  padding: 3px var(--k-space-10);
+  border-radius: var(--k-radius-sm);
+  background-color: var(--k-bg-input);
+  color: var(--k-text-tertiary);
+  font: var(--k-text-body-small);
+  letter-spacing: var(--k-text-body-small-tracking);
+  --k-icon-current: var(--k-icon-default);
+}
+
+.spacer {
+  flex: 1 1 auto;
+}
+
+.barLabel {
+  color: var(--k-text-muted);
+  font: var(--k-text-caption);
+  letter-spacing: var(--k-text-caption-tracking);
+}
+
+.viewport {
+  position: relative;
+  flex: 1 1 auto;
+  background-color: var(--k-bg-subtle);
+}
+
+.frame {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background-color: var(--k-bg-subtle);
+  opacity: 0;
+  /* Entrée du site chargé : fondu ease-out (skill web-animation-design), transform/opacity seulement. */
+  transition: opacity var(--k-duration-slow) var(--k-ease-out);
+}
+
+.frameReady {
+  opacity: 1;
+}
+
+.placeholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--k-space-8);
+  color: var(--k-text-muted);
+  font: var(--k-text-body-small);
+  letter-spacing: var(--k-text-body-small-tracking);
+  text-align: center;
+  --k-icon-current: var(--k-icon-muted);
+}
+
+.placeholderTitle {
+  color: var(--k-text-secondary);
+  font: var(--k-text-body);
+  letter-spacing: var(--k-text-body-tracking);
+}
+
+.placeholder a {
+  margin-top: var(--k-space-4);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card,
+  .frame {
+    transition: none;
+  }
+}

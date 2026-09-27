@@ -1,0 +1,229 @@
+/* C5 : corps H gap 24 = grille (wrap, gap 12, cartes 184 du kit) + fiche 320 (V gap 12, pad 16, bg/elevated,
+   border/default 1, radius/lg). Aperçu 288 × 170 bg/subtle radius/md, cadenas en haut à gauche (8, 8). */
+
+.body {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--k-space-24);
+  min-width: 0;
+}
+
+.gridWrap {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 200px;
+}
+
+.grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--k-space-12);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cell {
+  display: flex;
+}
+
+.dropping .gridWrap {
+  border-radius: var(--k-radius-lg);
+}
+
+/* Dépôt de fichiers : voile bg/tint/info et contour pointillé border/focus (même langage que Image upload). */
+.dropOverlay {
+  position: absolute;
+  inset: -8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed var(--k-border-focus);
+  border-radius: var(--k-radius-lg);
+  background-color: var(--k-bg-tint-info);
+  color: var(--k-text-primary);
+  font: var(--k-text-label);
+  letter-spacing: var(--k-text-label-tracking);
+  pointer-events: none;
+  animation: dropIn var(--k-duration-fast) var(--k-ease-out);
+}
+
+@keyframes dropIn {
+  from {
+    opacity: 0;
+  }
+}
+
+.empty {
+  margin: var(--k-space-40) auto 0;
+}
+
+.details {
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex: 0 0 320px;
+  flex-direction: column;
+  gap: var(--k-space-12);
+  width: 320px;
+  padding: var(--k-space-16);
+  border: 1px solid var(--k-border-default);
+  border-radius: var(--k-radius-lg);
+  background-color: var(--k-bg-elevated);
+  --k-icon-current: var(--k-icon-default);
+}
+
+.detailsEmpty {
+  min-height: 170px;
+  justify-content: center;
+  color: var(--k-text-muted);
+  font: var(--k-text-body-small);
+  letter-spacing: var(--k-text-body-small-tracking);
+  text-align: center;
+}
+
+.detailsEmpty p {
+  margin: 0;
+}
+
+.preview {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 170px;
+  overflow: hidden;
+  border-radius: var(--k-radius-md);
+  background-color: var(--k-bg-subtle);
+}
+
+.previewImage {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.previewLock {
+  position: absolute;
+  top: var(--k-space-8);
+  left: var(--k-space-8);
+}
+
+.name {
+  margin: 0;
+  overflow: hidden;
+  color: var(--k-text-primary);
+  font: var(--k-text-label-large);
+  letter-spacing: var(--k-text-label-large-tracking);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.meta {
+  margin: 0;
+  color: var(--k-text-muted);
+  font: var(--k-text-body-small);
+  letter-spacing: var(--k-text-body-small-tracking);
+}
+
+.usedTitle {
+  margin: 0;
+  color: var(--k-text-primary);
+  font: var(--k-text-label);
+  letter-spacing: var(--k-text-label-tracking);
+}
+
+.places {
+  display: flex;
+  flex-direction: column;
+  gap: var(--k-space-10);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.place {
+  display: flex;
+  align-items: center;
+  gap: var(--k-space-6);
+  padding-left: var(--k-space-12);
+  color: var(--k-text-secondary);
+  font: var(--k-text-body-small);
+  letter-spacing: var(--k-text-body-small-tracking);
+  text-decoration: none;
+  --k-icon-current: var(--k-icon-muted);
+}
+
+a.place:hover {
+  color: var(--k-text-primary);
+}
+
+a.place:focus-visible {
+  outline: 2px solid var(--k-border-focus);
+  outline-offset: 2px;
+  border-radius: var(--k-radius-sm);
+}
+
+/* « Tool link » : actions icônes collées 36 × 36, contour border/default, séparateurs 1 px. */
+.tools {
+  display: inline-flex;
+  align-self: flex-start;
+  overflow: hidden;
+  border: 1px solid var(--k-border-default);
+  border-radius: var(--k-radius-md);
+}
+
+.tool {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  --k-icon-current: var(--k-icon-default);
+  transition: background-color var(--k-duration-fast) ease;
+}
+
+.tool:hover:not([aria-disabled]) {
+  background-color: var(--k-bg-subtle);
+  --k-icon-current: var(--k-icon-active);
+}
+
+.tool:focus-visible {
+  outline: 2px solid var(--k-border-focus);
+  outline-offset: -2px;
+}
+
+.toolDanger,
+.toolDanger:hover:not([aria-disabled]) {
+  --k-icon-current: var(--k-icon-error);
+}
+
+.tool[aria-disabled] {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.toolDivider {
+  width: 1px;
+  align-self: stretch;
+  background-color: var(--k-border-default);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dropOverlay {
+    animation: none;
+  }
+
+  .tool {
+    transition: none;
+  }
+}

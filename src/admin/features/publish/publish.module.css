@@ -1,0 +1,363 @@
+/* Publication (E1, E2, G3). Tokens --k-* du kit uniquement. Mesures reprises des arbres UI du Figma. */
+
+/* ─── Top bar (G3) ─────────────────────────────────────────────────────────── */
+
+.barError {
+  color: var(--k-interactive-danger);
+}
+
+/* ─── E1 : colonnes ────────────────────────────────────────────────────────── */
+
+/* Figma « body » : H gap 24 ; « changes » fill (gap 20) ; « aside » 380 fixe (gap 16). */
+.body {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--k-space-24);
+  min-width: 0;
+}
+
+.changes {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: var(--k-space-20);
+  min-width: 0;
+}
+
+.aside {
+  display: flex;
+  flex: 0 0 380px;
+  flex-direction: column;
+  gap: var(--k-space-16);
+  min-width: 0;
+}
+
+/* ─── E1 : groupes Content / Design ────────────────────────────────────────── */
+
+/* Figma « group/Content » : bg/elevated, border/default 1, radius/lg. */
+.group {
+  overflow: hidden;
+  border: 1px solid var(--k-border-default);
+  border-radius: var(--k-radius-lg);
+  background-color: var(--k-bg-elevated);
+}
+
+/* Figma « header » : pad 14 16 10 16, gap 8. */
+.groupHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--k-space-8);
+  margin: 0;
+  padding: 14px var(--k-space-16) var(--k-space-10) var(--k-space-16);
+}
+
+.groupTitle {
+  margin: 0;
+  color: var(--k-text-primary);
+  font: var(--k-text-label);
+  letter-spacing: var(--k-text-label-tracking);
+}
+
+.groupList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Figma « change » : pad 10 12 10 16, gap 12, trait haut border/subtle (sur le List item du kit). */
+.row {
+  padding: var(--k-space-10) var(--k-space-12) var(--k-space-10) var(--k-space-16);
+  border-top: 1px solid var(--k-border-subtle);
+  border-radius: 0;
+}
+
+/* Figma « text » : V gap 2 entre le chemin et la méta. */
+.rowMeta {
+  display: block;
+  margin-top: var(--k-space-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rowActions {
+  display: flex;
+  align-items: center;
+  gap: var(--k-space-12);
+}
+
+.inlineError {
+  margin: 0 var(--k-space-16) var(--k-space-12);
+}
+
+/* ─── E1 : carte « After “Publish” » ───────────────────────────────────────── */
+
+/* Figma « after-publish » : pad 16, gap 4, bg/elevated, border/default, radius/lg. */
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--k-space-4);
+  padding: var(--k-space-16);
+  border: 1px solid var(--k-border-default);
+  border-radius: var(--k-radius-lg);
+  background-color: var(--k-bg-elevated);
+}
+
+.cardTitle {
+  margin: 0;
+  color: var(--k-text-primary);
+  font: var(--k-text-label);
+  letter-spacing: var(--k-text-label-tracking);
+}
+
+.checklist {
+  display: flex;
+  flex-direction: column;
+  gap: var(--k-space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Checklist item (composé ici, absent du kit) : H gap 10, pad 10 0, icône 18 en haut. */
+.check {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--k-space-10);
+  padding: var(--k-space-10) 0;
+  --k-icon-current: var(--k-icon-muted);
+}
+
+.check[data-state='done'] {
+  --k-icon-current: var(--k-icon-success);
+}
+
+.check[data-state='running'] {
+  --k-icon-current: var(--k-icon-primary);
+}
+
+.check[data-state='failed'] {
+  --k-icon-current: var(--k-icon-error);
+}
+
+.checkIcon {
+  display: flex;
+  flex-shrink: 0;
+  margin-top: -1px;
+  animation: stepIn var(--k-duration-fast) var(--k-ease-out);
+}
+
+@keyframes stepIn {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+}
+
+.checkText {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: var(--k-space-2);
+  min-width: 0;
+}
+
+.checkTitle {
+  color: var(--k-text-primary);
+  font: var(--k-text-body);
+  letter-spacing: var(--k-text-body-tracking);
+}
+
+.check[data-state='skipped'] .checkTitle {
+  color: var(--k-text-tertiary);
+}
+
+.checkDescription {
+  color: var(--k-text-tertiary);
+  font: var(--k-text-body-small);
+  letter-spacing: var(--k-text-body-small-tracking);
+}
+
+.check[data-state='failed'] .checkDescription {
+  color: var(--k-interactive-danger);
+}
+
+.checkAction {
+  margin-top: var(--k-space-6);
+}
+
+/* Figma « note » : Caption, text/muted. */
+.note {
+  margin: 0;
+  color: var(--k-text-muted);
+  font: var(--k-text-caption);
+  letter-spacing: var(--k-text-caption-tracking);
+}
+
+.empty {
+  padding: var(--k-space-24) 0;
+  border: 1px solid var(--k-border-default);
+  border-radius: var(--k-radius-lg);
+  background-color: var(--k-bg-elevated);
+}
+
+.empty > * {
+  margin-inline: auto;
+}
+
+/* ─── E2 : versions ────────────────────────────────────────────────────────── */
+
+/* Figma « body » : fill (685 px pour 900) : la hauteur restante de la fenêtre ; la liste défile. */
+.versionsBody {
+  display: flex;
+  align-items: stretch;
+  gap: var(--k-space-24);
+  height: max(360px, calc(100dvh - 215px));
+  min-width: 0;
+}
+
+/* Figma « versions » : V gap 2, pad 8, bg/elevated, border/default, radius/lg. */
+.versions {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: var(--k-space-2);
+  min-width: 0;
+  margin: 0;
+  padding: var(--k-space-8);
+  overflow-y: auto;
+  list-style: none;
+  border: 1px solid var(--k-border-default);
+  border-radius: var(--k-radius-lg);
+  background-color: var(--k-bg-elevated);
+}
+
+/* Figma « details » : 420 fixe, V gap 16, pad 20. */
+.details {
+  display: flex;
+  flex: 0 0 420px;
+  flex-direction: column;
+  gap: var(--k-space-16);
+  min-width: 0;
+  padding: var(--k-space-20);
+  overflow-y: auto;
+  border: 1px solid var(--k-border-default);
+  border-radius: var(--k-radius-lg);
+  background-color: var(--k-bg-elevated);
+}
+
+.statusField {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--k-space-4);
+}
+
+.fieldLabel {
+  color: var(--k-text-primary);
+  font: var(--k-text-label);
+  letter-spacing: var(--k-text-label-tracking);
+}
+
+.changesList {
+  display: block;
+  white-space: pre-line;
+}
+
+.spacer {
+  flex: 1 1 auto;
+}
+
+.rollbackRow {
+  display: flex;
+  align-items: center;
+  gap: var(--k-space-8);
+}
+
+.rollbackRow > :first-child {
+  flex: 1 1 auto;
+}
+
+.hint {
+  margin: 0;
+  color: var(--k-text-tertiary);
+  font: var(--k-text-body-small);
+  letter-spacing: var(--k-text-body-small-tracking);
+}
+
+/* ─── Fenêtres : diff et journal ───────────────────────────────────────────── */
+
+.log {
+  max-height: 320px;
+  overflow: auto;
+}
+
+.diff {
+  max-height: 420px;
+  margin: 0;
+  padding: var(--k-space-10) 0;
+  overflow: auto;
+  border: 1px solid var(--k-border-default);
+  border-radius: var(--k-radius-md);
+  background-color: var(--k-bg-input);
+  color: var(--k-code-text);
+  font: var(--k-text-code);
+  letter-spacing: var(--k-text-code-tracking);
+}
+
+.diffLine {
+  display: block;
+  min-width: max-content;
+  padding: 0 var(--k-space-12);
+  white-space: pre;
+}
+
+.diffLine[data-kind='add'] {
+  background-color: var(--k-bg-tint-success);
+  color: var(--k-interactive-success);
+}
+
+.diffLine[data-kind='del'] {
+  background-color: var(--k-bg-tint-danger);
+  color: var(--k-interactive-danger);
+}
+
+.diffLine[data-kind='hunk'] {
+  color: var(--k-text-link);
+}
+
+.diffLine[data-kind='meta'] {
+  color: var(--k-text-muted);
+}
+
+.loadingLine {
+  display: flex;
+  align-items: center;
+  gap: var(--k-space-8);
+  color: var(--k-text-tertiary);
+  font: var(--k-text-body-small);
+  --k-icon-current: var(--k-icon-muted);
+}
+
+/* ─── Chargement (loading.tsx) ─────────────────────────────────────────────── */
+
+.skeleton {
+  border-radius: var(--k-radius-lg);
+  background-color: var(--k-bg-elevated);
+  animation: pulse 1.2s ease-in-out infinite alternate;
+}
+
+@keyframes pulse {
+  from {
+    opacity: 0.55;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .checkIcon,
+  .skeleton {
+    animation: none;
+  }
+}

@@ -1,0 +1,100 @@
+/* Champs du formulaire généré (C1). Écarts et espacements repris de l'écran C1 (section ouverte : gap 12). */
+
+.labelRow {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--k-space-8);
+}
+
+.hiddenTag {
+  flex: none;
+}
+
+/* Bouton : libellé et lien côte à côte (Figma « button-fields » : H gap 12). */
+.ctaRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--k-space-12);
+  align-items: start;
+}
+
+.group,
+.array {
+  display: flex;
+  flex-direction: column;
+  gap: var(--k-space-12);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.groupLegend,
+.arrayLegend {
+  display: flex;
+  align-items: baseline;
+  gap: var(--k-space-8);
+  width: 100%;
+  padding: 0;
+  margin-bottom: var(--k-space-8);
+  color: var(--k-text-secondary);
+  font: var(--k-text-body-small);
+  letter-spacing: var(--k-text-body-small-tracking);
+}
+
+.arrayMeta {
+  color: var(--k-text-muted);
+  font: var(--k-text-caption);
+  letter-spacing: var(--k-text-caption-tracking);
+}
+
+/* Élément de tableau (carte, module, note…) : cadre discret dans la section. */
+.item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--k-space-12);
+  padding: var(--k-space-12);
+  border: 1px solid var(--k-border-subtle);
+  border-radius: var(--k-radius-md);
+  background-color: var(--k-bg-primary);
+}
+
+.itemHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--k-space-8);
+  min-height: 20px;
+}
+
+.itemTitle {
+  margin: 0;
+  color: var(--k-text-tertiary);
+  font: var(--k-text-label);
+  letter-spacing: var(--k-text-label-tracking);
+}
+
+.arrayFooter {
+  display: flex;
+  align-items: center;
+  gap: var(--k-space-12);
+}
+
+.arrayNote {
+  color: var(--k-text-muted);
+  font: var(--k-text-caption);
+  letter-spacing: var(--k-text-caption-tracking);
+}
+
+.arrayError {
+  margin: 0;
+  color: var(--k-interactive-danger);
+  font: var(--k-text-body-small);
+  letter-spacing: var(--k-text-body-small-tracking);
+}
+
+.imageRow {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--k-space-16);
+}

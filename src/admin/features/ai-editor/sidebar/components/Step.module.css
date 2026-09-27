@@ -1,0 +1,56 @@
+/* Figma « Step » : H gap 6 ; puce 4 px (text/muted) dans un cadre 12 ; Body Small ; log text/muted, change
+   text/tertiary ; done / validated / stopped / error : icône 12 (mode success / default / danger) + text/primary. */
+.step {
+  display: flex;
+  align-items: center;
+  gap: var(--k-space-6);
+  min-width: 0;
+  color: var(--k-text-muted);
+  font: var(--k-text-body-small);
+  letter-spacing: var(--k-text-body-small-tracking);
+}
+
+.step[data-kind='change'] {
+  color: var(--k-text-tertiary);
+}
+
+.step[data-kind='done'],
+.step[data-kind='validated'],
+.step[data-kind='stopped'],
+.step[data-kind='error'] {
+  color: var(--k-text-primary);
+}
+
+.bulletWrap {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 12px;
+  height: 12px;
+  align-self: flex-start;
+  margin-top: 1.5px;
+}
+
+.bullet {
+  width: 4px;
+  height: 4px;
+  border-radius: var(--k-radius-full);
+  background-color: var(--k-text-muted);
+}
+
+.icon {
+  flex-shrink: 0;
+  color: var(--k-icon-current);
+}
+
+.text {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.trailing {
+  flex-shrink: 0;
+  display: inline-flex;
+}

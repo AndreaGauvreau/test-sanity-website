@@ -1,0 +1,125 @@
+/* Figma C1 « draft-preview » : 440 px, bg/elevated, border/default, radius/lg ; barre 33 px bg/primary ;
+   « page » bg/subtle, pad 20, gap 14 ; blocs bg/input-hover radius 3 ; sélection 1,5 px interactive/primary. */
+.preview {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 440px;
+  width: 440px;
+  min-height: 0;
+  /* Hauteur du cadre : l'écran moins la Top bar, l'en-tête et les onglets (Figma : 700 dans un écran de 900). */
+  height: calc(100dvh - 48px - 24px - 29px - 20px - 35px - 20px - 24px);
+  min-height: 420px;
+  position: sticky;
+  top: var(--k-space-24);
+  overflow: hidden;
+  border: 1px solid var(--k-border-default);
+  border-radius: var(--k-radius-lg);
+  background-color: var(--k-bg-elevated);
+}
+
+.bar {
+  display: flex;
+  align-items: center;
+  gap: var(--k-space-8);
+  padding: var(--k-space-8) var(--k-space-12);
+  border-bottom: 1px solid var(--k-border-subtle);
+  background-color: var(--k-bg-primary);
+}
+
+.barTitle {
+  flex: 1 1 auto;
+  color: var(--k-text-secondary);
+  font: var(--k-text-body-small);
+  letter-spacing: var(--k-text-body-small-tracking);
+}
+
+.page {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: var(--k-space-20);
+  overflow-y: auto;
+  background-color: var(--k-bg-subtle);
+  scrollbar-width: none;
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  gap: var(--k-space-10);
+  min-height: 16px;
+}
+
+.logo {
+  width: 56px;
+  height: 10px;
+  border-radius: 3px;
+  background-color: var(--k-bg-input-hover);
+}
+
+.spacer {
+  flex: 1 1 auto;
+}
+
+.block {
+  display: block;
+  flex: none;
+  max-width: 100%;
+  border-radius: 3px;
+  background-color: var(--k-bg-input-hover);
+}
+
+.section {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--k-space-8);
+  padding: 14px;
+  border-radius: 2px;
+  outline: 1.5px solid transparent;
+  outline-offset: 0;
+  transition: outline-color var(--k-duration-fast) ease;
+}
+
+.section[data-active] {
+  outline-color: var(--k-interactive-primary);
+}
+
+/* Étiquette de la sélection (Figma « Canvas selection » : pastille bleue au-dessus du cadre). */
+.selectionLabel {
+  position: absolute;
+  left: -1px;
+  bottom: calc(100% + 2px);
+  padding: 1px 6px;
+  border-radius: var(--k-radius-sm);
+  background-color: var(--k-interactive-primary);
+  color: var(--k-text-on-accent);
+  font: var(--k-text-label-small);
+  letter-spacing: var(--k-text-label-small-tracking);
+}
+
+.cards {
+  display: flex;
+  gap: var(--k-space-10);
+}
+
+.card {
+  flex: 1 1 0;
+  height: 90px;
+  border-radius: 3px;
+  background-color: var(--k-bg-input-hover);
+}
+
+.ctas {
+  display: flex;
+  gap: var(--k-space-8);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .section {
+    transition: none;
+  }
+}

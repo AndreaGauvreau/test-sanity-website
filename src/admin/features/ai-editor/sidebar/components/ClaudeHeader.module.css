@@ -1,0 +1,56 @@
+/* Figma « Claude header » : V gap 4 ; ligne H gap 6 : ✦ 16 (mode d'icône selon l'état), « Claude » Label
+   text/primary (remplit), état Body Small (ready / done / stopped text/muted, working text/link, asking
+   interactive/warning) ; consigne Body Small text/tertiary ; done : Model usage small sans modèle. */
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--k-space-4);
+  min-width: 0;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--k-space-6);
+  min-width: 0;
+}
+
+.icon,
+.spinner {
+  flex-shrink: 0;
+}
+
+.spinner {
+  --k-icon-current: var(--k-icon-primary);
+}
+
+.name {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: var(--k-text-primary);
+  font: var(--k-text-label);
+  letter-spacing: var(--k-text-label-tracking);
+}
+
+.status {
+  flex-shrink: 0;
+  color: var(--k-text-muted);
+  font: var(--k-text-body-small);
+  letter-spacing: var(--k-text-body-small-tracking);
+  white-space: nowrap;
+}
+
+.header[data-state='working'] .status {
+  color: var(--k-text-link);
+}
+
+.header[data-state='asking'] .status {
+  color: var(--k-interactive-warning);
+}
+
+.help {
+  margin: 0;
+  color: var(--k-text-tertiary);
+  font: var(--k-text-body-small);
+  letter-spacing: var(--k-text-body-small-tracking);
+}

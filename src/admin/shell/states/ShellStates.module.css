@@ -1,0 +1,87 @@
+/* États de la coque : chargement (squelette), erreur, page introuvable. */
+
+/* Squelette : apparaît après 150 ms (un chargement rapide ne clignote pas), puis reste immobile. */
+.skeleton {
+  animation: kz-skeleton-enter var(--k-duration-base) var(--k-ease-out) 150ms both;
+}
+
+@keyframes kz-skeleton-enter {
+  from {
+    opacity: 0;
+  }
+}
+
+.bar {
+  display: block;
+  border-radius: var(--k-radius-sm);
+  background-color: var(--k-bg-subtle);
+}
+
+.header {
+  display: flex;
+  align-items: baseline;
+  gap: var(--k-space-12);
+}
+
+.title {
+  width: 160px;
+  height: 24px;
+}
+
+.meta {
+  width: 96px;
+  height: 14px;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--k-space-16);
+}
+
+.card {
+  height: 110px;
+  border: 1px solid var(--k-border-default);
+  border-radius: var(--k-radius-lg);
+  background-color: var(--k-bg-elevated);
+}
+
+.block {
+  height: 420px;
+  border: 1px solid var(--k-border-default);
+  border-radius: var(--k-radius-lg);
+  background-color: var(--k-bg-elevated);
+}
+
+/* Erreur et introuvable : message centré dans la zone de contenu. */
+.center {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+}
+
+/* Hors coque (A1, éditeur…) : tout l'écran. */
+.standalone {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: var(--k-space-40) var(--k-space-16);
+  background-color: var(--k-bg-app);
+}
+
+.reference {
+  color: var(--k-text-muted);
+  font: var(--k-text-caption);
+  letter-spacing: var(--k-text-caption-tracking);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+  }
+}

@@ -1,0 +1,116 @@
+/* A1 · Log in (Figma 359:674) : écran bg/app, carte centrée. */
+.page {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: var(--k-space-40) var(--k-space-16);
+  background-color: var(--k-bg-app);
+}
+
+/* « sign-in » 400 × hug : V gap 20, pad 32, centré, bg/elevated, border/default, radius/lg, Elevation/Modal. */
+.card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--k-space-20);
+  width: 400px;
+  max-width: 100%;
+  padding: var(--k-space-32);
+  border: 1px solid var(--k-border-default);
+  border-radius: var(--k-radius-lg);
+  background-color: var(--k-bg-elevated);
+  box-shadow: var(--k-elevation-modal);
+  text-align: center;
+  /* Écran vu rarement (connexion) : entrée discrète, ease-out, sous 250 ms. */
+  animation: kz-login-enter var(--k-duration-base) var(--k-ease-out) both;
+}
+
+@keyframes kz-login-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+}
+
+/* « logo » 40 × 40, bg/input-hover, radius/md, globe 18. */
+.logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--k-radius-md);
+  background-color: var(--k-bg-input-hover);
+  --k-icon-current: var(--k-icon-default);
+}
+
+/* « titles » : V gap 4, centré. */
+.titles {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--k-space-4);
+  width: 100%;
+}
+
+.title {
+  color: var(--k-text-primary);
+  font: var(--k-text-heading-3);
+  letter-spacing: var(--k-text-heading-3-tracking);
+}
+
+.subtitle {
+  color: var(--k-text-tertiary);
+  font: var(--k-text-body-small);
+  letter-spacing: var(--k-text-body-small-tracking);
+}
+
+/* « providers » : V gap 8, pleine largeur ; boutons secondary medium. */
+.providers {
+  display: flex;
+  flex-direction: column;
+  gap: var(--k-space-8);
+  width: 100%;
+}
+
+.callout {
+  width: 100%;
+  text-align: start;
+}
+
+.note {
+  color: var(--k-text-muted);
+  font: var(--k-text-caption);
+  letter-spacing: var(--k-text-caption-tracking);
+}
+
+/* Connexion de développement : hors de la carte (la carte reste celle du Figma), en bas de l'écran. */
+.dev {
+  position: absolute;
+  bottom: var(--k-space-24);
+  left: 50%;
+  display: flex;
+  align-items: center;
+  gap: var(--k-space-8);
+  padding: var(--k-space-6) var(--k-space-8) var(--k-space-6) var(--k-space-12);
+  border: 1px dashed var(--k-border-strong);
+  border-radius: var(--k-radius-md);
+  background-color: var(--k-bg-primary);
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+.devLabel {
+  color: var(--k-text-tertiary);
+  font: var(--k-text-body-small);
+  letter-spacing: var(--k-text-body-small-tracking);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card {
+    animation: none;
+  }
+}

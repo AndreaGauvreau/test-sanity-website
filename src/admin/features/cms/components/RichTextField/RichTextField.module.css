@@ -1,0 +1,264 @@
+/* Figma « Rich text field » 330:490 : libellé Body Small text/secondary, gap 6 ; boîte bg/input, border/default,
+   radius/md ; barre pad 4 gap 2 + trait bas border/subtle ; outils 28 × 28 radius/md (glyphes Label
+   text/secondary) ; séparateur 1 × 16 border/default ; contenu pad 12 gap 8, titres Heading 4 text/primary,
+   paragraphes Body text/secondary ; state=focused : contour border/focus. */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--k-space-6);
+  min-width: 0;
+}
+
+.label {
+  font: var(--k-text-body-small);
+  letter-spacing: var(--k-text-body-small-tracking);
+  color: var(--k-text-secondary);
+}
+
+.editor {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--k-border-default);
+  border-radius: var(--k-radius-md);
+  background-color: var(--k-bg-input);
+  transition: border-color var(--k-duration-fast) ease;
+}
+
+.editor:focus-within {
+  border-color: var(--k-border-focus);
+}
+
+.invalid,
+.invalid:focus-within {
+  border-color: var(--k-interactive-danger);
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--k-space-2);
+  padding: var(--k-space-4);
+  border-bottom: 1px solid var(--k-border-subtle);
+}
+
+.tool {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--k-radius-md);
+  background-color: transparent;
+  color: var(--k-text-secondary);
+  font: var(--k-text-label);
+  letter-spacing: var(--k-text-label-tracking);
+  cursor: pointer;
+  --k-icon-current: var(--k-icon-default);
+  transition:
+    background-color var(--k-duration-fast) ease,
+    color var(--k-duration-fast) ease,
+    transform var(--k-duration-fast) var(--k-ease-out);
+}
+
+.tool:hover:not([aria-disabled]) {
+  background-color: var(--k-bg-subtle);
+  color: var(--k-text-primary);
+  --k-icon-current: var(--k-icon-active);
+}
+
+.tool:active:not([aria-disabled]) {
+  transform: scale(0.96);
+}
+
+.tool[data-pressed] {
+  background-color: var(--k-bg-input-hover);
+  color: var(--k-text-primary);
+  --k-icon-current: var(--k-icon-active);
+}
+
+.tool[aria-disabled] {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.tool:focus-visible {
+  outline: 2px solid var(--k-border-focus);
+  outline-offset: 2px;
+}
+
+.bold {
+  font-weight: 700;
+}
+
+.italic {
+  font-style: italic;
+}
+
+.divider {
+  flex-shrink: 0;
+  width: 1px;
+  height: 16px;
+  margin: 0 var(--k-space-2);
+  background-color: var(--k-border-default);
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--k-space-8);
+  min-height: 82px;
+  max-height: 480px;
+  overflow-y: auto;
+  padding: var(--k-space-12);
+  outline: none;
+  color: var(--k-text-secondary);
+  font: var(--k-text-body);
+  letter-spacing: var(--k-text-body-tracking);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.paragraph,
+.h2,
+.h3,
+.quote,
+.listItem {
+  margin: 0;
+}
+
+.h2 {
+  color: var(--k-text-primary);
+  font: var(--k-text-heading-4);
+  letter-spacing: var(--k-text-heading-4-tracking);
+}
+
+.h3 {
+  color: var(--k-text-primary);
+  font: var(--k-text-label-large);
+  letter-spacing: var(--k-text-label-large-tracking);
+}
+
+.quote {
+  padding-left: var(--k-space-12);
+  border-left: 2px solid var(--k-border-strong);
+}
+
+.listItem {
+  position: relative;
+  padding-left: calc(var(--k-space-20) * var(--level, 1));
+}
+
+.listItem[data-level='2'] {
+  --level: 2;
+}
+
+.listItem[data-level='3'] {
+  --level: 3;
+}
+
+.listItem[data-list='bullet']::before {
+  content: '•';
+  position: absolute;
+  left: calc(var(--k-space-20) * var(--level, 1) - 14px);
+  color: var(--k-text-tertiary);
+}
+
+/* Numérotation : compteur CSS remis à zéro par tout bloc qui n'est pas un élément numéroté. */
+.content > :not([data-list='number']) + [data-list='number'],
+.content > [data-list='number']:first-child {
+  counter-reset: pt-number;
+}
+
+.listItem[data-list='number'] {
+  counter-increment: pt-number;
+}
+
+.listItem[data-list='number']::before {
+  content: counter(pt-number) '.';
+  position: absolute;
+  left: calc(var(--k-space-20) * var(--level, 1) - 18px);
+  color: var(--k-text-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+
+.link {
+  color: var(--k-text-link);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.object {
+  display: flex;
+  align-items: center;
+  padding: var(--k-space-8) var(--k-space-10);
+  border: 1px dashed var(--k-border-strong);
+  border-radius: var(--k-radius-md);
+  background-color: var(--k-bg-subtle);
+}
+
+.objectSelected {
+  border-color: var(--k-border-focus);
+}
+
+.objectLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--k-space-6);
+  color: var(--k-text-tertiary);
+  font: var(--k-text-body-small);
+  letter-spacing: var(--k-text-body-small-tracking);
+  user-select: none;
+}
+
+.placeholder {
+  color: var(--k-text-muted);
+  pointer-events: none;
+}
+
+.error {
+  margin: 0;
+  color: var(--k-interactive-danger);
+  font: var(--k-text-body-small);
+  letter-spacing: var(--k-text-body-small-tracking);
+}
+
+.helper {
+  margin: 0;
+  color: var(--k-text-muted);
+  font: var(--k-text-body-small);
+  letter-spacing: var(--k-text-body-small-tracking);
+}
+
+.linkPopover {
+  width: 320px;
+  padding: var(--k-space-12);
+}
+
+.linkForm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--k-space-10);
+}
+
+.linkActions {
+  display: flex;
+  align-items: center;
+  gap: var(--k-space-8);
+}
+
+.spacer {
+  flex: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .editor,
+  .tool {
+    transition: none;
+  }
+}

@@ -1,0 +1,135 @@
+/* Figma C1 « body » : H gap 24 ; « sections » V gap 6, largeur libre (656 à 1 440 px). */
+.body {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--k-space-24);
+  min-width: 0;
+}
+
+.sections {
+  display: flex;
+  flex-direction: column;
+  gap: var(--k-space-6);
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* Section fermée : 36 px, pad 0 12, bg/elevated, border/default, radius/md. */
+.section {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--k-border-default);
+  border-radius: var(--k-radius-md);
+  background-color: var(--k-bg-elevated);
+}
+
+/* Section ouverte : pad 16, gap 12, border/strong, radius/lg. */
+.section[data-open] {
+  gap: var(--k-space-12);
+  padding: var(--k-space-16);
+  border-color: var(--k-border-strong);
+  border-radius: var(--k-radius-lg);
+}
+
+.heading {
+  margin: 0;
+  font: inherit;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: var(--k-space-8);
+  width: 100%;
+  height: 34px;
+  padding: 0 var(--k-space-12);
+  border: 0;
+  border-radius: inherit;
+  background: none;
+  color: var(--k-text-primary);
+  text-align: left;
+  cursor: pointer;
+  --k-icon-current: var(--k-icon-default);
+}
+
+.section[data-open] .header {
+  height: auto;
+  padding: 0;
+}
+
+.header:focus-visible {
+  outline: 2px solid var(--k-border-focus);
+  outline-offset: 2px;
+}
+
+.chevron {
+  flex: none;
+}
+
+.title {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: var(--k-text-body);
+  letter-spacing: var(--k-text-body-tracking);
+}
+
+.section[data-open] .title {
+  font: var(--k-text-label-large);
+  letter-spacing: var(--k-text-label-large-tracking);
+}
+
+.summary {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--k-space-8);
+  flex: none;
+  color: var(--k-text-muted);
+  font: var(--k-text-body-small);
+  letter-spacing: var(--k-text-body-small-tracking);
+  --k-icon-current: var(--k-icon-muted);
+}
+
+.sourceIcon {
+  flex: none;
+}
+
+.position {
+  flex: none;
+  color: var(--k-text-muted);
+  font: var(--k-text-caption);
+  letter-spacing: var(--k-text-caption-tracking);
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--k-space-12);
+  min-width: 0;
+}
+
+.source {
+  display: flex;
+  align-items: center;
+  gap: var(--k-space-6);
+  margin: 0;
+  color: var(--k-text-tertiary);
+  font: var(--k-text-body-small);
+  letter-spacing: var(--k-text-body-small-tracking);
+  --k-icon-current: var(--k-icon-muted);
+}
+
+.sourceLink {
+  color: var(--k-text-link);
+  text-decoration: none;
+}
+
+.sourceLink:hover {
+  text-decoration: underline;
+}
+
+.askKuartz {
+  margin-top: var(--k-space-10);
+}
