@@ -5,9 +5,8 @@ import path from 'node:path'
 import { PassThrough } from 'node:stream'
 import { afterEach, describe, it } from 'vitest'
 import type { EditJob, EditorState, EngineUser, PublishStatus } from '../../../src/admin/core/contracts'
-import { signEngineUser } from '../../../src/admin/core/engine/signature'
 import { createFakeAgent, fakeScenarios } from '../claude'
-import { CLIENT, conduitSanity, editRequest, fakePreview, freshSignal, HERO_CSS, KUARTZ, makeWorkspace, PAGE_DOC } from '../jobs/testing'
+import { CLIENT, conduitSanity, editRequest, fakePreview, freshSignal, HERO_CSS, KUARTZ, LEDE_MUTED, ledeColor, makeWorkspace, PAGE_DOC, signedIdentity, TEST_IDENTITY } from '../jobs/testing'
 import { MODULES, startEngine, type RunningEngine } from '../main'
 import type { ChildLike, SpawnFn } from '../preview/process'
 import { usageModule } from '../usage'
@@ -50,12 +49,13 @@ async function boot(options: { modules?: boolean } = {}) {
   cleanup = () => rm(ws.workspace, { recursive: true, force: true })
   const sanity = conduitSanity()
   answerDraftQueries(sanity)
-  const agent = createFakeAgent([fakeScenarios.editCss(HERO_CSS, 'color: var(--color-text-muted);', 'color: var(--color-text);', 'Darker.')])
+  const agent = createFakeAgent([fakeScenarios.editCss(HERO_CSS, LEDE_MUTED, ledeColor('var(--color-text)'), 'Darker.')])
   const env = {
     ENGINE_MODE: 'local',
     ENGINE_PORT: '4953',
     ENGINE_PREVIEW_PORT: '4952',
     ENGINE_SECRET: SECRET,
+    ENGINE_IDENTITY_PUBLIC_KEY: TEST_IDENTITY.publicKey,
     ENGINE_PREVIEW_SECRET: 'preview-secret-for-publish-test',
     ADMIN_ORIGIN: 'http://127.0.0.1:4040',
     ENGINE_WORKSPACE: ws.workspace,
@@ -85,7 +85,7 @@ async function boot(options: { modules?: boolean } = {}) {
   const call = async (user: EngineUser, method: string, route: string, body?: object) => {
     const response = await fetch(`${base}${route}`, {
       method,
-      headers: { authorization: `Bearer ${SECRET}`, ...(await signEngineUser(user, SECRET)), ...(body ? { 'content-type': 'application/json' } : {}) },
+      headers: { authorization: `Bearer ${SECRET}`, ...(await signedIdentity(user)), ...(body ? { 'content-type': 'application/json' } : {}) },
       body: body ? JSON.stringify(body) : undefined,
     })
     return { status: response.status, json: await response.json() }
@@ -115,6 +115,13 @@ describe('engine-publish dans le moteur', () => {
     assert.equal((await call(CLIENT, 'POST', '/versions/1/rollback', {})).status, 403)
     const rollback = await call(KUARTZ, 'POST', '/versions/1/rollback', {})
     assert.deepEqual([rollback.status, rollback.json.error.code], [404, 'not_found'])
+    // Dépublier / supprimer au prochain Publish (CMS) : content.write, routes servies.
+    for (const user of [CLIENT, EDITOR, KUARTZ]) {
+      const staged = await call(user, 'POST', '/publish/stage', { kind: 'delete', id: 'post-missing' })
+      assert.deepEqual([staged.status, staged.json.error.code], [404, 'not_found'])
+      const unstaged = await call(user, 'POST', '/publish/unstage', { id: 'post-missing' })
+      assert.deepEqual([unstaged.status, unstaged.json.error.code], [404, 'not_found'])
+    }
     // Paramètres hostiles refusés par le routeur.
     assert.equal((await call(KUARTZ, 'GET', '/publish/diff/..%2Fetc')).status, 404)
     assert.equal((await call(KUARTZ, 'POST', '/versions/abc/rollback', {})).status, 404)
@@ -131,6 +138,7 @@ describe('engine-publish dans le moteur', () => {
     const usage = sanity.docs[`aiUsage.${job.id}`]
     assert.ok(usage, 'aiUsage écrit')
     assert.deepEqual([usage._type, usage.feature, usage.requestId, (usage.user as { role: string }).role], ['aiUsage', 'editor', job.id, 'client'])
+    assert.equal(usage.request, editRequest().note, 'texte de la demande pour la colonne « Request » de B5')
 
     await writeDraft(sanity, { _id: PAGE_DOC, _type: 'dockSchedulingPage' }, { 'hero.title': 'Dock scheduling, solved.' })
     // Publication refusée tant que la modification attend ✓ Validate.

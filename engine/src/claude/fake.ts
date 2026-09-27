@@ -13,8 +13,13 @@ import type { QuestionDraft } from './questions'
  * Il se comporte comme le vrai là où cela compte pour le moteur :
  * - chaque outil passe d'abord par le VRAI hook (`checkToolUse` d'engine-guards) : un Edit hors périmètre ou un Read de
  *   `.env` est refusé (étape `warn`) et n'a pas lieu ;
- * - Edit écrit VRAIMENT le fichier dans `run.cwd` (le moteur voit le changement dans git) ; set_text appelle
- *   `run.textTool.onSet` ; ask_client appelle `run.askTool.ask` et attend la réponse ; measure appelle `run.measureTool` ;
+ * - Edit passe au hook `old_string` / `new_string` / `replace_all` comme l'outil Edit réel (FOLLOWUPS #37) : avec
+ *   `toolAccess.lint`, engine-guards juge le fichier FUTUR avant l'écriture (SEC-07). Puis il applique le remplacement
+ *   comme l'outil (`applyEdit` : littéral, occurrence unique sauf `replaceAll`, erreur si old_string est absent ou
+ *   ambigu) et écrit VRAIMENT le fichier dans `run.cwd` (le moteur voit le changement dans git). Une erreur de l'outil
+ *   n'écrit rien et n'apparaît pas au journal (le vrai runner ne journalise pas les résultats d'outil) : elle est
+ *   relevée dans `toolErrors` ;
+ * - set_text appelle `run.textTool.onSet` ; ask_client appelle `run.askTool.ask` et attend la réponse ; measure appelle `run.measureTool` ;
  * - sessions : le 1er appel ouvre `fake-session-N` ; un appel avec `resume` égal à cette session la CONTINUE et rapporte le
  *   coût CUMULÉ (comme `total_cost_usd` du SDK) ; un appel interrompu (Stop, délai, plantage) rapporte `costKind: 'call'`
  *   avec son seul coût estimé ;
@@ -24,8 +29,11 @@ import type { QuestionDraft } from './questions'
 export type FakeStep =
   /** Lit un fichier (passe par le hook ; rien d'autre). */
   | { kind: 'read'; file: string }
-  /** Remplace `find` par `replace` dans un fichier (chemin relatif au dépôt), ou écrit `content` en entier. */
-  | { kind: 'edit'; file: string; find?: string; replace?: string; content?: string }
+  /**
+   * Edit réel : `find` = old_string, `replace` = new_string (toutes les occurrences avec `replaceAll`), chemin relatif au
+   * dépôt. `content` : fichier entier (old_string = contenu actuel, ou '' pour un fichier absent ou vide).
+   */
+  | { kind: 'edit'; file: string; find?: string; replace?: string; replaceAll?: boolean; content?: string }
   /** Propose un texte Sanity (id de champ de la demande). */
   | { kind: 'set_text'; field: string; value: string }
   /** Pose des questions au client et attend la réponse. */
@@ -65,10 +73,46 @@ export type FakeAgent = RunAgent & {
   readonly runs: AgentRun[]
   /** Résultats rendus, dans l'ordre. */
   readonly results: AgentResult[]
+  /** Erreurs rendues à Claude par l'outil Edit (« Edit (<fichier>): <raison> »), tous appels confondus. */
+  readonly toolErrors: string[]
 }
 
 const DEFAULT_TOKENS: Tokens = Object.freeze({ input: 1000, output: 200, cacheRead: 8000, cacheWrite: 0 })
 const MODEL = 'claude-opus-5-5'
+
+/**
+ * L'outil Edit de Claude Code appliqué au contenu actuel (null : fichier absent). Remplacement LITTÉRAL (jamais les motifs
+ * `$&` de String.replace) de l'occurrence unique de old_string, ou de toutes avec replace_all ; une suppression (new_string
+ * vide) emporte aussi le saut de ligne qui suit old_string. old_string vide : création d'un fichier absent ou vide.
+ * Erreurs (en anglais, rendues à Claude) : fichier absent, old_string introuvable ou ambigu, rien à changer.
+ * Mêmes cas que la reconstruction d'engine-guards (`editedContents`) ; new_string est écrit tel quel.
+ */
+export function applyEdit(
+  current: string | null,
+  oldString: string,
+  newString: string,
+  replaceAll = false,
+): { content: string } | { error: string } {
+  if (oldString === newString) return { error: 'No changes to make: old_string and new_string are exactly the same.' }
+  if (oldString === '') {
+    if (current !== null && current !== '') return { error: 'Cannot create new file - file already exists.' }
+    return { content: newString }
+  }
+  if (current === null) return { error: 'File does not exist.' }
+  const count = current.split(oldString).length - 1
+  if (count === 0) return { error: `String to replace not found in file.\nString: ${oldString}` }
+  if (count > 1 && !replaceAll) {
+    return {
+      error:
+        `Found ${count} matches of the string to replace, but replace_all is false. To replace all occurrences, set ` +
+        'replace_all to true. To replace only one occurrence, please provide more context to uniquely identify the instance.',
+    }
+  }
+  const search = newString === '' && !oldString.endsWith('\n') && current.includes(`${oldString}\n`) ? `${oldString}\n` : oldString
+  if (replaceAll) return { content: current.split(search).join(newString) }
+  const index = current.indexOf(search)
+  return { content: current.slice(0, index) + newString + current.slice(index + search.length) }
+}
 
 const sleep = (ms: number, signal: AbortSignal) =>
   new Promise<void>((resolve) => {
@@ -81,6 +125,7 @@ const sleep = (ms: number, signal: AbortSignal) =>
 export function createFakeAgent(script: FakeScript, options: { model?: string } = {}): FakeAgent {
   const runs: AgentRun[] = []
   const results: AgentResult[] = []
+  const toolErrors: string[] = []
   const sessions = new Map<string, { cost: number; tokens: Tokens }>()
   let opened = 0
 
@@ -144,10 +189,24 @@ export function createFakeAgent(script: FakeScript, options: { model?: string } 
         }
         case 'edit': {
           const file = path.resolve(run.cwd, step.file)
-          if (!allowed('Edit', { file_path: file })) break
-          const before = await readFile(file, 'utf8').catch(() => '')
-          const after = step.content ?? before.replace(step.find ?? '', step.replace ?? '')
-          await writeFile(file, after)
+          const current = await readFile(file, 'utf8').catch(() => null)
+          // Entrée de l'outil Edit réel : le hook (et sa pré-validation avec toolAccess.lint) la juge telle quelle.
+          const input =
+            step.content !== undefined
+              ? { file_path: file, old_string: current ?? '', new_string: step.content }
+              : {
+                  file_path: file,
+                  old_string: step.find ?? '',
+                  new_string: step.replace ?? '',
+                  ...(step.replaceAll ? { replace_all: true } : {}),
+                }
+          if (!allowed('Edit', input)) break
+          const edited = applyEdit(current, input.old_string, input.new_string, step.replaceAll === true && step.content === undefined)
+          if ('error' in edited) {
+            toolErrors.push(`Edit (${step.file}): ${edited.error}`)
+            break
+          }
+          await writeFile(file, edited.content)
           break
         }
         case 'set_text': {
@@ -196,7 +255,7 @@ export function createFakeAgent(script: FakeScript, options: { model?: string } 
         return done({ ok: false, message: pending, ...spent, error: call.error ?? RESULT_ERRORS.error_during_execution })
     }
   }) as FakeAgent
-  Object.defineProperties(agent, { runs: { value: runs }, results: { value: results } })
+  Object.defineProperties(agent, { runs: { value: runs }, results: { value: results }, toolErrors: { value: toolErrors } })
   return agent
 }
 

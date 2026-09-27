@@ -1,11 +1,16 @@
 import type { Metadata } from 'next'
 
 import { requireSession } from '@/admin/core/auth/session'
+import type { AdminConfig } from '@/admin/core/contracts/manifest'
 import { getUsageOverview, isUsagePeriod } from '@/admin/core/usage'
 import { UsageLoadError } from '@/admin/features/usage/UsageLoadError'
 import { UsageScreen } from '@/admin/features/usage/UsageScreen'
+import adminConfig from '@/admin.config'
 
 export const metadata: Metadata = { title: 'Usage' }
+
+/** Site du manifeste lu selon le CONTRAT (`launchedAt` facultatif, rempli par site-adapter — FOLLOWUPS #28 / #33). */
+const site: AdminConfig['site'] = adminConfig.site
 
 /** « 120 » → 120 (1 à 500) ; sinon 50. */
 function parseLimit(raw: string | string[] | undefined): number {
@@ -29,5 +34,5 @@ export default async function UsagePage({ searchParams }: { searchParams: Promis
     console.error('[usage] load failed', err)
     return <UsageLoadError />
   }
-  return <UsageScreen period={period} limit={limit} now={new Date()} {...overview} />
+  return <UsageScreen period={period} limit={limit} now={new Date()} launchedAt={site.launchedAt} {...overview} />
 }

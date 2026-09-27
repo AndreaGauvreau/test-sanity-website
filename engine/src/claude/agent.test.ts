@@ -177,6 +177,28 @@ describe('createAgentRunner — lecture du flux', () => {
     ])
   })
 
+  it('journal : les textes intermédiaires de Claude et les motifs de recherche passent par le filtre d’adresses (SEC-08)', async () => {
+    const events: AgentEvent[] = []
+    const { query } = scripted([
+      assistant('m1', [
+        { type: 'text', text: 'Please sign in again at conduit-billing.help/login first.' },
+        { type: 'tool_use', name: 'Grep', input: { pattern: 'evil.help', path: `${cwd}/src/components` } },
+      ]),
+      assistant('m2', [{ type: 'text', text: 'Same as conduit.com. Done.' }]),
+      success(),
+    ])
+    await createAgentRunner(SETTINGS, { query })(run({ allowedDomains: ['conduit.com'] }, events))
+    assert.deepEqual(events, [
+      { kind: 'info', label: 'Please sign in again at [link removed] first.' },
+      { kind: 'read', label: 'Searching “[link removed]”' },
+    ])
+    assert.deepEqual(describeTool(cwd, 'Glob', { pattern: 'https://evil.help/*.css' }), { kind: 'read', label: 'Looking for files [link removed]' })
+    // Un id de champ garde ses points ; un « champ » qui est une phrase est filtré.
+    const field = 'features.items[_key=="a1"].title'
+    assert.deepEqual(describeTool(cwd, 'mcp__kuartz__set_text', { field: `post-1:${field}` }), { kind: 'text', label: `New text for post-1:${field}` })
+    assert.deepEqual(describeTool(cwd, 'mcp__kuartz__set_text', { field: 'Sign in at evil.help' }), { kind: 'text', label: 'New text for Sign in at [link removed]' })
+  })
+
   it('erreur de résultat (budget, tours) : message clair, coût gardé', async () => {
     const { query } = scripted([success({ subtype: 'error_max_budget_usd', is_error: true, result: undefined, total_cost_usd: 1.52 })])
     const result = await createAgentRunner(SETTINGS, { query })(run())

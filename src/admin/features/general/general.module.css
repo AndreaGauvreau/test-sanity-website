@@ -1,9 +1,15 @@
 /*
  * B2 · General (Figma UI 359:717) : « content » H gap 32, pad 28 40 40 40 ; colonne formulaire (fill, V gap 20) ;
  * colonne des aperçus fixe 440 (V gap 16). Site images : V gap 32 ; rangées H gap 16 (méta fill + aperçus).
+ *
+ * Écrans étroits (FOLLOWUPS #26, testé dans layout.test.ts) : sans place pour formulaire (480 min) + 32 + 440, la
+ * colonne des aperçus passe SOUS le formulaire (flex-wrap, sans media query : suit la largeur réelle de la zone) ;
+ * de même, dans une rangée d'images, les favicons / l'image sociale passent sous les libellés (méta 160 min).
+ * Seuils : aperçus à droite dès ~1 272 px d'écran, sous le formulaire en dessous (1 024 compris).
  */
 .layout {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-start;
   gap: var(--k-space-32);
   width: 100%;
@@ -16,7 +22,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--k-space-20);
-  flex: 1 1 0;
+  flex: 1 1 480px;
   min-width: 0;
 }
 
@@ -28,6 +34,7 @@
 
 .imageRow {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-start;
   gap: var(--k-space-16);
   min-width: 0;
@@ -37,7 +44,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--k-space-10);
-  flex: 1 1 0;
+  flex: 1 1 160px;
   min-width: 0;
 }
 

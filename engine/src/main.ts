@@ -1,18 +1,21 @@
 import { rm, writeFile } from 'node:fs/promises'
 import type { AddressInfo } from 'node:net'
 import path from 'node:path'
-import { createAgentRunner, readAgentSettings, resolveClaudeAccess, type AgentSettings, type SettingsEnv } from './claude'
+import { signPreviewToken } from '../../src/admin/core/engine/preview-token'
+import { createAgentRunner, readAgentSettings, resolveClaudeAccess, type AccessResult, type AgentSettings, type SettingsEnv } from './claude'
 import { EngineConfigError, readEngineConfig, type EngineEnv } from './config'
 import { createRobotClient, sanityPort, type SanityPort } from './content/sanity'
 import { createTextStore } from './content/texts'
-import { createPreviewSignal, PREVIEW_COOKIE, type PreviewSignal } from './content/visible'
+import { createPreviewCredential, createPreviewSignal, PREVIEW_COOKIE, type PreviewSignal } from './content/visible'
 import { chromePreview, type Preview } from './guards'
 import { createEngineLock } from './jobs/lock'
+import { createEngineFakeClaude } from './jobs/fake-claude'
 import { createEditorService } from './jobs/service'
+import { loadSiteDomains } from './jobs/site'
 import type { JobRunAgent } from './jobs/types'
 import { createPreviewProcess, type SpawnFn } from './preview/process'
 import { askModule } from './ask'
-import { publishModule } from './publish'
+import { publishModule, publishServiceOf } from './publish'
 import { usageModule } from './usage'
 import { versionsModule } from './versions'
 import { registerEditorRoutes } from './server/editor-routes'
@@ -31,7 +34,7 @@ import { checkWorkspace, engineRunning, PID_FILE, WorkspaceError } from './works
 
 /**
  * Modules qui étendent le moteur (routes, ports). engine-publish (`/publish`, `/versions`, `aiUsage`) et ask-ai (`/ask`)
- * s'ajoutent ICI (demande de contrat à engine-core) : `import { publishModule } from './publish'` puis la liste.
+ * s'ajoutent ICI (demande de contrat à engine-core) : `import { publishModule, publishServiceOf } from './publish'` puis la liste.
  */
 // ─── Section engine-publish (transfert d'engine-core) : journal aiUsage, publication, versions ───
 // Ordre : `usage` d'abord (il pose `ports.usage` ; ask-ai y écrit via `getUsageJournal(context)`).
@@ -50,10 +53,18 @@ export type EngineOverrides = {
   /** Port Sanity (faux) ; null = sans jeton d'écriture. */
   sanity?: SanityPort | null
   modules?: EngineModule[]
+  /** Domaines du site (SEC-08) au lieu de ceux de `<ENGINE_SOURCE_REPO>/src/admin.config.ts`. */
+  siteDomains?: readonly string[]
   log?: (line: string) => void
 }
 
 export type RunningEngine = { context: EngineContext; port: number; stop(reason?: string): Promise<void> }
+
+/** Attente maximale d'une publication en cours (ou du `stop` d'un module) à l'arrêt, sous le filet de 45 s. */
+export const STOP_MODULES_TIMEOUT_MS = 30_000
+
+const within = (promise: Promise<unknown>, ms: number) =>
+  Promise.race([promise.then(() => true), new Promise<boolean>((resolve) => setTimeout(() => resolve(false), ms).unref?.())])
 
 const defaultLog = (line: string) => console.log(`${new Date().toISOString().slice(11, 19)} ${line}`)
 
@@ -77,9 +88,20 @@ export async function startEngine(env: EngineEnv, overrides: EngineOverrides = {
   else if (access.warning) log(`⚠ ${access.warning}`)
   const settings: AgentSettings = readAgentSettings(env as SettingsEnv, { configDir: config.paths.claude })
   const maxRequestUsd = config.maxRequestUsd ?? settings.maxBudgetUsd
+  // Faux Claude (ENGINE_FAKE_CLAUDE, mode local écrit seulement : validé par config.ts) : avertissement bruyant.
+  const fake = config.fakeClaude
+  if (fake) {
+    log(`⚠⚠⚠ ENGINE_FAKE_CLAUDE=${fake}: the AI editor uses a FAKE Claude (scripted, no real call). Local end-to-end tests only.`)
+    log('⚠⚠⚠ Remove ENGINE_FAKE_CLAUDE from engine/.env.local to use the real Claude. Ask AI is not faked.')
+  }
+  // Sans accès Claude configuré, le faux Claude reçoit un identifiant factice (jamais envoyé nulle part) ; la santé et
+  // Ask AI gardent l'accès RÉEL.
+  const editorAccess: AccessResult = fake && !access.ok ? { ok: true, access: { kind: 'api-key', secret: 'fake-claude-no-real-call' } } : access
   const runAgent: JobRunAgent =
     overrides.runAgent ??
-    ((run, limits) => createAgentRunner({ ...settings, maxBudgetUsd: Math.min(settings.maxBudgetUsd, limits.maxBudgetUsd) })(run))
+    (fake
+      ? createEngineFakeClaude(fake)
+      : (run, limits) => createAgentRunner({ ...settings, maxBudgetUsd: Math.min(settings.maxBudgetUsd, limits.maxBudgetUsd) })(run))
 
   // Sanity : jeton d'écriture « robot » (textes de l'éditeur, publication) ; sans lui, la portée Text est indisponible.
   let sanity: SanityPort | null = null
@@ -92,29 +114,35 @@ export async function startEngine(env: EngineEnv, overrides: EngineOverrides = {
   if (!sanity) log('⚠ SANITY_API_WRITE_TOKEN is empty: AI text changes are unavailable (style changes work).')
   const texts = createTextStore(sanity)
 
-  // Aperçu du brouillon (next dev du clone) et contrôles du rendu (Chrome, cookie du secret d'aperçu).
+  // Aperçu du brouillon (next dev du clone) et contrôles du rendu (Chrome). Sonde, signal et Chrome portent un jeton
+  // du MOTEUR dérivé du secret racine (2 h, renouvelé) : le proxy de l'aperçu n'accepte plus le secret racine (SEC-09).
+  const previewCredential = createPreviewCredential(config.preview.secret)
   const preview = createPreviewProcess({
     repoDir: repo.dir,
     port: config.preview.port,
     origin: config.preview.origin,
-    secret: config.preview.secret,
+    secret: previewCredential,
     log: (line) => log(`[preview] ${line}`),
     ...(overrides.spawnPreview ? { spawn: overrides.spawnPreview, command: 'next' } : {}),
     ...(overrides.previewFetch ? { fetchImpl: overrides.previewFetch } : {}),
   })
-  const visual =
-    overrides.visual ??
-    chromePreview({
-      baseUrl: config.preview.origin,
-      cookies: [{ name: PREVIEW_COOKIE, value: config.preview.secret }],
-      settle: async (page) => {
-        await page.waitForLoadState('networkidle', { timeout: 5_000 }).catch(() => {})
-      },
-    })
-  const signal = overrides.signal ?? createPreviewSignal({ origin: config.preview.origin, secret: config.preview.secret })
-  const previewUrl = (page: string) => {
+  // Chrome : un jeton frais à chaque session (une session = une demande).
+  const visual: Preview = overrides.visual ?? {
+    open: async (page, zone, index) =>
+      chromePreview({
+        baseUrl: config.preview.origin,
+        cookies: [{ name: PREVIEW_COOKIE, value: await previewCredential() }],
+        settle: async (session) => {
+          await session.waitForLoadState('networkidle', { timeout: 5_000 }).catch(() => {})
+        },
+      }).open(page, zone, index),
+  }
+  const signal = overrides.signal ?? createPreviewSignal({ origin: config.preview.origin, secret: previewCredential })
+  // URL de l'iframe : jeton COURT (15 min) lié à l'utilisateur, dérivé du secret racine (SEC-09). Le secret racine ne
+  // quitte jamais le serveur : seuls la sonde, le signal et Chrome l'utilisent, en cookie.
+  const previewUrl = async (page: string, user: { id: string }) => {
     const url = new URL(page, config.preview.origin)
-    url.searchParams.set(PREVIEW_COOKIE, config.preview.secret)
+    url.searchParams.set(PREVIEW_COOKIE, await signPreviewToken(config.preview.secret, user.id))
     return { url: url.toString(), origin: config.preview.origin }
   }
   const health = createHealth({
@@ -125,7 +153,11 @@ export async function startEngine(env: EngineEnv, overrides: EngineOverrides = {
     sanityWrite: texts.available,
     preview: () => ({ url: config.preview.origin, ready: preview.status().ready }),
     repo,
+    fakeClaude: fake,
   })
+
+  // Domaines du site (manifeste du dépôt source) : seules adresses gardées dans les textes du client (SEC-08).
+  const siteDomains = overrides.siteDomains ?? (await loadSiteDomains(config.paths.sourceRepo, log))
 
   const ports: EngineContext['ports'] = { usage: null, pendingTotal: null }
   const editor = createEditorService({
@@ -137,9 +169,11 @@ export async function startEngine(env: EngineEnv, overrides: EngineOverrides = {
     previewReady: () => preview.status().ready,
     previewUrl,
     runAgent,
-    access,
+    access: editorAccess,
     settings,
     maxRequestUsd,
+    fakeClaude: fake,
+    siteDomains,
     lock,
     shotsDir: config.paths.shots,
     health,
@@ -153,13 +187,14 @@ export async function startEngine(env: EngineEnv, overrides: EngineOverrides = {
   const router = createRouter()
   registerEditorRoutes(router, editor, health)
   const context: EngineContext = { config, router, store, repo, lock, editor, sanity, texts, preview, access, settings, ports }
-  for (const module of overrides.modules ?? MODULES) {
+  const modules = overrides.modules ?? MODULES
+  for (const module of modules) {
     await module.register(context)
     log(`module ${module.name} registered`)
   }
 
   preview.start()
-  const server = createEngineServer({ router, secret: config.secret, log })
+  const server = createEngineServer({ router, secret: config.secret, identityPublicKey: config.identityPublicKey, log })
   await new Promise<void>((resolve, reject) => {
     server.once('error', reject)
     server.listen(overrides.listenPort ?? config.port, config.host, () => resolve())
@@ -176,6 +211,19 @@ export async function startEngine(env: EngineEnv, overrides: EngineOverrides = {
         server.closeIdleConnections?.()
       })
       await editor.shutdown().catch((error) => log(`shutdown: ${error instanceof Error ? error.message : String(error)}`))
+      // Publication en cours : on la laisse finir (Sanity, git, déploiement) avant d'écrire le magasin (FOLLOWUPS #14).
+      const publishing = publishServiceOf(context)?.idle()
+      if (publishing && !(await within(publishing.catch(() => {}), STOP_MODULES_TIMEOUT_MS))) {
+        log('shutdown: the publication in progress did not finish in time; it will be marked as interrupted at the next start.')
+      }
+      // Crochet `stop` des modules (dans l'ordre inverse de l'enregistrement).
+      for (const module of [...modules].reverse()) {
+        if (!module.stop) continue
+        const done = Promise.resolve()
+          .then(() => module.stop!(context))
+          .catch((error) => log(`shutdown of module ${module.name}: ${error instanceof Error ? error.message : String(error)}`))
+        if (!(await within(done, STOP_MODULES_TIMEOUT_MS))) log(`shutdown: module ${module.name} did not stop in time.`)
+      }
       await preview.stop().catch(() => {})
       await store.editor.flush()
       await store.publications.flush()

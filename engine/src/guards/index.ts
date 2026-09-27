@@ -3,8 +3,9 @@
  * (cms/src/editor) avec leurs tests, adaptés à Sanity et au site Conduit. Voir CLAUDE.md du dossier.
  *
  * Ordre d'emploi dans le cycle d'une demande (câblé par engine-core, voir CLAUDE.md « Cycle d'une demande ») :
- *   1. loadDesignSystem(repoDir)                          → DesignSystem (tokens, contrôles, zones, points de rupture, policy)
- *   2. checkToolUse(root, access, tool, input)            → hook PreToolUse de Claude
+ *   1. loadDesignSystem(repoDir)                          → DesignSystem (tokens, contrôles, zones, points de rupture, policy, cssValues)
+ *   2. checkToolUse(root, access, tool, input)            → hook PreToolUse de Claude ; access.lint = lintContextFor(…)
+ *                                                            (chaque Edit jugé sur le fichier futur AVANT l'écriture)
  *   3. preview.open(page, zone, index)                    → VisualSession AVANT l'essai (état d'avant ; outil measure)
  *   4. runStaticChecks({ ds, scope, zones, access, changes, hardcoded, texts, typecheck })
  *   5. si ok : runRenderChecks({ session, logotype, acceptsLongerText, alsoChanged })
@@ -30,6 +31,7 @@ export {
 // ─── Design system : chargement et validation ───────────────────────────────
 export {
   buildDesignSystem,
+  customPropertyValues,
   declaredProperties,
   DesignSystemError,
   loadDesignSystem,
@@ -84,8 +86,11 @@ export {
   ASK_TOOL,
   BUILTIN_TOOLS,
   checkToolUse,
+  DISK_IO,
+  editedContents,
   isReadable,
   lintChanges,
+  lintContextFor,
   MCP_SERVER,
   MCP_TOOLS,
   MEASURE_TOOL,
@@ -94,11 +99,12 @@ export {
   repoPath,
   SITE_DIRS,
   TEXT_TOOL,
+  type GuardIO,
   type LintContext,
   type Verdict,
 } from './guards'
 export { checkCssFiles, lintCssFiles, type CssCheck, type CssLintContext } from './css-lint'
-export { lintTsxFiles, tsxZone, type TsxZone } from './tsx-lint'
+export { EDIT_ATTRS, lintTsxFiles, tsxZone, type TsxZone } from './tsx-lint'
 
 // ─── Les deux temps des contrôles (job.ts > runChecks du POC) ────────────────
 export {

@@ -1,6 +1,6 @@
 # Ask AI (panneau, G4) — LLM context
 
-> Propriétaire : ask-ai · Figma : G4 (docs/admin/figma/states/G4.md), composant « Ask AI panel » 340:1586, Model usage · Mis à jour : 2026-09-27
+> Propriétaire : ask-ai · Figma : G4 (docs/admin/figma/states/G4.md), composant « Ask AI panel » 340:1586, Model usage · Mis à jour : 2026-09-27 (vague 3b-2 : FOLLOWUPS #41)
 > Possède aussi : `src/admin/core/engine/mock/ask.ts` (moteur simulé) et `engine/src/ask/` (service du moteur, voir son CLAUDE.md).
 
 ## Utilité
@@ -12,19 +12,23 @@ n'accepte pas de fichiers.
 
 ## Fichiers
 - `AskAiProvider.tsx` — client : contexte `useAskAi()` (open / close / isOpen, API du stub gardée), conversation, panneau flottant (Portal + motion), Échap (pile de couches du kit), retour du focus.
-- `AskAiProvider.module.css` — position du panneau (à droite de la Sidebar 240 px, sous la Top bar 48 px, z sous les modales).
+- `AskAiProvider.module.css` — position du panneau (à droite de la Sidebar `var(--kz-sidebar-width)`, sous la Top bar
+  `var(--kz-topbar-height)`, couche `var(--k-z-panel)` sous les modales).
 - `AskAiPanel.tsx` / `AskAiPanel.module.css` — présentation du Figma : en-tête, sous-titre, fil, champ + envoyer, pied ; clavier (⌘/Ctrl ↵).
 - `useAskConversation.ts` — client : état (réducteur), chargement de l'en-tête (server action), envoi par le relais du moteur, reprise, persistance de session.
 - `conversation.ts` — PUR : réducteur, historique (10 messages), validation de la question, sessionStorage (clé `kz-ask-ai`, rattachée à l'utilisateur, relecture défensive).
 - `links.ts` — PUR, imports RELATIFS : catalogue des écrans permis par rôle (`askRoutes`), normalisation et filtrage des liens, écran ouvert (`screenOf`), `isSafeAskHref`. Importé tel quel par le moteur et le mock.
 - `info.ts` — logique serveur à dépendances injectées : modèle (santé du moteur) + totaux du mois + id public de l'utilisateur.
 - `actions.ts` — server action `getAskAiInfo()` (`requireCapability('ai.ask', 'action')` en premier).
-- Tests : `links.test.ts`, `conversation.test.ts`, `info.test.ts`, `AskAiProvider.test.tsx` (jsdom).
+- Tests : `links.test.ts`, `conversation.test.ts`, `info.test.ts`, `AskAiProvider.test.tsx` (jsdom), `layout.test.ts`
+  (couche et géométrie lues dans les tokens, aucune valeur de la coque recopiée).
 - `../../core/engine/mock/ask.ts` (+ `ask.test.ts`) — `handleAsk: MockHandler` (ENGINE_MOCK=1).
 
 ## Contrats
 - Entrées : `AskRequest` / `AskResponse` / `AskLink` / `Usage` / `EngineHealth` (`core/contracts/engine.ts`) ; manifeste
   `AdminConfig` (`src/admin.config.ts`) pour le catalogue ; `getUsageSummary('month')` (`core/usage`, code-usage) ;
+  tokens `--k-z-panel` (ui-foundations, `tokens.css`) et `--kz-sidebar-width` / `--kz-topbar-height` (shell, posées sur
+  `[data-kz-admin]` par `AdminRoot.module.css`, lisibles dans le Portal) ;
   `engineClient.ask` / relais `POST /admin/api/engine/ask` (auth-core, droit `ai.ask`, délai 60 s) ; `engineFetch(session, 'GET', 'health')`.
 - Sorties : `<AskAiProvider>` (prop facultative `services` = { getInfo, ask } pour les tests), `useAskAi()`,
   server action `getAskAiInfo(): Promise<AskAiInfo>` (`{ ok, userId, model, month } | { ok: false, code, error }`),
@@ -59,13 +63,16 @@ n'accepte pas de fichiers.
 ## Forces
 - Liens en double contrôle : catalogue par rôle côté moteur (libellés du catalogue, jamais du modèle) + `isSafeAskHref` à
   l'affichage et à la relecture du sessionStorage.
+- Texte de la réponse filtré côté moteur par le filtre commun des adresses (`sanitizeClientText`, SEC-08) : aucune adresse
+  hors du domaine du site n'arrive au panneau (« [link removed] » à la place), rendu en nœud texte.
 - Logique pure testée (catalogue, réducteur, historique, stockage retouché) ; panneau testé en jsdom (clavier, Échap, ✕,
   focus, ⌘/Ctrl ↵, persistance par utilisateur, refus, erreur + reprise, droits, attente).
 - Aucune donnée sensible côté client : `getAskAiInfo` ne renvoie que id public, modèle et totaux ; les questions passent par
   le relais signé (jamais le jeton Sanity ni `ENGINE_SECRET` dans le navigateur).
 
 ## Faiblesses et limites connues
-- Position fixe (Sidebar supposée à 240 px, Top bar à 48 px) : si la coque change ces largeurs, ajuster `AskAiProvider.module.css`.
+- Position calculée depuis les variables de la coque : hors `[data-kz-admin]` (Portal monté ailleurs) elles seraient
+  indéfinies et le panneau mal placé ; le Portal du kit vise bien `[data-kz-admin]`.
 - Pas de bouton « New conversation » (hors Figma) ; la conversation s'efface à la fermeture de l'onglet ou après 30 questions.
 - Pas d'annulation d'une question en vol (le Figma n'en prévoit pas) ; une sortie de la coque (éditeur IA) l'abandonne.
 - Les liens `next/link` préchargent les écrans : tant qu'un écran n'existe pas (ex. `/admin/media` pendant la vague 2), la
@@ -93,7 +100,7 @@ n'accepte pas de fichiers.
 - Déplacer le panneau : `.host` de `AskAiProvider.module.css` (garder `transform-origin` du côté du bouton).
 
 ## Tests
-`npx vitest run src/admin/features/ask-ai src/admin/core/engine/mock/ask.test.ts` (5 fichiers, 30 tests).
+`npx vitest run src/admin/features/ask-ai src/admin/core/engine/mock/ask.test.ts` (6 fichiers, 32 tests).
 À la main (ENGINE_MOCK=1, session de dev) : http://127.0.0.1:4040/admin/pages/home → « Ask AI » ; « Where is the hero image
 used? » (⌘ ↵), « Change the hero title to “Docks, solved.” » (refus), « [mock:error] » (erreur + Try again),
 « [mock:slow] » (attente 4 s) ; recharger (conversation gardée) ; Échap ; rôle client (`POST /admin/api/auth/dev-role`) :
@@ -107,9 +114,5 @@ plus de lien Code. Captures comparées à `docs/admin/figma/states/G4.ui.png` (C
 - Panneau sous la Top bar pour ne pas masquer « Review › » ; non modal.
 
 ## Demandes de contrat
-- **auth-core** : `src/admin/core/engine/transport.test.ts` « zones non écrites → 501 » vise `publish/status`, désormais
-  simulé par publish-ui (test en échec, hors de mes chemins) ; `mock/ask.ts` ne répond plus 501 non plus.
-- **ui-foundations** : un token `--k-z-panel` (panneaux flottants non modaux, sous `--k-z-overlay`) ; en attendant
-  `calc(var(--k-z-popover) - 200)`.
-- **shell** : exposer la largeur de la Sidebar et la hauteur de la Top bar en custom properties (`--kz-sidebar-width`,
-  `--kz-topbar-height`) pour positionner le panneau sans valeurs recopiées.
+- Aucune en cours. `--k-z-panel` (ui-foundations, #23) et `--kz-sidebar-width` / `--kz-topbar-height` (shell, #25)
+  livrés et branchés (#41).

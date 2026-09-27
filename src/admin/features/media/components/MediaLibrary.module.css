@@ -169,61 +169,8 @@ a.place:focus-visible {
   border-radius: var(--k-radius-sm);
 }
 
-/* « Tool link » : actions icônes collées 36 × 36, contour border/default, séparateurs 1 px. */
-.tools {
-  display: inline-flex;
-  align-self: flex-start;
-  overflow: hidden;
-  border: 1px solid var(--k-border-default);
-  border-radius: var(--k-radius-md);
-}
-
-.tool {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  padding: 0;
-  border: 0;
-  background: none;
-  cursor: pointer;
-  --k-icon-current: var(--k-icon-default);
-  transition: background-color var(--k-duration-fast) ease;
-}
-
-.tool:hover:not([aria-disabled]) {
-  background-color: var(--k-bg-subtle);
-  --k-icon-current: var(--k-icon-active);
-}
-
-.tool:focus-visible {
-  outline: 2px solid var(--k-border-focus);
-  outline-offset: -2px;
-}
-
-.toolDanger,
-.toolDanger:hover:not([aria-disabled]) {
-  --k-icon-current: var(--k-icon-error);
-}
-
-.tool[aria-disabled] {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-.toolDivider {
-  width: 1px;
-  align-self: stretch;
-  background-color: var(--k-border-default);
-}
-
 @media (prefers-reduced-motion: reduce) {
   .dropOverlay {
     animation: none;
-  }
-
-  .tool {
-    transition: none;
   }
 }

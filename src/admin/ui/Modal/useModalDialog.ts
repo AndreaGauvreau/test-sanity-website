@@ -12,6 +12,9 @@ export function focusableIn(root: HTMLElement): HTMLElement[] {
   )
 }
 
+/** Frames d'attente maximales de la fenêtre pour le focus initial (≈ 0,5 s). */
+const MAX_FOCUS_WAIT_FRAMES = 30
+
 // Verrou de défilement partagé (fenêtres empilées).
 let scrollLocks = 0
 let savedOverflow = ''
@@ -77,17 +80,27 @@ export function useModalDialog({ id, open, dialogRef, onEscape, initialFocusRef 
     if (!open) return
     const previous = document.activeElement as HTMLElement | null
     lockScroll()
-    // Le portail monte la fenêtre un rendu plus tard : on attend la frame suivante.
-    const frame = requestAnimationFrame(() => {
+    // Le portail monte la fenêtre un rendu plus tard, parfois plusieurs frames (fenêtre ouverte dès le montage,
+    // page chargée par une navigation) : on attend qu'elle existe, frame après frame.
+    let frame = 0
+    let tries = 0
+    const focusInitial = () => {
       const dialog = dialogRef.current
-      if (!dialog) return
+      if (!dialog) {
+        if (tries++ < MAX_FOCUS_WAIT_FRAMES) frame = requestAnimationFrame(focusInitial)
+        return
+      }
+      // Focus déjà placé dans la fenêtre (autoFocus, action de l'utilisateur) : on n'y touche pas.
+      const active = document.activeElement
+      if (active && active !== dialog && dialog.contains(active)) return
       const target =
         initialFocusRef?.current ??
         dialog.querySelector<HTMLElement>('[data-autofocus]') ??
         dialog.querySelector<HTMLElement>('input:not(:disabled):not([type="hidden"]), textarea:not(:disabled), [contenteditable="true"]') ??
         dialog
       target.focus({ preventScroll: true })
-    })
+    }
+    frame = requestAnimationFrame(focusInitial)
     return () => {
       cancelAnimationFrame(frame)
       unlockScroll()

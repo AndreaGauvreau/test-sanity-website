@@ -66,6 +66,10 @@ export {
   type PromptTexts,
 } from './prompt'
 export { quoteData } from './quote'
+export { cssCustomValues, resolveCssValue } from './palette'
+
+// Filtre UNIQUE des adresses dans tout texte montré au client (SEC-08) : questions, message final, journal, Ask AI.
+export { containsAddress, LINK_REMOVED, sanitizeClientText, stripInvisible } from './sanitize'
 
 // Questions au client (ask_client)
 export {
@@ -146,4 +150,4 @@ export {
 } from './complete'
 
 // Faux Claude (tests)
-export { createFakeAgent, fakeScenarios, type FakeAgent, type FakeCall, type FakeScript, type FakeStep } from './fake'
+export { applyEdit, createFakeAgent, fakeScenarios, type FakeAgent, type FakeCall, type FakeScript, type FakeStep } from './fake'

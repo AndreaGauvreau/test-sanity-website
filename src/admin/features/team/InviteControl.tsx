@@ -109,7 +109,7 @@ export function InviteControl({ invite = inviteMemberAction }: InviteControlProp
           value={role}
           disabled={pending}
           onValueChange={setRole}
-          helper="Kuartz members are Developers. Your editors are Editors."
+          helper="Your editors are Editors. Kuartz adds its own team members."
           error={error?.field === 'role' ? error.message : undefined}
         />
         {error && !error.field ? (

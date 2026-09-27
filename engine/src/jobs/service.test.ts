@@ -4,7 +4,7 @@ import path from 'node:path'
 import { afterEach, describe, it } from 'vitest'
 import { fakeScenarios, type FakeCall } from '../claude'
 import { EngineError } from '../server/errors'
-import { CLIENT, editRequest, HERO_CSS, HERO_TSX, KUARTZ, makeBench, PAGE_DOC, TITLE_FIELD, type Bench } from './testing'
+import { CLIENT, editRequest, HERO_CSS, HERO_TSX, KUARTZ, LEDE_MUTED, ledeColor, makeBench, PAGE_DOC, TITLE_FIELD, type Bench } from './testing'
 import { FAILED_MESSAGE, INTERRUPTED_MESSAGE, STOPPED_MESSAGE } from './types'
 
 /**
@@ -13,8 +13,8 @@ import { FAILED_MESSAGE, INTERRUPTED_MESSAGE, STOPPED_MESSAGE } from './types'
  * commit), Cancel, coût d'une session reprise, refus 409, reprise après un redémarrage.
  */
 
-const DARKER = fakeScenarios.editCss(HERO_CSS, 'color: var(--color-text-muted);', 'color: var(--color-text);', 'The lede is now darker.')
-const BAD_COLOR = fakeScenarios.editCss(HERO_CSS, 'color: var(--color-text-muted);', 'color: red;', 'Done.')
+const DARKER = fakeScenarios.editCss(HERO_CSS, LEDE_MUTED, ledeColor('var(--color-text)'), 'The lede is now darker.')
+const BAD_COLOR = fakeScenarios.editCss(HERO_CSS, LEDE_MUTED, ledeColor('red'), 'Done.')
 const ACCENT = fakeScenarios.editCss(HERO_CSS, 'color: var(--color-text);', 'color: var(--color-text-accent);', 'The lede is now orange.')
 
 let bench: Bench | null = null
@@ -58,12 +58,12 @@ describe('cycle d’une demande (style)', () => {
     await assert.rejects(bench.service.shot(job.id, '../../data/editor.json'), (error: unknown) => (error as EngineError).status === 400)
     // Modification en attente, fil de la page, consommation.
     await bench.service.idle()
-    const state = await bench.service.state('/')
+    const state = await bench.service.state('/', CLIENT)
     assert.equal(state.active, null)
     assert.equal(state.pending?.status, 'to-validate')
     assert.deepEqual(state.pending?.jobIds, [job.id])
     assert.equal(state.thread.length, 1)
-    assert.equal(state.preview.url, 'http://127.0.0.1:4999/?kz_preview=test-secret')
+    assert.equal(state.preview.url, 'http://127.0.0.1:4999/?kz_preview=token-for-u-client', 'URL émise pour l’utilisateur qui la demande')
     assert.equal(state.model.label, 'Opus 5.5')
     assert.equal(state.conversationUsage?.costUsd, 0.05)
     assert.equal(bench.usage.length, 1)
@@ -78,12 +78,25 @@ describe('cycle d’une demande (style)', () => {
     assert.match(job.message ?? '', /already fits/)
     assert.equal(bench.git('rev-parse', 'HEAD'), base)
     await bench.service.idle()
-    assert.equal((await bench.service.state('/')).pending, null)
+    assert.equal((await bench.service.state('/', CLIENT)).pending, null)
     assert.equal(bench.store.editor.change(job.changeId)?.change.status, 'cancelled')
   })
 
+  it('SEC-07 : une valeur en dur est refusée par le hook AVANT l’écriture (fichier intact, étape warn), rejected', async () => {
+    bench = await makeBench([BAD_COLOR])
+    const before = await readFile(path.join(bench.repoDir, HERO_CSS), 'utf8')
+    const job = await bench.until((await start(bench)).id, ['done', 'failed', 'rejected'])
+    assert.equal(job.status, 'rejected')
+    assert.ok(job.steps.some((step) => step.kind === 'warn' && step.label.startsWith(`Edit refused (${HERO_CSS}): the file after this edit breaks`)))
+    assert.equal(await readFile(path.join(bench.repoDir, HERO_CSS), 'utf8'), before)
+    assert.equal(bench.git('status', '--porcelain'), '')
+  })
+
   it('2e essai : contrôles refusés au 1er, session reprise, coût jamais doublé', async () => {
-    bench = await makeBench(fakeScenarios.retryOnSecondAttempt(BAD_COLOR, fakeScenarios.editCss(HERO_CSS, 'color: red;', 'color: var(--color-text);', 'Fixed.')))
+    // Une violation statique n'atteint plus le disque (SEC-07) : le refus vient ici des contrôles du rendu.
+    bench = await makeBench(fakeScenarios.retryOnSecondAttempt(DARKER, fakeScenarios.editCss(HERO_CSS, 'color: var(--color-text);', 'color: var(--color-text-accent);', 'Fixed.')), {
+      preview: { verdicts: [{ isolation: { ok: false, zones: ['hero.title'], detail: 'hero.title (375 px)' } }, {}] },
+    })
     const job = await bench.until((await start(bench)).id, ['done', 'failed'])
     assert.equal(job.status, 'done', JSON.stringify(job.steps.map((s) => s.label)))
     assert.equal(job.attempts, 2)
@@ -96,7 +109,9 @@ describe('cycle d’une demande (style)', () => {
   })
 
   it('failed : contrôles encore refusés au 2e essai → retour arrière complet, message du contrat', async () => {
-    bench = await makeBench([BAD_COLOR, { steps: [], message: 'Tried again.' }])
+    bench = await makeBench([DARKER, { steps: [], message: 'Tried again.' }], {
+      preview: { verdicts: [{ isolation: { ok: false, zones: ['hero.title'], detail: 'hero.title (375 px)' } }] },
+    })
     const before = await readFile(path.join(bench.repoDir, HERO_CSS), 'utf8')
     const base = bench.git('rev-parse', 'HEAD')
     const job = await bench.until((await start(bench)).id, ['done', 'failed'])
@@ -119,7 +134,10 @@ describe('cycle d’une demande (style)', () => {
   })
 
   it('pas de 2e essai si le plafond du cumul de la demande est atteint', async () => {
-    bench = await makeBench([{ ...BAD_COLOR, costUsd: 0.07 }, DARKER], { maxRequestUsd: 0.06 })
+    bench = await makeBench([{ ...DARKER, costUsd: 0.07 }, DARKER], {
+      maxRequestUsd: 0.06,
+      preview: { verdicts: [{ isolation: { ok: false, zones: ['hero.title'], detail: 'hero.title (375 px)' } }] },
+    })
     const job = await bench.until((await start(bench)).id, ['done', 'failed'])
     assert.equal(job.status, 'failed')
     assert.equal(bench.agent.runs.length, 1)
@@ -129,7 +147,7 @@ describe('cycle d’une demande (style)', () => {
   })
 
   it('plafond du SDK atteint, erreur fatale, plantage : failed, rien de changé, coût gardé', async () => {
-    for (const call of [fakeScenarios.overBudget(), fakeScenarios.accessRefused(), fakeScenarios.crash([{ kind: 'edit', file: HERO_CSS, find: 'color: var(--color-text-muted);', replace: 'color: var(--color-text);' }])] as FakeCall[]) {
+    for (const call of [fakeScenarios.overBudget(), fakeScenarios.accessRefused(), fakeScenarios.crash([{ kind: 'edit', file: HERO_CSS, find: LEDE_MUTED, replace: ledeColor('var(--color-text)') }])] as FakeCall[]) {
       bench = await makeBench([call])
       const base = bench.git('rev-parse', 'HEAD')
       const job = await bench.until((await start(bench)).id, ['done', 'failed'])
@@ -286,7 +304,7 @@ describe('questions au client', () => {
 
 describe('Stop', () => {
   it('pendant le travail : arrêt, retour arrière, « Stopped — nothing was changed. »', async () => {
-    bench = await makeBench([{ steps: [{ kind: 'edit', file: HERO_CSS, find: 'color: var(--color-text-muted);', replace: 'color: var(--color-text);' }, { kind: 'wait', ms: 5_000 }], message: 'x' }])
+    bench = await makeBench([{ steps: [{ kind: 'edit', file: HERO_CSS, find: LEDE_MUTED, replace: ledeColor('var(--color-text)') }, { kind: 'wait', ms: 5_000 }], message: 'x' }])
     const id = (await start(bench)).id
     await bench.until(id, ['running'])
     for (let i = 0; i < 100 && bench.agent.runs.length === 0; i++) await new Promise((resolve) => setTimeout(resolve, 10))
@@ -337,7 +355,7 @@ describe('modification en attente : ajustement, Validate, Cancel, 409', () => {
     await bench.until(adjust.id, ['done'])
     await bench.service.idle()
     assert.equal(bench.git('rev-list', '--count', `${base}..HEAD`), '2')
-    const pending = (await bench.service.state('/')).pending!
+    const pending = (await bench.service.state('/', CLIENT)).pending!
     assert.equal(pending.adjustments, 1)
     assert.equal(pending.jobIds.length, 2)
     assert.equal(pending.usage?.costUsd, 0.1)
@@ -349,7 +367,7 @@ describe('modification en attente : ajustement, Validate, Cancel, 409', () => {
     assert.equal(bench.git('log', '-1', '--format=%an'), 'Marie Client')
     assert.match(bench.git('log', '-1', '--format=%B'), /Validated by Kuartz Dev/)
     assert.match(await readFile(path.join(bench.repoDir, HERO_CSS), 'utf8'), /var\(--color-text-accent\)/)
-    const state = await bench.service.state('/')
+    const state = await bench.service.state('/', CLIENT)
     assert.equal(state.pending, null)
     assert.deepEqual(state.thread.map((entry) => entry.type), ['job', 'job', 'validated'])
     assert.equal(state.thread[2].type === 'validated' && state.thread[2].pendingTotal, 1)
@@ -379,7 +397,7 @@ describe('modification en attente : ajustement, Validate, Cancel, 409', () => {
     assert.equal(bench.git('rev-parse', 'HEAD'), base)
     assert.equal(bench.git('status', '--porcelain'), '')
     assert.equal(bench.sanity.docs[`drafts.${PAGE_DOC}`], undefined, 'brouillon créé par la modification : supprimé')
-    const state = await bench.service.state('/')
+    const state = await bench.service.state('/', CLIENT)
     assert.equal(state.pending, null)
     assert.equal(state.thread.at(-1)?.type, 'cancelled')
   })

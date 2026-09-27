@@ -1,11 +1,13 @@
 import type { PublishStatus, PublishStep } from '@/admin/core/contracts/engine'
+import type { ChecklistState } from '@/admin/ui'
 
 /**
  * Carte « After “Publish” » de E1 (Step × 4) : textes du Figma, état de chaque étape d'après la publication en cours
  * ou la dernière en échec. PUR, testé.
  */
 
-export type ChecklistState = 'todo' | 'running' | 'done' | 'skipped' | 'failed'
+/** États d'une étape : ceux du `ChecklistItem` du kit (même API). */
+export type { ChecklistState }
 
 export type AfterPublishStep = {
   step: PublishStep
@@ -26,6 +28,9 @@ export function stepTexts(domain: string): Record<PublishStep, { title: string; 
   }
 }
 
+/** Description de l'étape 3 quand le moteur n'a pas de déploiement branché (`deploy.mode = 'local'`). */
+export const LOCAL_MODE_STEP3 = 'Local mode: no deployment is started.'
+
 const RUN_TO_STATE = {
   waiting: 'todo',
   running: 'running',
@@ -36,6 +41,7 @@ const RUN_TO_STATE = {
 
 /**
  * Les 4 étapes : au repos, toutes « à faire » ; pendant une publication (ou après un échec), l'état du moteur.
+ * En mode local, l'étape 3 dit qu'aucun déploiement ne part (texte du Figma sinon).
  * Une étape sautée garde son titre et prend la raison du moteur (« No code changed. ») ; une étape en échec prend
  * le message d'erreur (« the error shows here »).
  */
@@ -46,6 +52,8 @@ export function afterPublishSteps(status: PublishStatus | null, domain: string):
     const fromRun = run?.steps.find((s) => s.step === step)
     const state: ChecklistState = fromRun ? RUN_TO_STATE[fromRun.status] : 'todo'
     let description = texts[step].description
+    // Moteur en mode local (pas de hook Vercel) : l'étape 3 sera sautée, la carte ne promet pas un déploiement.
+    if (step === 3 && status?.deploy.mode === 'local') description = LOCAL_MODE_STEP3
     if (state === 'skipped' && fromRun?.detail) description = fromRun.detail
     if (state === 'failed') description = run?.error?.message ?? fromRun?.detail ?? description
     return { step, title: texts[step].title, description, state }

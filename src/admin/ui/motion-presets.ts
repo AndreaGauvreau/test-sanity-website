@@ -2,7 +2,7 @@
  * Préréglages de mouvement du kit (valeurs pures, utilisables aussi côté serveur).
  * Les hooks et composants Motion sont dans motion.ts (client). Règles : voir l'en-tête de motion.ts.
  */
-import type { Transition, Variants } from 'motion/react'
+import type { TargetAndTransition, Transition, Variant, Variants } from 'motion/react'
 
 /** Durées en secondes (Motion). */
 export const duration = {
@@ -80,4 +80,30 @@ export const listItem: Variants = {
   initial: { opacity: 0, y: 4 },
   animate: { opacity: 1, y: 0, transition: transition.enter },
   exit: { opacity: 0, transition: transition.exit },
+}
+
+/** Transition nulle : aucun délai, aucun échelonnement (mouvement réduit). */
+export const noTransition = { duration: 0, delay: 0 } as const satisfies Transition
+
+function withoutTransition(target: TargetAndTransition): TargetAndTransition {
+  return { ...target, transition: noTransition }
+}
+
+/**
+ * Variantes pour le mouvement réduit (FOLLOWUPS #38) : MÊMES états que l'original (valeurs initiales comprises,
+ * donc même rendu serveur et client, pas d'écart d'hydratation), seules les transitions sont coupées.
+ * Les variantes calculées (fonctions de `custom`) sont enveloppées de la même façon ; un libellé renvoyé reste tel quel.
+ */
+export function reducedVariants(variants: Variants): Variants {
+  const out: Variants = {}
+  for (const [name, variant] of Object.entries(variants)) {
+    out[name] =
+      typeof variant === 'function'
+        ? ((...args: Parameters<typeof variant>) => {
+            const resolved = variant(...args)
+            return typeof resolved === 'string' ? resolved : withoutTransition(resolved)
+          }) satisfies Variant
+        : withoutTransition(variant)
+  }
+  return out
 }

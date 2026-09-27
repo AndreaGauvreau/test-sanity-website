@@ -1,9 +1,21 @@
 'use client'
 
-import { createContext, useContext, useEffect, useRef, useState, type HTMLAttributes, type KeyboardEvent, type ReactNode, type Ref } from 'react'
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  type ButtonHTMLAttributes,
+  type HTMLAttributes,
+  type KeyboardEvent,
+  type ReactNode,
+  type Ref,
+} from 'react'
 import { Checkbox } from '../Checkbox'
 import { Icon } from '../icons'
 import { RowOpen } from '../RowOpen'
+import { Tooltip } from '../Tooltip'
 import { cx } from '../utils/cx'
 import styles from './CMSCell.module.css'
 
@@ -50,7 +62,10 @@ export type CMSRowProps = HTMLAttributes<HTMLDivElement> & {
   ref?: Ref<HTMLDivElement>
 }
 
-/** Ligne : trait bas border/subtle ; survol bg/ghost-hover + Row open à droite. */
+/**
+ * Ligne : trait bas border/subtle ; survol bg/ghost-hover + Row open au bord droit (précédé d'une cellule de
+ * remplissage extensible, `[data-row-filler]`, pour les tableaux plus étroits que leur conteneur).
+ */
 export function CMSRow({ header, selected, onOpen, openLabel, className, children, ref, ...rest }: CMSRowProps) {
   return (
     <div
@@ -63,12 +78,25 @@ export function CMSRow({ header, selected, onOpen, openLabel, className, childre
       {...rest}
     >
       <RowContext.Provider value={{ header: !!header }}>{children}</RowContext.Provider>
-      {onOpen && !header ? <RowOpen onOpen={onOpen} label={openLabel} /> : null}
+      {onOpen && !header ? (
+        <>
+          {/* Colonnes plus étroites que le tableau (FAQ) : le remplissage pousse Row open au bord droit ;
+              tableau plus large : il ne prend aucune place et Row open reste collé (sticky) au bord visible. */}
+          <span className={styles.filler} data-row-filler="" aria-hidden="true" />
+          <RowOpen onOpen={onOpen} label={openLabel} />
+        </>
+      ) : null}
     </div>
   )
 }
 
 // ─── Cellule ─────────────────────────────────────────────────────────────────
+
+/** Props du bouton de la poignée focalisable (type=handle). */
+export type GripProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'type' | 'children'> & {
+  [data: `data-${string}`]: string | number | boolean | undefined
+  ref?: Ref<HTMLButtonElement>
+}
 
 export type CMSCellProps = Omit<HTMLAttributes<HTMLDivElement>, 'children'> & {
   type?: CMSCellType
@@ -86,6 +114,15 @@ export type CMSCellProps = Omit<HTMLAttributes<HTMLDivElement>, 'children'> & {
   checkboxLabel?: string
   /** type=handle : poignée ⠿ (défaut : oui dans le corps, non dans la ligne d'en-tête). */
   grip?: boolean
+  /**
+   * type=handle : poignée FOCALISABLE (réordonnancement) — props du `<button>` (pointeur, clavier, `aria-pressed`,
+   * `aria-disabled`, `aria-describedby`, `data-*`). Absent : poignée décorative (`aria-hidden`).
+   */
+  gripProps?: GripProps
+  /** Nom accessible de la poignée focalisable (« Reorder How to cut dock wait times » ; défaut « Reorder »). */
+  gripLabel?: string
+  /** Infobulle de la poignée focalisable (« Drag to reorder »). */
+  gripTooltip?: ReactNode
   /** Édition sur place (Figma state=editing) : contour interactive/primary, champ bg/input. */
   editing?: boolean
   /** Valeur de départ du champ (défaut : `children` si c'est un texte). */
@@ -117,6 +154,9 @@ export function CMSCell({
   onCheckedChange,
   checkboxLabel,
   grip,
+  gripProps,
+  gripLabel = 'Reorder',
+  gripTooltip,
   editing,
   editValue,
   onCommit,
@@ -163,9 +203,11 @@ export function CMSCell({
     >
       {type === 'handle' ? (
         <>
-          {(grip ?? !row.header) ? (
+          {!(grip ?? !row.header) ? null : gripProps ? (
+            <GripButton label={gripLabel} tooltip={gripTooltip} {...gripProps} />
+          ) : (
             <Icon name="grip" size={12} className={styles.grip} />
-          ) : null}
+          )}
           <Checkbox
             aria-label={checkboxLabel ?? 'Select row'}
             checked={checked ?? false}
@@ -188,6 +230,22 @@ export function CMSCell({
         <span className={styles.label}>{children}</span>
       )}
     </div>
+  )
+}
+
+/** Poignée focalisable : bouton 12 × 24 (zone de pointeur de la poignée), focus visible, infobulle facultative. */
+function GripButton({ label, tooltip, className, ...props }: GripProps & { label: string; tooltip?: ReactNode }) {
+  const button = (
+    <button type="button" aria-label={label} className={cx(styles.gripButton, className)} {...props}>
+      <Icon name="grip" size={12} />
+    </button>
+  )
+  return tooltip ? (
+    <Tooltip label={tooltip} placement="right">
+      {button}
+    </Tooltip>
+  ) : (
+    button
   )
 }
 

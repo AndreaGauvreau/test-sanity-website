@@ -41,10 +41,20 @@ export const GENERAL_FIELDS: Readonly<Record<string, FieldDef>> = {
 // ─── Envoi d'images ──────────────────────────────────────────────────────────
 
 /**
- * Taille max d'un fichier envoyé. Une server action refuse un corps de plus de 1 Mo (`serverActions.bodySizeLimit`
- * par défaut, next.config.ts) : on garde une marge pour l'enveloppe multipart. Voir « Demandes de contrat ».
+ * Taille max d'un fichier envoyé : 5 Mo, comme les autres envois de l'admin (ImageUpload, pages/server/upload.ts).
+ * L'envoi passe par le route handler `POST /admin/settings/general/image` (upload-route.ts), plus par une server
+ * action : il ne dépend donc plus de `serverActions.bodySizeLimit` (next.config.ts, rendu au défaut, SEC-02).
  */
-export const UPLOAD_MAX_BYTES = 1_000_000
+export const UPLOAD_MAX_BYTES = 5 * 1024 * 1024
+
+/** Corps multipart maximal accepté par la route d'envoi : le fichier + 64 Kio pour l'enveloppe (slot, en-têtes, bornes). */
+export const UPLOAD_MAX_BODY = UPLOAD_MAX_BYTES + 64 * 1024
+
+/** Libellé de la limite, lu par le client (« 5 MB »). */
+export const UPLOAD_MAX_LABEL = `${UPLOAD_MAX_BYTES / (1024 * 1024)} MB`
+
+/** Message d'erreur d'un fichier trop lourd (même texte côté navigateur et serveur). */
+export const UPLOAD_TOO_LARGE = `This image is larger than ${UPLOAD_MAX_LABEL}. Use a smaller file.`
 
 export type ImageKind = 'png' | 'jpeg' | 'webp' | 'svg' | 'ico'
 
@@ -70,9 +80,9 @@ export function acceptFor(slot: GeneralImageSlot): string {
   return mimes.join(',')
 }
 
-/** « PNG, JPG, SVG or ICO · 1 MB max » */
+/** « PNG, JPG, SVG or ICO · 5 MB max » */
 export function formatsLabel(slot: GeneralImageSlot): string {
   const names = SLOT_FORMATS[slot].map((kind) => (kind === 'jpeg' ? 'JPG' : kind === 'webp' ? 'WebP' : kind.toUpperCase()))
   const list = names.length > 1 ? `${names.slice(0, -1).join(', ')} or ${names[names.length - 1]}` : names[0]
-  return `${list} · 1 MB max`
+  return `${list} · ${UPLOAD_MAX_LABEL} max`
 }

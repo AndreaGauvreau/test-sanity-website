@@ -1,0 +1,58 @@
+/* Figma « Tool links » (C5, fiche média) : contour border/default 1, radius/md, actions 36 × 36 séparées par
+   un trait 1 px border/default (largeur totale 3 actions = 112). */
+.group {
+  display: inline-flex;
+  align-self: flex-start;
+  overflow: hidden;
+  border: 1px solid var(--k-border-default);
+  border-radius: var(--k-radius-md);
+}
+
+.link {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+  --k-icon-current: var(--k-icon-default);
+  transition: background-color var(--k-duration-fast) ease;
+}
+
+/* Trait de séparation : sur l'action suivante (37 px contour compris, l'icône reste centrée sur 36). */
+.link + .link {
+  width: 37px;
+  border-left: 1px solid var(--k-border-default);
+}
+
+.link:hover:not([aria-disabled='true']) {
+  background-color: var(--k-bg-subtle);
+  --k-icon-current: var(--k-icon-active);
+}
+
+.link[data-tone='danger'],
+.link[data-tone='danger']:hover:not([aria-disabled='true']) {
+  --k-icon-current: var(--k-icon-error);
+}
+
+.link:focus-visible {
+  outline: 2px solid var(--k-border-focus);
+  outline-offset: -2px;
+}
+
+.link[aria-disabled='true'] {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .link {
+    transition: none;
+  }
+}

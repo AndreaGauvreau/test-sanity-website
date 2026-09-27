@@ -5,9 +5,9 @@ import { z } from 'zod'
 import type { Session } from '@/admin/core/contracts'
 import { AdminAuthError, authErrorResponse, jsonError, requireCapability } from '@/admin/core/auth/session'
 import { isSameOriginRequest } from '@/admin/core/auth/request'
-import { getWriteClient } from '@/admin/core/sanity/clients'
+import { uploadImageAsset } from '@/admin/core/sanity/assets'
+import type { ImageUploader } from '@/admin/core/sanity/assets-core'
 import { SanityWriteError } from '@/admin/core/sanity/paths'
-import { toWriteError } from '@/admin/core/sanity/store'
 
 import { findPage, resolveFieldAtPath } from '../lib/manifest'
 import { errorMessage, saveArticleSeo, savePageField, savePageSeo, type SaveDeps, type SaveResult } from './save'
@@ -16,7 +16,8 @@ import { errorMessage, saveArticleSeo, savePageField, savePageSeo, type SaveDeps
  * Envoi d'une image depuis C1 (champ image), C2 (image OG de la page) ou C6 (image OG fixe du modèle d'article).
  * Route handler plutôt que server action : une server action est plafonnée à 1 Mo de corps par défaut (Next 16),
  * une image OG peut peser plus. Étapes : droit `content.write` → même origine → formulaire validé (zod) → fichier
- * vérifié (taille, type annoncé ET signature des premiers octets) → asset Sanity avec le jeton de l'utilisateur →
+ * vérifié (taille, type annoncé ET signature des premiers octets) → asset Sanity avec le jeton de l'utilisateur
+ * (`uploadImageAsset` de core/sanity : droit, type en liste blanche, nom nettoyé, erreurs traduites) →
  * champ du brouillon mis à jour par le même cœur que les server actions (liste blanche du manifeste).
  */
 
@@ -42,20 +43,9 @@ export function sniffImageType(bytes: Uint8Array): (typeof TYPES)[number] | null
   return null
 }
 
-export type UploadedAsset = { _id: string; url: string }
-
 export type UploadDeps = SaveDeps & {
-  /** Envoi de l'asset (par défaut : client Sanity de l'utilisateur). Injecté dans les tests. */
-  uploadAsset?: (session: Session, data: Buffer, meta: { filename: string; contentType: string }) => Promise<UploadedAsset>
-}
-
-async function defaultUpload(session: Session, data: Buffer, meta: { filename: string; contentType: string }): Promise<UploadedAsset> {
-  try {
-    const asset = await getWriteClient(session).assets.upload('image', data, meta)
-    return { _id: asset._id, url: asset.url }
-  } catch (err) {
-    throw toWriteError(err)
-  }
+  /** Envoi brut passé à `uploadImageAsset` (par défaut : client Sanity de l'utilisateur). Injecté dans les tests. */
+  upload?: ImageUploader
 }
 
 export type UploadResult = { ok: true; assetId: string; url: string } | { ok: false; error: string; status: number }
@@ -82,11 +72,11 @@ export async function uploadPageImage(session: Session, pageId: string, data: Fo
         ? Boolean(page?.article)
         : Boolean(page?.document && resolveFieldAtPath(page, target.path)?.kind === 'image')
   if (!page || !allowed) return { ok: false, error: "This field can't be edited here.", status: 400 }
-  const name = file instanceof File && file.name ? file.name.replace(/[^\w.-]+/g, '-').slice(0, 100) : 'image'
+  const filename = file instanceof File ? file.name : null
 
-  let asset: UploadedAsset
+  let asset: { _id: string; url: string }
   try {
-    asset = await (deps.uploadAsset ?? defaultUpload)(session, Buffer.from(bytes), { filename: name, contentType: sniffed })
+    asset = await uploadImageAsset(session, bytes, { filename, contentType: sniffed }, { upload: deps.upload })
   } catch (err) {
     return { ok: false, error: errorMessage(err), status: err instanceof SanityWriteError && err.code === 'forbidden' ? 403 : 502 }
   }

@@ -62,13 +62,13 @@
 .itemHeader {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--k-space-8);
+  gap: var(--k-space-4);
   min-height: 20px;
 }
 
 .itemTitle {
   margin: 0;
+  margin-inline-end: auto;
   color: var(--k-text-tertiary);
   font: var(--k-text-label);
   letter-spacing: var(--k-text-label-tracking);

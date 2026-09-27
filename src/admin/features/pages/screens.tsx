@@ -58,11 +58,13 @@ function tabsFor(page: PageDef): PageTab[] {
   ]
 }
 
-function frameProps(session: Session, page: PageDef) {
+function frameProps(session: Session, page: PageDef, active: 'content' | 'seo') {
+  // « Open in AI editor » (G1) : `back` = l'écran courant, pour que « ‹ Admin » de l'éditeur y revienne.
+  const back = active === 'seo' ? pageSeoHref(page.id) : pageHref(page.id)
   return {
     title: page.label,
     meta: page.path,
-    editorHref: page.aiEditor && can(session.role, 'ai.editor') ? editorHref(page.id) : null,
+    editorHref: page.aiEditor && can(session.role, 'ai.editor') ? editorHref(page.id, back) : null,
     previewHref: publicUrl(page.path),
     tabs: tabsFor(page),
   }
@@ -86,7 +88,7 @@ function NoDocument({ page, missing }: { page: PageDef; missing?: boolean }) {
 
 export async function PageContentScreen({ params }: { params: Params }) {
   const { session, page } = await resolvePage(params)
-  const frame = frameProps(session, page)
+  const frame = frameProps(session, page, 'content')
   if (!page.document) {
     return (
       <PageFrame {...frame} active="content">
@@ -131,7 +133,7 @@ function valueAt(doc: Record<string, unknown> | null, path: string | undefined):
 
 export async function PageSeoScreen({ params }: { params: Params }) {
   const { session, page } = await resolvePage(params)
-  const frame = frameProps(session, page)
+  const frame = frameProps(session, page, 'seo')
   if (!page.document || !page.seo) {
     return (
       <PageFrame {...frame} active="seo">

@@ -14,6 +14,7 @@ import {
   placementLabel,
   runLabel,
   scriptType,
+  signableFromRaw,
   toSanityScript,
 } from './scripts'
 
@@ -133,9 +134,36 @@ describe('normalizeScripts', () => {
     expect(normalizeScripts(undefined)).toEqual([])
   })
 
-  it('aller-retour vers Sanity', () => {
+  it('SEC-04 : un script lu est « non signé » tant que le serveur ne l’a pas vérifié (fermé par défaut)', () => {
+    const [item] = normalizeScripts([{ _key: 'a', name: 'n', placement: 'bodyStart', page: 'home', run: 'once', code: 'c', enabled: true, signature: 'abc' }])
+    expect(item.signed).toBe(false)
+    expect(item).not.toHaveProperty('signature')
+  })
+
+  it('aller-retour vers Sanity, avec la signature (SEC-04)', () => {
     const [item] = normalizeScripts([{ _key: 'a', name: 'n', placement: 'bodyStart', page: 'home', run: 'everyPageVisit', code: 'c', enabled: false }])
-    expect(toSanityScript(item)).toEqual({ _key: 'a', _type: 'siteScript', name: 'n', placement: 'bodyStart', page: 'home', run: 'everyPageVisit', code: 'c', enabled: false })
+    expect(toSanityScript(item, 'sig')).toEqual({ _key: 'a', _type: 'siteScript', name: 'n', placement: 'bodyStart', page: 'home', run: 'everyPageVisit', code: 'c', enabled: false, signature: 'sig' })
+  })
+})
+
+describe('signableFromRaw (SEC-04)', () => {
+  it('valeurs BRUTES du document, sans normalisation', () => {
+    expect(signableFromRaw({ _key: 'a', name: 'n', placement: 'headEnd', page: 'all', run: 'once', code: '<style></style>', enabled: true, signature: 's' })).toEqual({
+      _key: 'a',
+      placement: 'headEnd',
+      page: 'all',
+      run: 'once',
+      code: '<style></style>',
+      enabled: true,
+      signature: 's',
+    })
+  })
+
+  it('champ absent ou mal typé : rien à vérifier (non signé)', () => {
+    expect(signableFromRaw({ _key: 'a', placement: 'headEnd', page: 'all', run: 'once', code: 'c' })).toBeNull()
+    expect(signableFromRaw({ _key: 'a', placement: 'headEnd', page: 'all', run: 'once', code: 1, enabled: true })).toBeNull()
+    expect(signableFromRaw({ placement: 'headEnd', page: 'all', run: 'once', code: 'c', enabled: true })).toBeNull()
+    expect(signableFromRaw(null)).toBeNull()
   })
 })
 

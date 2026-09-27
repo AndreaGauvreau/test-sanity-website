@@ -3,7 +3,7 @@ import { createClient, type SanityClient } from '@sanity/client'
 /**
  * Accès Sanity du moteur, derrière un PORT minimal (injectable : les tests passent un faux en mémoire, `fake.ts`) :
  * lire des documents par id (brouillon et publié), créer un brouillon, le modifier (set / unset), le supprimer, lancer
- * des actions (publication avec verrou de révision, abandon de brouillon), et une requête GROQ.
+ * des actions (publication avec verrou de révision, abandon de brouillon, dépublication, suppression), et une requête GROQ.
  *
  * Le client réel utilise le jeton d'écriture « robot » (SANITY_API_WRITE_TOKEN, rôle Editor), la perspective `raw`
  * (les brouillons `drafts.*` sont des documents comme les autres), sans CDN. Jamais le jeton d'un utilisateur.
@@ -20,9 +20,18 @@ export type PatchOps = {
   ifRevisionId?: string
 }
 
+/**
+ * Actions de l'API Sanity (mêmes formes que `@sanity/client`), exécutées en UNE requête, tout ou rien :
+ * - publish : brouillon → publié (verrous de révision facultatifs) ;
+ * - discard : brouillon supprimé ;
+ * - unpublish : le publié est retiré, son contenu reste en brouillon (`draftId`, créé s'il manque) ;
+ * - delete : le publié ET les brouillons listés dans `includeDrafts` supprimés (un brouillon existant non listé = refus).
+ */
 export type SanityAction =
   | { actionType: 'sanity.action.document.publish'; draftId: string; publishedId: string; ifDraftRevisionId?: string; ifPublishedRevisionId?: string }
   | { actionType: 'sanity.action.document.discard'; draftId: string; purge?: boolean }
+  | { actionType: 'sanity.action.document.unpublish'; draftId: string; publishedId: string }
+  | { actionType: 'sanity.action.document.delete'; publishedId: string; includeDrafts: string[]; purge?: boolean }
 
 export type SanityPort = {
   /** Documents par id, dans l'ordre (null = absent). */
@@ -30,7 +39,7 @@ export type SanityPort = {
   createIfNotExists(doc: SanityDoc): Promise<void>
   patch(id: string, ops: PatchOps): Promise<void>
   delete(id: string): Promise<void>
-  /** API Actions (publication, abandon). */
+  /** API Actions (publication, abandon, dépublication, suppression). */
   action(actions: SanityAction[]): Promise<void>
   fetch<T = unknown>(query: string, params?: Record<string, unknown>): Promise<T>
 }

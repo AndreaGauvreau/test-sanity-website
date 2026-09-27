@@ -14,15 +14,18 @@ export type AccessResult = { ok: true; access: ClaudeCredential; warning?: strin
 export type AccessEnv = {
   ANTHROPIC_API_KEY?: string
   CLAUDE_CODE_OAUTH_TOKEN?: string
-  NODE_ENV?: string
+  /**
+   * Mode du moteur tel qu'écrit dans l'environnement : « hosted » refuse TOUJOURS l'abonnement, même si l'appelant
+   * passait `localMode: true` par erreur. NODE_ENV n'est jamais lu (AI-02 : hérité du shell, il ne dit rien du mode).
+   */
+  ENGINE_MODE?: string
 }
 
 export type AccessOptions = {
   /**
-   * Mode local EXPLICITE du moteur (moteur sur la machine du développeur, 127.0.0.1). Seul cas, avec
-   * NODE_ENV=development, où le jeton d'abonnement est accepté. `npm run engine` (tsx) ne pose pas NODE_ENV : sans ce
-   * drapeau, un moteur local refuserait l'abonnement. engine-core ne le passe à `true` que sur une configuration
-   * explicite (jamais par défaut, jamais en mode hébergé).
+   * Mode local EXPLICITE du moteur (ENGINE_MODE=local écrit, moteur sur la machine du développeur) : SEUL cas où le jeton
+   * d'abonnement est accepté. engine-core le passe (`config.mode === 'local' && config.explicitLocal`) ; jamais par
+   * défaut, jamais en mode hébergé.
    */
   localMode?: boolean
 }
@@ -35,8 +38,8 @@ const OAUTH_MIN_LENGTH = 100
 
 /**
  * La clé API passe en premier : c'est la seule voie autorisée dès que des clients utilisent l'éditeur.
- * Le jeton d'abonnement Pro/Max (`claude setup-token`) est réservé au développement : NODE_ENV=development, ou mode
- * local explicite du moteur. Un jeton d'abonnement collé dans ANTHROPIC_API_KEY est refusé (l'API le rejetterait sans
+ * Le jeton d'abonnement Pro/Max (`claude setup-token`) est réservé au moteur local : `localMode: true` ET ENGINE_MODE
+ * absent ou « local ». NODE_ENV n'entre jamais en compte (AI-02). Un jeton d'abonnement collé dans ANTHROPIC_API_KEY est refusé (l'API le rejetterait sans
  * explication). Messages en anglais : ils peuvent remonter jusqu'à l'admin.
  */
 export function resolveClaudeAccess(env: AccessEnv, options: AccessOptions = {}): AccessResult {
@@ -52,12 +55,13 @@ export function resolveClaudeAccess(env: AccessEnv, options: AccessOptions = {})
   }
   if (apiKey) return { ok: true, access: { kind: 'api-key', secret: apiKey } }
   if (oauthToken) {
-    const allowed = env.NODE_ENV === 'development' || options.localMode === true
+    const mode = env.ENGINE_MODE?.trim()
+    const allowed = options.localMode === true && (mode === undefined || mode === '' || mode === 'local')
     if (!allowed) {
       return {
         ok: false,
         error:
-          'The subscription token (CLAUDE_CODE_OAUTH_TOKEN) is only accepted for local development. ' +
+          'The subscription token (CLAUDE_CODE_OAUTH_TOKEN) is only accepted by a local engine (ENGINE_MODE=local). ' +
           'Set ANTHROPIC_API_KEY in engine/.env.local for any other use.',
       }
     }

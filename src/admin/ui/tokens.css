@@ -107,6 +107,9 @@
   /* ── Rythme du kit (dérivés, pas des variables Figma) ── */
   --k-control-height: 34px; /* Input, Select : 8 + 16 + 8 + 2 (contour compris) */
   --k-focus-ring: 0 0 0 2px var(--k-bg-app), 0 0 0 4px var(--k-border-focus);
+  /* Couches : contenu < panneau flottant non modal (Ask AI) < modale / drawer < popover (Select, Menu…) < toast */
+  --k-z-panel: 800;
+  --k-z-overlay: 900;
   --k-z-popover: 1000;
   --k-z-toast: 1100;
 

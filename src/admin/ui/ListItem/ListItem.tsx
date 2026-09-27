@@ -16,6 +16,11 @@ export type ListItemProps = Omit<HTMLAttributes<HTMLDivElement>, 'children' | 't
   avatar?: ReactNode
   /** leading=icon : icône 16 dans un carré 28 bg/subtle. */
   icon?: IconName
+  /**
+   * Écart titre / sous-titre en px : 0 (défaut, composant Figma « List item ») ou 2 (listes de l'écran E1,
+   * « Pending changes » / « Versions »).
+   */
+  textGap?: 0 | 2
   /** Action à droite (Figma « Show action ») : `<IconButton icon="more">`, un `<Menu>`… */
   action?: ReactNode
   /** Rend la ligne entière cliquable (lien étiré sur le titre ; l'action reste au-dessus). */
@@ -39,6 +44,7 @@ export function ListItem({
   action,
   href,
   onClick,
+  textGap = 0,
   className,
   ref,
   ...rest
@@ -64,7 +70,7 @@ export function ListItem({
           <Icon name={icon} size={16} set={18} />
         </span>
       ) : null}
-      <div className={styles.text}>
+      <div className={styles.text} data-text-gap={textGap || undefined}>
         <div className={styles.title}>{titleNode}</div>
         {subtitle != null ? <div className={styles.subtitle}>{subtitle}</div> : null}
       </div>

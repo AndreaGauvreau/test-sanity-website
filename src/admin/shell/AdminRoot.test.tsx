@@ -38,4 +38,14 @@ describe('AdminRoot — racine de /admin et garde < 1024 px', () => {
     expect(media).toMatch(/\.app\s*\{\s*display:\s*none;/)
     expect(media).toMatch(/\.guard\s*\{\s*display:\s*flex;/)
   })
+
+  it('géométrie de la coque exposée sur la racine (portails compris) : --kz-sidebar-width, --kz-topbar-height', () => {
+    const root = readFileSync(join(process.cwd(), 'src/admin/shell/AdminRoot.module.css'), 'utf8')
+    const rootRule = root.slice(root.indexOf('.root {'), root.indexOf('}', root.indexOf('.root {')))
+    expect(rootRule).toMatch(/--kz-sidebar-width:\s*240px;/)
+    expect(rootRule).toMatch(/--kz-topbar-height:\s*48px;/)
+    // La coque s'en sert elle-même : une seule source pour la largeur de la sidebar.
+    const shell = readFileSync(join(process.cwd(), 'src/admin/shell/Shell.module.css'), 'utf8')
+    expect(shell).toMatch(/\.sidebar\s*\{[^}]*flex:\s*0 0 var\(--kz-sidebar-width\)/)
+  })
 })

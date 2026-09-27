@@ -64,8 +64,8 @@ export type UsageRow = {
   feature: UsageFeature
   featureLabel: string
   user: { id: string; name: string; role: AdminRole }
-  /** Texte de la demande s'il est journalisé (champ `request`, hors contrat aujourd'hui), sinon absent. */
-  request?: string
+  /** Texte de la demande (`AiUsageDoc.request`, écrit par le moteur, ≤ 120 car.) ; absent pour les anciennes demandes. */
+  request?: AiUsageDoc['request']
   page?: string
   status: string
   model: string
@@ -220,8 +220,11 @@ export function summarizeUsage(docs: readonly UsageDoc[], period: UsagePeriod, n
   }
 }
 
-/** Longueur maximale du texte d'une demande affiché (une ligne de tableau, coupé par CSS en plus). */
-const REQUEST_MAX = 200
+/**
+ * Longueur maximale du texte d'une demande affiché : celle du contrat (`AiUsageDoc.request`, tronqué à 120 car. par
+ * le moteur). Recoupé ici car le document vient de Sanity (écrit à la main, ancien format) ; CSS coupe en plus.
+ */
+export const REQUEST_MAX = 120
 
 /** Lignes du détail d'une période, la plus récente en haut, `limit` au plus (1 à 500). */
 export function usageRows(docs: readonly UsageDoc[], period: UsagePeriod, now: Date, limit: number): { items: UsageRow[]; total: number } {

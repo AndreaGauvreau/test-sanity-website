@@ -20,6 +20,13 @@
   transition: border-color var(--k-duration-fast) ease;
 }
 
+/* small (FOLLOWUPS #38) : 28 px, comme les Icon buttons d'une barre d'outils ; pad vertical 5 (champ de 16,
+ * Kbd de 16, ✕ de 20 qui déborde de 2 px dans la marge comme en medium). */
+.small {
+  height: 28px;
+  padding-block: 5px; /* pas de token 5 : 28 − 2 (bordure) − 16 (champ), réparti */
+}
+
 .search:focus-within {
   border-color: var(--k-border-focus);
 }

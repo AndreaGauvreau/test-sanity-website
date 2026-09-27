@@ -1,8 +1,13 @@
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { describe, it } from 'vitest'
 import type { ElementTarget, Scope } from '../../../src/admin/core/contracts'
 import { measuresOf, rawZone } from '../guards/measure-fixtures'
-import { designSystem, ZONES } from './fixtures'
+import { loadDesignSystem, TOKENS_CSS_FILE } from '../guards/design-system'
+import { designSystem, TOKENS, ZONES } from './fixtures'
+import { cssCustomValues, resolveCssValue } from './palette'
 import { buildPrompt, buildRetryPrompt, DATA, sharedDisplays, SYSTEM_SENTENCES, systemAppend, type PromptRequest, type PromptTexts } from './prompt'
 import { editableFields, resolveTextFields } from './text'
 
@@ -119,6 +124,61 @@ describe('buildPrompt — STYLE', () => {
     assert.ok(!prompt.includes('Geist'), 'police verrouillée : jamais proposée')
     has(prompt, 'var(--section-space) (Section space; padding, margin only)')
     has(prompt, 'var(--page-max) (Page max width; max-width only)')
+  })
+})
+
+describe('buildPrompt — catalogue des couleurs en var() de palette (AI-03, leçon C02)', () => {
+  const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..')
+
+  it('résout var() → var() → valeur, avec repli, et refuse une variable inconnue ou une boucle', () => {
+    const values = cssCustomValues(':root { --a: #111; --b: var(--a); --c: var(--b); --x: var(--y); --y: var(--x); }')
+    assert.equal(resolveCssValue('var(--c)', values), '#111')
+    assert.equal(resolveCssValue('var(--nope, #fff)', values), '#fff')
+    assert.equal(resolveCssValue('var(--nope)', values), null)
+    assert.equal(resolveCssValue('var(--x)', values), null)
+    assert.equal(resolveCssValue('#abc', undefined), '#abc')
+    assert.equal(resolveCssValue('var(--a)', undefined), null)
+    assert.deepEqual([...cssCustomValues('not { css')], [])
+  })
+
+  it('fixture en var() de palette : ton et ratio calculés sur la valeur résolue, la palette jamais citée', () => {
+    const palette: Record<string, string> = {}
+    const color = structuredClone(TOKENS.color)
+    for (const [key, token] of Object.entries(color.tokens)) {
+      palette[`--palette-${key}`] = token.value
+      token.value = `var(--palette-${key})`
+    }
+    const tokens = { ...TOKENS, color }
+    const base = designSystem()
+    const withVars = { ...base, tokens }
+    // Sans valeurs résolues (cssValues absent ou vide) : ni ton ni ratio (le défaut d'origine).
+    assert.equal(base.cssValues.size, 0, 'buildDesignSystem sans tokens.css : cssValues vide')
+    const blind = buildPrompt(withVars, request('hero.title', ['style']))
+    assert.equal(buildPrompt({ ...withVars, cssValues: undefined }, request('hero.title', ['style'])), blind)
+    has(blind, 'var(--color-text-muted) (Text muted)')
+    assert.ok(!blind.includes('var(--palette-'), 'la palette ne s’affiche jamais')
+    const prompt = buildPrompt({ ...withVars, cssValues: new Map(Object.entries(palette)) }, request('hero.title', ['style']))
+    has(prompt, 'var(--color-text-muted) (Text muted, #717278, dark, 4.79:1 on Surface)')
+    has(prompt, 'var(--color-surface) (Surface, #ffffff, light, page background)')
+    assert.ok(!prompt.includes('var(--palette-'))
+  })
+
+  it('VRAI design system passé TEL QUEL (ds.cssValues d’engine-guards, AI-03) : chaque couleur a sa valeur, son ton et son ratio', async () => {
+    const real = await loadDesignSystem(repo)
+    // Branchement FOLLOWUPS #37 : ds.cssValues vient de loadDesignSystem (même lecture que cssCustomValues), rien à ajouter.
+    assert.deepEqual(real.cssValues, cssCustomValues(readFileSync(path.join(repo, TOKENS_CSS_FILE), 'utf8')))
+    const zone = Object.keys(real.zones)[0]
+    const prompt = buildPrompt(real, { page: '/', targets: [target(zone)], scope: ['style'], note: '', viewport: 375 })
+    const colors = prompt.split('\n').find((line) => line.startsWith('- Colors:'))
+    assert.ok(colors)
+    has(colors, 'var(--color-text) (Text, #232325, dark, 15.')
+    has(colors, 'var(--color-surface) (Surface, #ffffff, light, page background)')
+    has(colors, 'var(--color-text-inverse) (Text inverse, #ffffff, light, 1:1 on Surface)')
+    assert.ok(!colors.includes('var(--color-neutral-'), 'aucune couleur de palette citée')
+    // Toutes les couleurs du groupe : un ton chacune, un ratio pour toutes sauf le fond.
+    const count = Object.keys(real.tokens.color.tokens).length
+    assert.equal(colors.match(/, (light|dark)[,)]/g)?.length, count)
+    assert.equal(colors.match(/:1 on Surface/g)?.length, count - 1)
   })
 })
 

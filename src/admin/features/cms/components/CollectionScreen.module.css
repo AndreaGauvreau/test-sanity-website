@@ -1,60 +1,11 @@
-/* C3 : le tableau vient du kit (CMSTable / CMSRow / CMSCell). Composé ici : la cellule « handle » avec une
-   poignée FOCALISABLE (le kit la dessine décorative) — mêmes mesures que CMS cell type=handle : 64 × 44,
-   pad 0 10, gap 8, trait droit border/subtle, poignée 12 en text/disabled. */
+/* C3 : le tableau vient du kit (CMSTable / CMSRow / CMSCell, poignée focalisable par `gripProps`, Row open et son
+   remplissage posés par CMSRow). Ici : la place de la poignée d'une collection sans ordre manuel et le glisser. */
 
-.handle {
-  position: relative;
-  display: flex;
-  flex-shrink: 0;
-  align-items: center;
-  gap: var(--k-space-8);
-  width: 64px;
-  height: 44px;
-  padding: 0 var(--k-space-10);
-  border-right: 1px solid var(--k-border-subtle);
-}
-
-.grip {
-  display: inline-flex;
-  flex-shrink: 0;
-  align-items: center;
-  justify-content: center;
-  width: 12px;
-  height: 24px;
-  margin: 0;
-  padding: 0;
-  border: 0;
-  border-radius: var(--k-radius-sm);
-  background: none;
-  cursor: grab;
-  touch-action: none;
-  --k-icon-current: var(--k-text-disabled);
-  transition: color var(--k-duration-fast) ease;
-}
-
-.grip:hover:not([aria-disabled]),
-.grip[aria-pressed='true'] {
-  --k-icon-current: var(--k-icon-active);
-}
-
-.grip[aria-disabled] {
-  cursor: default;
-}
-
-.grip:focus-visible {
-  outline: 2px solid var(--k-border-focus);
-  outline-offset: 2px;
-}
-
-.gripSpace {
+/* Collection sans ordre manuel : pas de poignée, mais sa place (12 px, gap 8 du kit) garde les cases alignées. */
+.noGrip::before {
+  content: '';
   flex-shrink: 0;
   width: 12px;
-}
-
-/* Remplit la ligne quand les colonnes sont plus étroites que le tableau. */
-.filler {
-  flex: 1 1 auto;
-  min-width: 0;
 }
 
 /* Glisser au pointeur : les voisines glissent (déplacement à l'écran → ease-in-out, 150 ms) ; la ligne
@@ -70,7 +21,7 @@
   cursor: grabbing;
 }
 
-.dragging .grip {
+.dragging [data-grip] {
   cursor: grabbing;
 }
 
@@ -107,8 +58,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .shifting,
-  .grip {
+  .shifting {
     transition: none;
   }
 }

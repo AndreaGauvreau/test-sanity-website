@@ -34,8 +34,32 @@ Chemins avec espaces, guillemets et accents gérés (`-z`, jamais de trim de la 
 Ne JAMAIS appeler `reset`/`clean`/`commit` via `readGit` sur un autre dossier ; ne jamais passer une donnée de
 l'utilisateur comme référence git sans validation (`resetHard` refuse ce qui ne ressemble pas à une référence).
 
+## Pièges
+- Piège 5 du POC : un chemin vide ou relatif résolu vers le dossier du moteur a fait `git reset --hard` + `git clean -fd`
+  au mauvais endroit. Parade : `openWorkRepo` exige EXACTEMENT `<workspace>/repo`, racine de son propre dépôt
+  (`--show-toplevel` comparé après `realpath` : sous macOS `/tmp` est `/private/tmp`).
+- `git status --porcelain` sans `-z` cite les chemins avec espaces ou accents entre guillemets échappés : toujours `-z`,
+  et ne JAMAIS `trim()` la sortie (la première entrée commence souvent par une espace : « ␠M chemin ») ; un renommage
+  ou une copie occupe deux entrées (nouveau chemin, puis l'ancien).
+- Un dossier non suivi apparaît comme un seul chemin (`dir/`) sans `--untracked-files=all` : les contrôles veulent les
+  fichiers, d'où l'option.
+- Les crochets de commit du site (husky…) ne doivent pas tourner dans le clone : `--no-verify` ; pas de signature GPG
+  (aucune clé côté robot) : `--no-gpg-sign`.
+- `GIT_TERMINAL_PROMPT=0` : un fetch qui demanderait un mot de passe échoue au lieu de bloquer le moteur.
+
+## Comment modifier
+- Nouvelle lecture : fonction dans `git.ts` basée sur `readGit(dir, args)` (aucune écriture) + test sur un dépôt
+  temporaire dans `git.test.ts`.
+- Nouvelle écriture : méthode de `WorkRepo` (jamais une fonction libre qui prend un dossier), avec validation de toute
+  référence reçue et remise en état en cas d'échec.
+
 ## Tests
 `npx vitest run engine/src/git`.
+
+## Décisions et « À trancher »
+- Auteur du commit = le client qui a fait la demande (ou l'auteur de la modification au Validate) ; committer = robot
+  (`Kuartz AI editor <ai-editor@kuartz.invalid>`) : l'historique dit qui a demandé, et que c'est l'IA qui a écrit.
+- Un commit par demande sur `draft`, réunis en UN commit au Validate (`squashSince`).
 
 ## Demandes de contrat
 Aucune.

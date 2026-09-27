@@ -38,6 +38,19 @@ export type UsageJournalDeps = {
 
 const ID_PART = /^[A-Za-z0-9_-]{1,100}$/
 
+/** Longueur maximale de `AiUsageDoc.request` (colonne « Request » de B5). */
+export const REQUEST_MAX = 120
+
+/**
+ * Texte de la demande pour B5 : espaces réunis, 120 caractères au plus (« … » compris). Donnée citée telle quelle par
+ * l'admin, jamais interprétée. null si vide.
+ */
+export function requestText(note: string | undefined): string | null {
+  const flat = (note ?? '').replace(/\s+/g, ' ').trim()
+  if (!flat) return null
+  return flat.length > REQUEST_MAX ? `${flat.slice(0, REQUEST_MAX - 1).trimEnd()}…` : flat
+}
+
 const finite = (n: unknown) => typeof n === 'number' && Number.isFinite(n) && n >= 0
 
 /** Forme minimale d'un AiUsageDoc (lignes du journal local relues, documents d'Ask AI). */
@@ -54,6 +67,7 @@ export function isAiUsageDoc(value: unknown): value is AiUsageDoc {
     typeof doc.requestId === 'string' &&
     typeof doc.status === 'string' &&
     typeof doc.createdAt === 'string' &&
+    (doc.request === undefined || (typeof doc.request === 'string' && doc.request.length <= REQUEST_MAX)) &&
     typeof doc.model === 'string' &&
     !!user &&
     typeof user.id === 'string' &&
@@ -90,6 +104,7 @@ export function usageDocId(requestId: string): `aiUsage.${string}` {
  */
 export function usageDocFromJob(job: EditJob, now: () => Date = () => new Date()): AiUsageDoc | null {
   if (!job.usage) return null
+  const request = requestText(job.request.note)
   return {
     _id: usageDocId(job.id),
     _type: 'aiUsage',
@@ -97,14 +112,27 @@ export function usageDocFromJob(job: EditJob, now: () => Date = () => new Date()
     requestId: job.id,
     status: job.status,
     page: job.request.page,
+    ...(request ? { request } : {}),
     user: { id: job.requestedBy.id, name: job.requestedBy.name, role: job.requestedBy.role },
     createdAt: job.finishedAt ?? now().toISOString(),
     ...usageFields(job.usage),
   }
 }
 
-/** Document d'une question Ask AI (pour ask-ai : `getUsageJournal(context).record(askUsageDoc(...))`). */
-export function askUsageDoc(input: { requestId: string; user: EngineUser; usage: Usage; status?: string; screen?: string; at?: string }): AiUsageDoc {
+/**
+ * Document d'une question Ask AI (pour ask-ai : `askUsageRecorderOf(context)`, ou
+ * `getUsageJournal(context).record(askUsageDoc(...))`). `request` : la question (tronquée à 120 caractères).
+ */
+export function askUsageDoc(input: {
+  requestId: string
+  user: EngineUser
+  usage: Usage
+  status?: string
+  screen?: string
+  at?: string
+  request?: string
+}): AiUsageDoc {
+  const request = requestText(input.request)
   return {
     _id: usageDocId(input.requestId),
     _type: 'aiUsage',
@@ -112,9 +140,43 @@ export function askUsageDoc(input: { requestId: string; user: EngineUser; usage:
     requestId: input.requestId,
     status: input.status ?? 'done',
     ...(input.screen ? { page: input.screen } : {}),
+    ...(request ? { request } : {}),
     user: { id: input.user.id, name: input.user.name, role: input.user.role },
     createdAt: input.at ?? new Date().toISOString(),
     ...usageFields(input.usage),
+  }
+}
+
+/**
+ * Entrée d'Ask AI : même forme qu'`AskUsageEntry` d'engine/src/ask/usage.ts (types structurels, pas d'import croisé),
+ * plus `request` facultatif (la question).
+ */
+export type AskUsageInput = {
+  requestId: string
+  user: EngineUser
+  usage: Usage
+  status: string
+  page?: string
+  createdAt: string
+  request?: string
+}
+
+/** Port `AskUsageRecorder` d'ask-ai branché sur le journal commun (secours local + rejeu, jamais de perte). */
+export function askRecorderFor(journal: Pick<UsageJournal, 'record'>): { recordAsk(entry: AskUsageInput): Promise<void> } {
+  return {
+    async recordAsk(entry) {
+      await journal.record(
+        askUsageDoc({
+          requestId: entry.requestId,
+          user: entry.user,
+          usage: entry.usage,
+          status: entry.status,
+          at: entry.createdAt,
+          ...(entry.page ? { screen: entry.page } : {}),
+          ...(entry.request ? { request: entry.request } : {}),
+        }),
+      )
+    },
   }
 }
 

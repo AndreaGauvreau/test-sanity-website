@@ -7,6 +7,8 @@ vi.mock('./actions', () => ({ inviteMemberAction: vi.fn(async () => ({ ok: false
 
 const { TeamScreen } = await import('./TeamScreen')
 const { InviteControl } = await import('./InviteControl')
+import { parseKuartzAllowlist } from '@/admin/core/contracts/roles'
+
 import { buildTeam } from './members'
 
 beforeAll(() => {
@@ -22,6 +24,7 @@ const team = buildTeam(
   ],
   [{ id: 'i', status: 'accepted', inviterId: 'm', inviteeId: 'a' }],
   'p',
+  { allowlist: parseKuartzAllowlist('@kuartz.studio') },
 )
 
 describe('TeamScreen (B4)', () => {

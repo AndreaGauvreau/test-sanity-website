@@ -32,7 +32,10 @@ export type MenuCloseReason = 'select' | 'escape' | 'outside' | 'blur' | 'tab'
 type MenuContextValue = { close: (reason: MenuCloseReason) => void }
 const MenuContext = createContext<MenuContextValue | null>(null)
 
-const ITEM_SELECTOR = '[role="menuitem"], [role="menuitemradio"], [role="menuitemcheckbox"]'
+/** Frames d'attente maximales du focus initial (panneau pas encore visible). */
+const MAX_FOCUS_RETRIES = 20
+
+const ITEM_SELECTOR ='[role="menuitem"], [role="menuitemradio"], [role="menuitemcheckbox"]'
 
 function enabledItems(panel: HTMLElement): HTMLElement[] {
   return Array.from(panel.querySelectorAll<HTMLElement>(ITEM_SELECTOR)).filter(
@@ -75,7 +78,21 @@ export function MenuPanel({ initialFocus = 'first', width, className, style, onK
     if (!initial) return
     if (initialFocus === 'none') {
       for (const el of panel.querySelectorAll<HTMLElement>(ITEM_SELECTOR)) el.tabIndex = el === initial ? 0 : -1
-    } else focusItem(panel, initial)
+      return
+    }
+    focusItem(panel, initial)
+    if (document.activeElement === initial) return
+    // Focus refusé : le Popover reste `visibility: hidden` jusqu'à son positionnement (ouverture contrôlée sans
+    // clic, ex. saisie de « {{ »). On réessaie aux frames suivantes, sauf si le focus est déjà dans le menu.
+    let frame = 0
+    let tries = 0
+    const retry = () => {
+      if (!panel.isConnected || panel.contains(document.activeElement)) return
+      focusItem(panel, initial)
+      if (document.activeElement !== initial && tries++ < MAX_FOCUS_RETRIES) frame = requestAnimationFrame(retry)
+    }
+    frame = requestAnimationFrame(retry)
+    return () => cancelAnimationFrame(frame)
   }, [initialFocus])
 
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {

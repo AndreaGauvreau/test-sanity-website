@@ -25,10 +25,10 @@ export function registerEditorRoutes(router: Router, editor: EditorService, heal
     method: 'GET',
     path: '/editor/state',
     capability: 'ai.editor',
-    handler: async ({ query }) => {
+    handler: async ({ user, query }) => {
       const page = query.get('page')
       if (!page) throw badRequest('Missing page.')
-      return { json: await editor.state(page) }
+      return { json: await editor.state(page, user) }
     },
   })
   router.add({

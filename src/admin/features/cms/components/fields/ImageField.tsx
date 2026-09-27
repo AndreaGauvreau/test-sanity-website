@@ -4,6 +4,7 @@ import { useState } from 'react'
 
 import { Button, ImageUpload } from '@/admin/ui'
 import { uploadFile } from '@/admin/features/media/components/upload'
+import { IMAGE_ACCEPT, IMAGE_FORMATS_LABEL, UPLOAD_MAX_BYTES } from '@/admin/features/media/lib/upload-limits'
 
 import type { ImageInfo } from '../../server/data'
 import { MediaPicker } from './MediaPicker'
@@ -11,7 +12,8 @@ import styles from './fields.module.css'
 
 /**
  * Champ image d'une fiche (C4 « Cover image ») : Image upload du kit (aperçu, « cover.jpg · 420 KB », Replace
- * = fichier, corbeille) + « Choose from Media » (médiathèque). L'image envoyée devient un asset de Media ;
+ * = fichier, corbeille) + « Choose from Media » (médiathèque) posé dans l'emplacement `actions` du kit (ligne fichier
+ * avant Replace une fois rempli, ligne sous la zone sinon). L'image envoyée devient un asset de Media ;
  * le champ du brouillon pointe vers lui. « Alt text required » tant que l'asset n'a pas de texte alternatif
  * (il se règle dans Media : une valeur par image, question 13).
  */
@@ -51,9 +53,9 @@ export function ImageField({
         hint={current && !current.altText ? 'Alt text required' : undefined}
         value={current ? { src: current.src, name: current.name, size: current.size, alt: current.altText } : null}
         uploading={uploading}
-        accept="image/png,image/jpeg,image/webp,image/gif,image/avif,image/svg+xml"
-        maxSize={20 * 1024 * 1024}
-        formats="PNG, JPG, WebP, GIF or SVG · 20 MB max"
+        accept={IMAGE_ACCEPT}
+        maxSize={UPLOAD_MAX_BYTES.image}
+        formats={IMAGE_FORMATS_LABEL}
         error={problem ?? error ?? undefined}
         onFile={async (file) => {
           setProblem(null)
@@ -67,12 +69,12 @@ export function ImageField({
           await apply({ assetId: result.asset.id, src: result.asset.preview ?? result.asset.thumb, name: result.asset.name, size: result.asset.size, altText: result.asset.altText })
         }}
         onRemove={() => void apply(null)}
+        actions={
+          <Button variant="ghost" size="small" iconLeft="image" onClick={() => setPicker(true)} disabled={!!uploading}>
+            Choose from Media
+          </Button>
+        }
       />
-      <div className={styles.imageActions}>
-        <Button variant="ghost" size="small" iconLeft="image" onClick={() => setPicker(true)} disabled={!!uploading}>
-          Choose from Media
-        </Button>
-      </div>
       <MediaPicker
         open={picker}
         current={current?.assetId}

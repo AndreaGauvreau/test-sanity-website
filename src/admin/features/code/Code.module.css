@@ -1,16 +1,4 @@
-/*
- * B3 · Code (Figma UI 359:745). L'en-tête du Figma est un « Section header » (titre Heading 4 + description + « Add ») :
- * on garde le Page header du kit (vrai h1 de l'écran) avec le style de titre du Section header.
- */
-.header h1 {
-  font: var(--k-text-heading-4);
-  letter-spacing: var(--k-text-heading-4-tracking);
-}
-
-/* Section header : titre et description à 2 px (Page header : 4). */
-.header p {
-  margin-top: -2px;
-}
+/* B3 · Code (Figma UI 359:745). En-tête : SectionHeader du kit (headingLevel 1), sans surcharge locale. */
 
 .table {
   width: 100%;

@@ -40,6 +40,11 @@
   min-width: 0;
 }
 
+/* textGap={2} (écran E1) : écart de 2 px entre titre et sous-titre. */
+.text[data-text-gap='2'] {
+  gap: var(--k-space-2);
+}
+
 .title {
   color: var(--k-text-primary);
   font: var(--k-text-body);

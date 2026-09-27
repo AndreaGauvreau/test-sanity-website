@@ -10,6 +10,7 @@ import { validateFieldValue } from '@/admin/core/sanity/validate'
 import { imageUrl, type ImageCdnEnv } from '@/admin/features/cms/lib/image-url'
 
 import { isAssetId, mediaKind, type MediaAsset, type MediaKind } from '../lib/assets'
+import { checkUpload, UPLOAD_TYPES } from '../lib/upload-limits'
 import { findAssetPaths, usagesOf, type ReferencingDoc } from '../lib/usage'
 
 /**
@@ -59,24 +60,8 @@ export type MediaDeps = {
 const ALT_FIELD: FieldDef = { name: 'altText', label: 'Alt text', kind: 'string', maxLength: 250 }
 const ASSET_REF_FIELD: FieldDef = { name: 'asset', label: 'Media', kind: 'reference', required: true }
 
-/** Types acceptés à l'envoi (liste blanche) et taille maximale par genre. */
-export const UPLOAD_TYPES: Readonly<Record<string, MediaKind>> = {
-  'image/png': 'image',
-  'image/jpeg': 'image',
-  'image/webp': 'image',
-  'image/gif': 'image',
-  'image/avif': 'image',
-  'image/svg+xml': 'image',
-  'video/mp4': 'video',
-  'video/webm': 'video',
-  'video/quicktime': 'video',
-  'application/pdf': 'file',
-  'text/plain': 'file',
-  'text/csv': 'file',
-  'application/zip': 'file',
-}
-export const UPLOAD_MAX_BYTES: Readonly<Record<MediaKind, number>> = { image: 20 * 1024 * 1024, video: 100 * 1024 * 1024, file: 50 * 1024 * 1024 }
-export const UPLOAD_ACCEPT = Object.keys(UPLOAD_TYPES).join(',')
+// Types et limites d'envoi : lib/upload-limits.ts (partagé avec l'interface).
+export { checkUpload, UPLOAD_ACCEPT, UPLOAD_MAX_BYTES, UPLOAD_TYPES } from '../lib/upload-limits'
 
 const altInput = z.object({ assetId: z.string().refine(isAssetId), altText: z.string().max(2000) })
 const deleteInput = z.object({ ids: z.array(z.string().refine(isAssetId)).min(1).max(200) })
@@ -179,16 +164,6 @@ export async function deleteAssetsCore(deps: MediaDeps, input: unknown): Promise
     const result = errorResult(err, deps)
     return deleted.length ? fail(`${result.error} (${deleted.length} deleted before the error.)`) : result
   }
-}
-
-/** Valide un fichier envoyé (type en liste blanche, taille). Retourne un message d'erreur ou null. */
-export function checkUpload(file: Pick<UploadInput, 'type' | 'size'>, expectedKind?: MediaKind): string | null {
-  const kind = UPLOAD_TYPES[file.type]
-  if (!kind) return 'This file type is not supported (images, MP4 or WebM videos, PDF, text and ZIP files).'
-  if (expectedKind && kind !== expectedKind) return `Choose ${expectedKind === 'image' ? 'an image' : expectedKind === 'video' ? 'a video' : 'a file'} to replace this one.`
-  if (file.size <= 0) return 'This file is empty.'
-  if (file.size > UPLOAD_MAX_BYTES[kind]) return `This file is too large (${Math.round(UPLOAD_MAX_BYTES[kind] / 1024 / 1024)} MB max).`
-  return null
 }
 
 /**

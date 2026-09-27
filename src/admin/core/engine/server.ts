@@ -9,7 +9,8 @@ import { toEngineUser } from './signature'
 import { callEngine, type EngineTransportDeps } from './transport'
 
 /**
- * Canal serveur vers le moteur IA. SERVEUR SEULEMENT (ENGINE_SECRET ne quitte jamais le serveur).
+ * Canal serveur vers le moteur IA. SERVEUR SEULEMENT (ENGINE_SECRET et ENGINE_IDENTITY_PRIVATE_KEY ne quittent jamais
+ * le serveur).
  * - `engineFetch` : pour les Server Components / server actions (JSON typé, lève EngineRequestError) ;
  * - `relayEngineRequest` : pour le relais /admin/api/engine/[...path] (renvoie la Response telle quelle).
  * Les deux passent par la liste blanche (routes.ts) et le contrôle des droits du rôle.
@@ -20,6 +21,7 @@ function deps(): EngineTransportDeps {
     env: {
       ENGINE_URL: process.env.ENGINE_URL,
       ENGINE_SECRET: process.env.ENGINE_SECRET,
+      ENGINE_IDENTITY_PRIVATE_KEY: process.env.ENGINE_IDENTITY_PRIVATE_KEY,
       ENGINE_MOCK: process.env.ENGINE_MOCK,
       NODE_ENV: process.env.NODE_ENV,
     },

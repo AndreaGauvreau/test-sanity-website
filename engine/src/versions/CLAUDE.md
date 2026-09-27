@@ -1,6 +1,6 @@
 # Versions (`engine/src/versions`) — LLM context
 
-> Propriétaire : engine-publish · Figma : E2 (docs/admin/figma/screens/E2.md) · Mis à jour : 2026-09-27
+> Propriétaire : engine-publish · Figma : E2 (docs/admin/figma/screens/E2.md) · Mis à jour : 2026-09-27 (corrections vague 3)
 
 ## Utilité
 Historique des publications (E2 « Versions ») pour tous les rôles qui ont `publish.run`, et retour arrière réservé à
@@ -38,6 +38,17 @@ Lecture seule, testée sur un vrai dépôt (tags légers ; un tag annoté est lu
 ## Points sensibles
 Ne jamais implémenter un retour arrière qui réécrit `main` ou force un push : en mode local, c'est une opération
 humaine (Kuartz). Le numéro vient de l'URL : toujours validé (`^\d{1,6}$` + entier ≥ 1).
+
+## Pièges
+- Les tags `publication-N` sont écrits par `../publish` (`tagPublication`, `--force`) dans le CLONE du moteur, pas dans
+  le dépôt source (sauf push, `ENGINE_GIT_PUSH=1`) : `git tag` dans le dépôt du développeur ne les montre pas.
+- Une publication de contenu seul n'a PAS de tag : une version absente des tags n'est pas une erreur.
+- `listPublicationTags` lit `%(*objectname)` (commit pointé d'un tag annoté) puis `%(objectname)` (tag léger) : ne pas
+  prendre `objectname` seul, ce serait l'objet tag, pas le commit.
+- Le numéro vient de l'URL (`^\d{1,6}$`) ; le routeur renvoie 404 pour tout autre format AVANT le service.
+- Mode local : `rollback.available` est toujours `false` avec la raison « local mode » (vérifié sur 4043 : GET /versions
+  répond ainsi) ; POST rollback répond 501 `not_implemented` après les contrôles 403 / 404 / 409 — l'ordre compte pour
+  les tests.
 
 ## Comment modifier
 Brancher Vercel Instant Rollback (mode hosted) : `rollback()` → API Vercel (jeton dans la config, jamais journalisé),

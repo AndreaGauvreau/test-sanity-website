@@ -54,6 +54,7 @@ export const PREVIEW_ENV_KEYS = [
   'KZ_EDITOR_PREVIEW',
   'ENGINE_PREVIEW_SECRET',
   'ADMIN_ORIGIN',
+  'REACT_EDITOR',
 ] as const
 
 const real = (dir: string) => {
@@ -83,6 +84,8 @@ export function previewEnvFile(config: EngineConfig): string {
     KZ_EDITOR_PREVIEW: '1',
     ENGINE_PREVIEW_SECRET: config.preview.secret,
     ADMIN_ORIGIN: config.preview.adminOrigin,
+    // SEC-06 : même si quelqu'un lance next dev à la main dans le clone, aucun éditeur n'est ouvert par /__nextjs_launch-editor.
+    REACT_EDITOR: 'none',
   }
   return [
     '# Written by `npm run engine:setup`: draft preview of the AI editor. Never commit this file.',

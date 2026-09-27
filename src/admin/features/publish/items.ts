@@ -1,4 +1,5 @@
-import type { PendingContentItem } from '@/admin/core/contracts/engine'
+import type { PendingContentItem, PendingDesignItem } from '@/admin/core/contracts/engine'
+import type { TagTone } from '@/admin/ui'
 import type { IconName } from '@/admin/ui/icons'
 
 /**
@@ -35,7 +36,25 @@ export function viewUrl(siteUrl: string, viewPath: string | undefined): string |
 }
 
 /**
- * URL « View ↗ » d'une modification de design : le contrat ne dit pas sur quelle page elle se voit
- * (voir « Demandes de contrat ») ; l'éditeur IA montre le brouillon (code de `draft` + brouillons Sanity).
+ * URL « View ↗ » d'une modification de design : l'éditeur IA, qui montre le brouillon (code de `draft` + brouillons
+ * Sanity), sur la page modifiée (`PendingDesignItem.page`, chemin public relatif) ; sans page, la page par défaut.
  */
 export const DESIGN_VIEW_HREF = '/admin/editor'
+
+export function designViewHref(item: Pick<PendingDesignItem, 'page'>): string {
+  const page = item.page
+  if (!page || !page.startsWith('/') || page.startsWith('//') || page.length > 200) return DESIGN_VIEW_HREF
+  return `${DESIGN_VIEW_HREF}?page=${encodeURIComponent(page)}`
+}
+
+/**
+ * Ce que Publish fera d'une ligne de contenu, quand ce n'est pas « publier le brouillon » : tag de la ligne et texte
+ * du bouton qui annule la programmation (POST /publish/unstage). null pour une publication ordinaire.
+ */
+export type ContentActionView = { tag: string; tone: TagTone; undoLabel: string }
+
+export function contentItemAction(item: Pick<PendingContentItem, 'action'>): ContentActionView | null {
+  if (item.action === 'unpublish') return { tag: 'Unpublish', tone: 'warning', undoLabel: 'Keep online' }
+  if (item.action === 'delete') return { tag: 'Delete', tone: 'error', undoLabel: 'Don’t delete' }
+  return null
+}

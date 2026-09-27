@@ -37,10 +37,31 @@ Fichier réécrit en entier à chaque changement (chaque étape du journal) : su
 si le volume grandit. Pas de migration au-delà de la version 1.
 
 ## Points sensibles
-Ne jamais modifier la valeur de `get()` directement (passer par `update`/`transact`) ; ne jamais y mettre de secret.
+Ne jamais modifier la valeur de `get()` directement (passer par `update`/`transact`) ; ne jamais y mettre de secret
+(ni jeton d'aperçu, ni en-tête d'identité : seuls `EngineUser` et les données du contrat y entrent).
+
+## Pièges
+- `get()` / `data()` renvoient la valeur VIVANTE : la modifier en place change la mémoire sans rien écrire sur disque,
+  et le prochain `update` l'écrira par surprise. Toujours `update(fn)` ou `transact(fn)`.
+- La mise à jour en mémoire est SYNCHRONE, l'écriture disque ne l'est pas : c'est ce qui permet à la file de l'éditeur
+  de décider ses 409 sans `await` ; attendre la promesse seulement quand l'écriture doit être sur disque (avant d'agir).
+- `flush()` avant de quitter : sinon la dernière écriture peut manquer (l'arrêt du moteur l'appelle).
+- Un fichier illisible (JSON cassé, `version` inconnue) fait échouer le démarrage : le réparer ou le déplacer à la main,
+  jamais l'effacer en silence.
+
+## Comment modifier
+- Nouveau champ interne d'une demande : `JobInternal` (facultatif, pour relire les anciens fichiers) ; l'écrire par
+  `updateJob` ; ne jamais le renvoyer à l'admin.
+- Nouveau format : passer `version` à 2, faire convertir la version 1 par `migrateEditor` / `migratePublications`
+  (lecture), et tester la relecture d'un fichier version 1 dans `store.test.ts`.
+- Nouvelle collection : l'ajouter à `EditorData` avec sa valeur initiale et sa normalisation dans `migrateEditor`.
 
 ## Tests
 `npx vitest run engine/src/store`.
+
+## Décisions et « À trancher »
+- Fichiers JSON atomiques plutôt qu'une base (décision de la construction : local, un seul processus, `engine.pid`).
+- À trancher (mode hébergé) : base de données si le volume grandit.
 
 ## Demandes de contrat
 Aucune.

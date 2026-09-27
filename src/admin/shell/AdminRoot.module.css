@@ -1,5 +1,11 @@
-/* Racine de l'admin : fond bg/app sur toute la fenêtre (le layout racine est partagé avec le site). */
+/*
+ * Racine de l'admin : fond bg/app sur toute la fenêtre (le layout racine est partagé avec le site).
+ * Géométrie de la coque (Figma B1 : Sidebar 240 px, Top bar 48 px), posée ici et non sur la coque pour que les
+ * portails (panneau Ask AI, menus), montés dans [data-kz-admin], la lisent aussi.
+ */
 .root {
+  --kz-sidebar-width: 240px;
+  --kz-topbar-height: 48px;
   min-height: 100vh;
   min-height: 100dvh;
   background-color: var(--k-bg-app);

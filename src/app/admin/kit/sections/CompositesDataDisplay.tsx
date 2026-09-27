@@ -5,6 +5,7 @@ import {
   AIUsage,
   Avatar,
   Checkbox,
+  ChecklistItem,
   CMSCell,
   CMSRow,
   CMSTable,
@@ -24,6 +25,8 @@ import {
   TableHeaderCell,
   TableRow,
   Tag,
+  ToolLink,
+  ToolLinks,
   VersionItem,
   type CmsStatus,
   type TableSort,
@@ -75,6 +78,9 @@ function CmsTableDemo() {
             checkboxLabel={`Select ${row.title}`}
             checked={!!checked[row.slug]}
             onCheckedChange={(c) => setChecked((prev) => ({ ...prev, [row.slug]: c }))}
+            gripLabel={`Reorder ${row.title}`}
+            gripTooltip="Drag to reorder"
+            gripProps={{ 'aria-pressed': false }}
           />
           <CMSCell
             type="title"
@@ -153,6 +159,29 @@ function TableDemo() {
   )
 }
 
+/** Tableau plus étroit que son conteneur (FAQ) : Row open reste au bord droit. */
+function NarrowCmsTableDemo() {
+  const faq = ['What is Conduit?', 'How long does onboarding take?']
+  return (
+    <CMSTable aria-label="FAQ">
+      <CMSRow header>
+        <CMSCell type="handle" checkboxLabel="Select all questions" />
+        <CMSCell type="header" width={240}>Question</CMSCell>
+        <CMSCell type="header" width={120}>Status</CMSCell>
+      </CMSRow>
+      {faq.map((q) => (
+        <CMSRow key={q} onOpen={() => {}} openLabel={`Open ${q}`}>
+          <CMSCell type="handle" checkboxLabel={`Select ${q}`} />
+          <CMSCell type="title">{q}</CMSCell>
+          <CMSCell type="status">
+            <StatusSelect status="live" actions={[]} />
+          </CMSCell>
+        </CMSRow>
+      ))}
+    </CMSTable>
+  )
+}
+
 export function CompositesDataDisplay() {
   const [version, setVersion] = useState(0)
   return (
@@ -168,7 +197,31 @@ export function CompositesDataDisplay() {
           />
           <ListItem icon="page" title="/blog" subtitle="Listing page" tag={<Tag>Content</Tag>} meta="Updated 2 h ago" href="#" action={<IconButton icon="more" label="More actions for /blog" />} />
           <ListItem icon="code" title="Google Tag Manager" meta="All pages" />
+          <ListItem icon="page" title="Home" subtitle="Hero — title · 2 changes" textGap={2} meta="textGap={2} (E1)" />
         </div>
+      </Item>
+
+      <Item id="checklist-item" title="Checklist item" figma="E1 · After “Publish”" note="States todo / running / done / skipped / failed; the running step has aria-current=step. Optional action below the description.">
+        <ol className={styles.stack} style={{ width: 346, gap: 0, margin: 0, padding: 0, listStyle: 'none' }} aria-label="After Publish">
+          <ChecklistItem state="done" title="Content goes live in Sanity" description="In seconds, no build." />
+          <ChecklistItem state="skipped" title="Only if code changed: draft → main" description="No code change." />
+          <ChecklistItem state="running" title="Vercel builds and deploys" description="About 1 minute." />
+          <ChecklistItem
+            state="failed"
+            title="Live on conduit.com"
+            description="Build failed. The previous version stays live."
+            action={<IconButton icon="info" label="See error" variant="secondary" />}
+          />
+          <ChecklistItem title="Live on conduit.com" description="If the build fails, the previous version stays live and the error shows here." />
+        </ol>
+      </Item>
+
+      <Item id="tool-links" title="Tool links" figma="C5 · file actions" note="Icon actions stuck together (36 × 36), 1 px dividers. Disabled stays focusable and its tooltip gives the reason.">
+        <ToolLinks aria-label="File actions">
+          <ToolLink icon="replace" label="Replace" onClick={() => {}} />
+          <ToolLink icon="download" label="Download" href={SAMPLE_OG} download />
+          <ToolLink icon="trash" label="Delete" tone="danger" disabled disabledReason="Used in 2 places — remove it from the site first." />
+        </ToolLinks>
       </Item>
 
       <Item id="table-cell" title="Table cell" figma="337:1191" note="Table + TableRow (hover / selected carried by the row) + TableHeaderCell (sortable) + TableCell types.">
@@ -283,9 +336,12 @@ export function CompositesDataDisplay() {
         </div>
       </Item>
 
-      <Item id="cms-cell" title="CMS cell + Row open" figma="468:2013 · 468:2027" note="Spreadsheet table (C3): fixed widths per column type, horizontal scroll. Click a title to edit (Enter / click away saves, Esc cancels). Hover a row for Row open.">
+      <Item id="cms-cell" title="CMS cell + Row open" figma="468:2013 · 468:2027" note="Spreadsheet table (C3): fixed widths per column type, horizontal scroll. Click a title to edit (Enter / click away saves, Esc cancels). Hover a row for Row open (right edge, even when the columns are narrower than the table). The grip is a focusable button with gripProps.">
         <div style={{ maxWidth: 1120 }}>
           <CmsTableDemo />
+        </div>
+        <div style={{ maxWidth: 1120, marginTop: 16 }}>
+          <NarrowCmsTableDemo />
         </div>
         <div className={styles.row} style={{ marginTop: 16 }}>
           <div style={{ position: 'relative', width: 240, height: 44, background: 'var(--k-bg-input-hover)', borderRadius: 4 }}>

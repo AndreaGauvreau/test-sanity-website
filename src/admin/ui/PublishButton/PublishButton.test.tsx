@@ -34,6 +34,21 @@ describe('PublishButton', () => {
     rerender(<PublishButton state="failed" onRetry={onRetry} />)
     await userEvent.click(screen.getByRole('button', { name: 'Retry' }))
     expect(onRetry).toHaveBeenCalledTimes(1)
-    expect(screen.getByRole('status').textContent).toBe("Couldn't publish. Nothing was changed.")
+    // QA-3 : sans étape connue, l'annonce n'affirme pas que rien n'a changé (la publication n'est pas atomique).
+    expect(screen.getByRole('status').textContent).toBe('Publish failed. Retry to resume from the step that failed.')
+  })
+
+  it('failed : annonce adaptée à l\'étape en échec (QA-3)', () => {
+    const { rerender } = render(<PublishButton state="failed" failedStep={1} />)
+    const status = () => screen.getByRole('status').textContent ?? ''
+    // Étape 1 = une seule transaction Sanity, précédée du typecheck : rien n'est parti.
+    expect(status()).toBe('Publish failed at step 1 of 4. Nothing was published. Retry to try again.')
+    for (const step of [2, 3, 4] as const) {
+      rerender(<PublishButton state="failed" failedStep={step} />)
+      expect(status()).toBe(`Publish failed at step ${step} of 4. Any content changes are already live. Retry to resume from this step.`)
+      expect(status()).not.toMatch(/Nothing was (changed|published)/)
+    }
+    // Le libellé visible ne dépend pas de l'étape.
+    expect(screen.getByRole('button', { name: 'Retry' })).toBeTruthy()
   })
 })

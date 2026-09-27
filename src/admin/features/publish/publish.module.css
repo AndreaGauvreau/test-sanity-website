@@ -71,10 +71,9 @@
   border-radius: 0;
 }
 
-/* Figma « text » : V gap 2 entre le chemin et la méta. */
+/* Méta d'une rangée (sous-titre du List item) ; l'écart de 2 px vient de `textGap={2}` du kit. */
 .rowMeta {
   display: block;
-  margin-top: var(--k-space-2);
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -116,73 +115,6 @@
   margin: 0;
   padding: 0;
   list-style: none;
-}
-
-/* Checklist item (composé ici, absent du kit) : H gap 10, pad 10 0, icône 18 en haut. */
-.check {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--k-space-10);
-  padding: var(--k-space-10) 0;
-  --k-icon-current: var(--k-icon-muted);
-}
-
-.check[data-state='done'] {
-  --k-icon-current: var(--k-icon-success);
-}
-
-.check[data-state='running'] {
-  --k-icon-current: var(--k-icon-primary);
-}
-
-.check[data-state='failed'] {
-  --k-icon-current: var(--k-icon-error);
-}
-
-.checkIcon {
-  display: flex;
-  flex-shrink: 0;
-  margin-top: -1px;
-  animation: stepIn var(--k-duration-fast) var(--k-ease-out);
-}
-
-@keyframes stepIn {
-  from {
-    opacity: 0;
-    transform: scale(0.8);
-  }
-}
-
-.checkText {
-  display: flex;
-  flex: 1 1 auto;
-  flex-direction: column;
-  gap: var(--k-space-2);
-  min-width: 0;
-}
-
-.checkTitle {
-  color: var(--k-text-primary);
-  font: var(--k-text-body);
-  letter-spacing: var(--k-text-body-tracking);
-}
-
-.check[data-state='skipped'] .checkTitle {
-  color: var(--k-text-tertiary);
-}
-
-.checkDescription {
-  color: var(--k-text-tertiary);
-  font: var(--k-text-body-small);
-  letter-spacing: var(--k-text-body-small-tracking);
-}
-
-.check[data-state='failed'] .checkDescription {
-  color: var(--k-interactive-danger);
-}
-
-.checkAction {
-  margin-top: var(--k-space-6);
 }
 
 /* Figma « note » : Caption, text/muted. */
@@ -356,7 +288,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .checkIcon,
   .skeleton {
     animation: none;
   }

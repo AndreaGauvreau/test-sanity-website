@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 
 import type { CollectionDef, FieldDef } from '@/admin/core/contracts/manifest'
 import { validateFieldValue } from '@/admin/core/sanity/validate'
@@ -25,12 +25,12 @@ import {
 } from '@/admin/ui'
 
 import { richTextConfigFor } from '../lib/portable-text'
+import { stagedLabel, stagedToast, statusMenu, type StagedAction } from '../lib/staging'
 import { articlePathFor, slugify } from '../lib/slug'
 import { STATUS_LABELS, type CmsStatus } from '../lib/status'
 import type { ItemView } from '../server/data'
 import { saveFieldAction, statusAction } from '../server/actions'
 import { useCollectionContext } from './CollectionContext'
-import { useDrawerFocus } from './useDrawerFocus'
 import { ImageField } from './fields/ImageField'
 import { RichTextField } from './RichTextField/RichTextField'
 import { createFieldSaver, type FieldSaver } from './useFieldSaver'
@@ -55,6 +55,28 @@ type Props = {
   focusField?: string | null
 }
 
+/**
+ * `initialFocusRef` du Drawer vers le champ `focusField` de la fiche (null → le kit prend le premier champ).
+ * Référence STABLE dont `current` est lu au moment du focus (le champ n'existe qu'une fois le panneau monté) ;
+ * contrôle composé (Select, image, texte riche) : son premier élément focalisable.
+ */
+export function useFieldFocusRef(itemId: string, focusField: string | null | undefined): RefObject<HTMLElement | null> {
+  const target = useRef({ itemId, focusField })
+  useEffect(() => {
+    target.current = { itemId, focusField }
+  })
+  const [ref] = useState<RefObject<HTMLElement | null>>(() => ({
+    get current() {
+      const { itemId: id, focusField: field } = target.current
+      if (!field) return null
+      const el = document.getElementById(fieldId(id, field))
+      if (!el) return null
+      return el.tabIndex < 0 ? (el.querySelector<HTMLElement>('input, textarea, button, [contenteditable="true"]') ?? el) : el
+    },
+  }))
+  return ref
+}
+
 export function formatPlaces(places: readonly string[]): string {
   if (places.length === 0) return ''
   if (places.length === 1) return places[0]
@@ -70,7 +92,7 @@ export function ItemDrawer({ collection, item, listHref, siteUrl, siteDomain, fo
   const [status, setStatus] = useState<CmsStatus>(item.status)
   const [values, setValues] = useState<Record<string, unknown>>(item.values)
   const [errors, setErrors] = useState<Record<string, string | null>>({})
-  const [confirm, setConfirm] = useState<'discard' | 'delete' | null>(null)
+  const [confirm, setConfirm] = useState<'discard' | 'delete' | 'unpublish' | 'delete-live' | null>(null)
   const [busy, setBusy] = useState(false)
   const valuesRef = useRef(values)
   const statusRef = useRef(status)
@@ -157,13 +179,22 @@ export function ItemDrawer({ collection, item, listHref, siteUrl, siteDomain, fo
     }, reduced ? 0 : duration.overlay * 800)
   }
 
-  // Focus initial : le champ demandé (clic sur une cellule image, texte riche, liste…), sinon le premier champ.
-  const drawerRef = useDrawerFocus(() => {
-    if (!focusField) return null
-    const el = document.getElementById(fieldId(item.id, focusField))
-    // Contrôles composés (Select, image, texte riche) : le premier élément focalisable du champ.
-    return el && el.tabIndex < 0 ? (el.querySelector<HTMLElement>('input, textarea, button, [contenteditable="true"]') ?? el) : el
-  })
+  // Dépublier / supprimer un élément en ligne : programmé pour le prochain Publish (état partagé avec la liste).
+  const staged = list?.staged[item.id]
+  const menu = statusMenu(status, staged)
+  const has = (id: string) => menu.some((m) => m.id === id)
+  const runStage = async (kind: StagedAction | null) => {
+    if (!list) return
+    setBusy(true)
+    const error = await list.stage(item.id, kind)
+    setBusy(false)
+    setConfirm(null)
+    toast.show(error ? { type: 'error', message: error } : { type: 'success', message: stagedToast(kind, collection.singular) })
+  }
+
+  // Focus initial (fait par le Drawer du kit, même ouvert au montage) : le champ demandé (clic sur une cellule
+  // image, texte riche, liste…), sinon le premier champ.
+  const initialFocusRef = useFieldFocusRef(item.id, focusField)
 
   const title = (typeof values[collection.titleField] === 'string' && (values[collection.titleField] as string).trim()) || 'Untitled'
   const slug = collection.slugField ? (values[collection.slugField] as string) : ''
@@ -180,10 +211,10 @@ export function ItemDrawer({ collection, item, listHref, siteUrl, siteDomain, fo
         open={open}
         onClose={() => void close()}
         title={title}
-        ref={drawerRef}
+        initialFocusRef={initialFocusRef}
         status={
           <Tag tone={STATUS_TONE[status]} dot>
-            {STATUS_LABELS[status]}
+            {staged ? stagedLabel(staged) : STATUS_LABELS[status]}
           </Tag>
         }
         actions={
@@ -192,10 +223,24 @@ export function ItemDrawer({ collection, item, listHref, siteUrl, siteDomain, fo
               Preview
             </MenuItem>
             <MenuSeparator />
-            <MenuItem icon="history" danger disabled={status !== 'changed' || busy} onSelect={() => setConfirm('discard')}>
+            <MenuItem icon="history" danger disabled={!has('discard') || busy} onSelect={() => setConfirm('discard')}>
               Discard changes
             </MenuItem>
-            <MenuItem icon="trash" danger disabled={status !== 'draft' || busy} onSelect={() => setConfirm('delete')}>
+            {staged ? (
+              <MenuItem icon={staged === 'unpublish' ? 'eye' : 'history'} disabled={busy || !list} onSelect={() => void runStage(null)}>
+                {staged === 'unpublish' ? 'Keep online' : 'Don’t delete'}
+              </MenuItem>
+            ) : (
+              <MenuItem icon="eye-off" disabled={!has('unpublish') || busy || !list} onSelect={() => setConfirm('unpublish')}>
+                Unpublish
+              </MenuItem>
+            )}
+            <MenuItem
+              icon="trash"
+              danger
+              disabled={busy || (status === 'draft' ? false : !has('delete-live') || !list)}
+              onSelect={() => setConfirm(status === 'draft' ? 'delete' : 'delete-live')}
+            >
               Delete
             </MenuItem>
           </Menu>
@@ -249,6 +294,25 @@ export function ItemDrawer({ collection, item, listHref, siteUrl, siteDomain, fo
         confirmLabel="Delete"
         confirmLoading={busy}
         onConfirm={() => void runStatus('delete-draft')}
+      />
+      <Modal
+        open={confirm === 'unpublish'}
+        onClose={() => !busy && setConfirm(null)}
+        title={`Unpublish this ${singular}?`}
+        description="It stays on the site until the next Publish, then it’s taken offline. Its content is kept here as a draft."
+        confirmLabel="Unpublish"
+        confirmLoading={busy}
+        onConfirm={() => void runStage('unpublish')}
+      />
+      <Modal
+        open={confirm === 'delete-live'}
+        onClose={() => !busy && setConfirm(null)}
+        tone="destructive"
+        title={`Delete this ${singular}?`}
+        description="It stays on the site until the next Publish, then it’s removed from the site and deleted for good."
+        confirmLabel="Delete"
+        confirmLoading={busy}
+        onConfirm={() => void runStage('delete')}
       />
     </>
   )
@@ -357,7 +421,7 @@ function FieldControl({
           id={id}
           label={field.label}
           initialValue={Array.isArray(value) ? value : []}
-          config={richTextConfigFor(collection.type, field.name)}
+          config={richTextConfigFor(field)}
           error={error ?? undefined}
           helper={field.help}
           onChange={(blocks) => onChange(blocks)}

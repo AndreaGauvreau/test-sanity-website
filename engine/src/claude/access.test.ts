@@ -1,48 +1,54 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'vitest'
-import { accessKind, readAgentSettings, resolveClaudeAccess } from './access'
+import { accessKind, readAgentSettings, resolveClaudeAccess, type AccessEnv, type AccessOptions } from './access'
 
 // Valeurs factices : aucun vrai identifiant dans les tests.
 const OAT = `sk-ant-oat01-${'x'.repeat(95)}`
 
 describe('resolveClaudeAccess', () => {
   it('préfère la clé API au jeton d’abonnement', () => {
-    const result = resolveClaudeAccess({ ANTHROPIC_API_KEY: 'sk-ant-api-test', CLAUDE_CODE_OAUTH_TOKEN: OAT, NODE_ENV: 'development' })
+    const result = resolveClaudeAccess({ ANTHROPIC_API_KEY: 'sk-ant-api-test', CLAUDE_CODE_OAUTH_TOKEN: OAT }, { localMode: true })
     assert.deepEqual(result, { ok: true, access: { kind: 'api-key', secret: 'sk-ant-api-test' } })
   })
 
-  it('accepte le jeton d’abonnement en développement', () => {
-    const result = resolveClaudeAccess({ CLAUDE_CODE_OAUTH_TOKEN: `  ${OAT}  `, NODE_ENV: 'development' })
+  it('accepte le jeton d’abonnement en mode local explicite (ENGINE_MODE=local), sans NODE_ENV', () => {
+    const result = resolveClaudeAccess({ CLAUDE_CODE_OAUTH_TOKEN: `  ${OAT}  `, ENGINE_MODE: 'local' }, { localMode: true })
     assert.deepEqual(result, { ok: true, access: { kind: 'subscription', secret: OAT } })
-  })
-
-  it('accepte le jeton d’abonnement en mode local explicite, sans NODE_ENV', () => {
     assert.equal(resolveClaudeAccess({ CLAUDE_CODE_OAUTH_TOKEN: OAT }, { localMode: true }).ok, true)
   })
 
-  it('refuse le jeton d’abonnement hors développement et hors mode local explicite', () => {
-    for (const [env, options] of [
+  it('refuse le jeton d’abonnement hors mode local explicite, QUEL QUE SOIT NODE_ENV (AI-02)', () => {
+    // process.env porte aussi NODE_ENV : il doit être sans effet.
+    const cases: [AccessEnv & { NODE_ENV?: string }, AccessOptions][] = [
+      // Régression AI-02 : hébergé + NODE_ENV=development (hérité du shell ou d'engine/.env.local) → refusé.
+      [{ CLAUDE_CODE_OAUTH_TOKEN: OAT, NODE_ENV: 'development', ENGINE_MODE: 'hosted' }, { localMode: false }],
+      [{ CLAUDE_CODE_OAUTH_TOKEN: OAT, NODE_ENV: 'development' }, { localMode: false }],
+      [{ CLAUDE_CODE_OAUTH_TOKEN: OAT, NODE_ENV: 'development' }, {}],
+      // Même si l'appelant se trompait de drapeau, ENGINE_MODE=hosted l'emporte.
+      [{ CLAUDE_CODE_OAUTH_TOKEN: OAT, ENGINE_MODE: 'hosted' }, { localMode: true }],
       [{ CLAUDE_CODE_OAUTH_TOKEN: OAT, NODE_ENV: 'production' }, {}],
       [{ CLAUDE_CODE_OAUTH_TOKEN: OAT }, {}],
       [{ CLAUDE_CODE_OAUTH_TOKEN: OAT }, { localMode: false }],
-    ] as const) {
+    ]
+    for (const [env, options] of cases) {
       const result = resolveClaudeAccess(env, options)
-      assert.equal(result.ok, false)
-      assert.match((result as { error: string }).error, /only accepted for local development/)
+      assert.equal(result.ok, false, JSON.stringify({ ...env, CLAUDE_CODE_OAUTH_TOKEN: '…', ...options }))
+      assert.match((result as { error: string }).error, /only accepted by a local engine/)
+      assert.ok(!(result as { error: string }).error.includes(OAT))
     }
   })
 
   it('refuse un jeton d’abonnement collé à la place de la clé API', () => {
-    const result = resolveClaudeAccess({ ANTHROPIC_API_KEY: OAT, CLAUDE_CODE_OAUTH_TOKEN: OAT, NODE_ENV: 'development' })
+    const result = resolveClaudeAccess({ ANTHROPIC_API_KEY: OAT, CLAUDE_CODE_OAUTH_TOKEN: OAT }, { localMode: true })
     assert.equal(result.ok, false)
     assert.match((result as { error: string }).error, /move it to CLAUDE_CODE_OAUTH_TOKEN/)
   })
 
   it('recolle un jeton collé sur deux lignes, et signale un jeton coupé', () => {
     const half = Math.floor(OAT.length / 2)
-    const twoLines = resolveClaudeAccess({ CLAUDE_CODE_OAUTH_TOKEN: `${OAT.slice(0, half)}\n${OAT.slice(half)}`, NODE_ENV: 'development' })
+    const twoLines = resolveClaudeAccess({ CLAUDE_CODE_OAUTH_TOKEN: `${OAT.slice(0, half)}\n${OAT.slice(half)}` }, { localMode: true })
     assert.deepEqual(twoLines, { ok: true, access: { kind: 'subscription', secret: OAT } })
-    const cut = resolveClaudeAccess({ CLAUDE_CODE_OAUTH_TOKEN: OAT.slice(0, 60), NODE_ENV: 'development' })
+    const cut = resolveClaudeAccess({ CLAUDE_CODE_OAUTH_TOKEN: OAT.slice(0, 60) }, { localMode: true })
     assert.equal(cut.ok, true)
     assert.match((cut as { warning?: string }).warning ?? '', /two lines/)
   })

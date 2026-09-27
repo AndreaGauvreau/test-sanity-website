@@ -34,7 +34,10 @@ import {
   contractCheckId,
   describeMeasures,
   lineSummary,
+  lintChanges,
+  lintContextFor,
   loadDesignSystem as loadDs,
+  outOfScope,
   publicChecks,
   retryProblems,
   runRenderChecks,
@@ -42,6 +45,7 @@ import {
   type CoverWarning,
   type DesignSystem,
   type RawCheck,
+  type ToolAccess,
   type VisualSession,
 } from '../guards'
 import type { StoredJob, TextSnapshot, WrittenText } from '../store/store'
@@ -54,7 +58,9 @@ import { FAILED_MESSAGE, STOPPED_MESSAGE, type EditorDeps } from './types'
  * Cycle d'une demande (porté de `job.ts > runEdit` du POC, câblé sur engine-guards et engine-claude) :
  *  1. design system relu dans le clone ; copie de travail nettoyée ; tête de draft notée ;
  *  2. textes Sanity de la demande résolus, lus, et textsBefore ENREGISTRÉ avant toute écriture (piège 7) ;
- *  3. captures d'avant (aperçu), outils de Claude (set_text, measure, ask_client) ;
+ *  3. captures d'avant (aperçu), outils de Claude (set_text, measure, ask_client) ; périmètre des outils AVEC le contexte
+ *     du lint (`toolAccess.lint`, SEC-07 : chaque Edit jugé avant l'écriture) ; domaines du site en liste blanche des
+ *     textes du client (SEC-08) ;
  *  4. au plus 2 essais (le 2e reprend la session avec les refus des contrôles) : contrôles statiques, puis du rendu
  *     seulement s'ils passent, une fois l'aperçu à jour ;
  *  5. tout passe → commit sur draft au nom du client, captures, statut `done` ; sinon retour arrière COMPLET (fichiers
@@ -64,6 +70,9 @@ import { FAILED_MESSAGE, STOPPED_MESSAGE, type EditorDeps } from './types'
  */
 
 export const MAX_ATTEMPTS = 2
+
+/** Réponse de measure à Claude quand la copie de travail ne passe pas le contrôle statique (SEC-07). */
+export const MEASURE_BLOCKED = 'Measure refused: fix the reported violations first.'
 
 export type RunContext = {
   deps: EditorDeps
@@ -120,6 +129,9 @@ export async function runEditJob(ctx: RunContext): Promise<void> {
   const written: Record<string, WrittenText> = {}
   const hardcoded: Hardcoded[] = []
   const resolved: ResolvedAnswer[] = []
+  // SEC-08 : seules adresses gardées dans ce que lit le client (questions, message final, journal de Claude).
+  const allowedDomains = [...(deps.siteDomains ?? [])]
+  const toClient = (text: string) => clientMessage(text, allowedDomains)
 
   const finish = async (status: JobStatus, data: Partial<EditJob> = {}) => {
     const usage =
@@ -167,7 +179,8 @@ export async function runEditJob(ctx: RunContext): Promise<void> {
       return await finish('failed', { error: FAILED_MESSAGE })
     }
     const access = deps.access.access
-    step('info', `Claude ${modelLabel(settings.model)} takes the request${access.kind === 'subscription' ? ' (local test, subscription)' : ''}.`)
+    if (deps.fakeClaude) step('warn', `FAKE Claude (${deps.fakeClaude}): scripted local test, no real call.`)
+    else step('info', `Claude ${modelLabel(settings.model)} takes the request${access.kind === 'subscription' ? ' (local test, subscription)' : ''}.`)
 
     let ds: DesignSystem
     try {
@@ -230,7 +243,14 @@ export async function runEditJob(ctx: RunContext): Promise<void> {
       // textsBefore enregistré AVANT la première écriture (reprise après un crash : piège 7 du POC).
       await patch((stored) => void (stored.internal.texts = snapshot))
     }
-    const toolAccess = toolAccessFor(ds.zones, { scope, targets: request.targets }, fields.length)
+    const zones = request.targets.map((target) => target.zone)
+    /**
+     * SEC-07 : le hook juge le fichier FUTUR de chaque Edit avec ce contexte, AVANT l'écriture (rien d'interdit n'atteint
+     * le disque, donc ni next dev ni la mesure). Même contexte que `runStaticChecks` et `violationsNow` ; `hardcoded` est
+     * le tableau VIVANT de la demande (les valeurs accordées par le client pendant l'essai y entrent aussitôt).
+     */
+    const lint = lintContextFor({ ds, scope, zones, hardcoded })
+    const toolAccess: ToolAccess = { ...toolAccessFor(ds.zones, { scope, targets: request.targets }, fields.length), lint }
 
     const textTool = fields.length
       ? createTextTool({
@@ -252,6 +272,7 @@ export async function runEditJob(ctx: RunContext): Promise<void> {
       : undefined
 
     const askTool = createAskTool({
+      allowedDomains,
       waitForAnswers: async (asked) => {
         const answers = await ctx.waitForAnswers(asked)
         resolved.push(...answers)
@@ -276,16 +297,44 @@ export async function runEditJob(ctx: RunContext): Promise<void> {
     }
     const visual = session
     const writtenValues = () => Object.values(written).map((entry) => entry.value)
+    /**
+     * SEC-07 : l'aperçu ne rend un fichier modifié qu'après un contrôle statique vert. Avant de faire rafraîchir
+     * l'aperçu (measure, attente du signal), la copie de travail repasse le périmètre et le lint CSS/TSX : une
+     * violation → rien n'est demandé à next dev, Claude reçoit la liste (anglais).
+     */
+    const violationsNow = async (): Promise<string[]> => {
+      const changes = await repo.changes()
+      if (!changes.length) return []
+      const outside = outOfScope(changes.map((change) => change.file), toolAccess.files).map((file) => `${file}: outside the files you may edit.`)
+      const { violations } = lintChanges(changes, lint)
+      return [...outside, ...violations.map((violation) => `${violation.file}: ${violation.message}`)]
+    }
+    /** Attend l'aperçu à jour, seulement si la copie de travail passe le contrôle statique (sinon : `blocked`). */
+    const waitFreshChecked = async (texts: readonly string[]): Promise<{ blocked: string[] } | { fresh: boolean }> => {
+      const blocked = await violationsNow()
+      if (blocked.length) return { blocked }
+      return { fresh: await deps.signal.waitFresh(request.page, texts) }
+    }
     const measureTool = {
       measure: async () => {
-        if (!(await deps.signal.waitFresh(request.page, writtenValues()))) step('warn', 'The draft preview is slow to update: the measure may be outdated.')
+        const wait = await waitFreshChecked(writtenValues())
+        if ('blocked' in wait) {
+          step('warn', 'Measure refused: the changed files do not pass the automatic checks yet.')
+          return `${MEASURE_BLOCKED} The draft preview was not refreshed.\n${wait.blocked.slice(0, 8).map((line) => `- ${line}`).join('\n')}`
+        }
+        if (!wait.fresh) step('warn', 'The draft preview is slow to update: the measure may be outdated.')
         const measures = await visual.measure()
         step('measure', `Measure: ${lineSummary(measures)}`)
         return `Rendering measured in the draft preview. ${MEASURED_TEXTS}\n${describeMeasures(measures)}`
       },
     }
     if (signal.aborted) return await finish('stopped', { error: STOPPED_MESSAGE })
-    const pages = await (deps.listPages ?? listSitePages)(repo.dir).catch(() => [])
+    // Pages publiques citables : un échec de lecture est journalisé (mineur #76 du POC), la demande continue sans liste.
+    const pages = await (deps.listPages ?? listSitePages)(repo.dir).catch((error: unknown) => {
+      log(`[engine] request ${jobId}: site pages not listed: ${errorText(error)}`)
+      step('warn', 'The list of the site pages could not be read: Claude works without it.', errorText(error))
+      return [] as string[]
+    })
     const system = systemAppend(ds)
     const firstZone = ds.zones[first.zone]
     const otherZones = [...new Set(request.targets.map((target) => target.zone))].filter((zone) => zone !== first.zone)
@@ -312,6 +361,7 @@ export async function runEditJob(ctx: RunContext): Promise<void> {
           askTool,
           systemAppend: system,
           access,
+          allowedDomains,
           ...(resumed ? { resume: resumed } : {}),
           signal,
           onEvent: (event) => step(event.kind, event.label, event.detail),
@@ -329,12 +379,12 @@ export async function runEditJob(ctx: RunContext): Promise<void> {
         const reason = ctx.stopReason()
         const text = reason === 'timeout' ? timeoutMessage(settings.questionTimeoutMs) : STOPPED_MESSAGE
         step('warn', text)
-        return await finish('stopped', { error: text, ...(message ? { message: clientMessage(message) } : {}) })
+        return await finish('stopped', { error: text, ...(message ? { message: toClient(message) } : {}) })
       }
       if (!result.ok) {
         await rollback()
         step('error', result.error ?? 'Claude could not finish.')
-        return await finish('failed', { error: FAILED_MESSAGE, ...(message ? { message: clientMessage(message) } : {}) })
+        return await finish('failed', { error: FAILED_MESSAGE, ...(message ? { message: toClient(message) } : {}) })
       }
 
       const files = await repo.changedFiles()
@@ -347,7 +397,7 @@ export async function runEditJob(ctx: RunContext): Promise<void> {
         // Un texte réécrit à l'identique a pu créer un brouillon : on remet tout comme avant.
         await rollback()
         step('info', 'Claude changed nothing.')
-        return await finish('rejected', { message: clientMessage(message) })
+        return await finish('rejected', { message: toClient(message) })
       }
 
       const total = files.length + changedTexts.length
@@ -356,7 +406,7 @@ export async function runEditJob(ctx: RunContext): Promise<void> {
       const statics = await runStaticChecks({
         ds,
         scope: request.scope,
-        zones: request.targets.map((target) => target.zone),
+        zones,
         access: toolAccess,
         changes,
         hardcoded,
@@ -366,7 +416,14 @@ export async function runEditJob(ctx: RunContext): Promise<void> {
       let render: Awaited<ReturnType<typeof runRenderChecks>> | null = null
       if (statics.ok) {
         // Aperçu à jour (CSS recompilé, brouillon Sanity visible) AVANT de relever le rendu : jamais un délai fixe.
-        if (!(await deps.signal.waitFresh(request.page, changedTexts.map((text) => text.after)))) {
+        // Contrôle statique revérifié juste avant (SEC-07) : rien ne doit avoir bougé depuis runStaticChecks.
+        const wait = await waitFreshChecked(changedTexts.map((text) => text.after))
+        if ('blocked' in wait) {
+          await rollback()
+          step('error', 'The changed files no longer pass the automatic checks.', wait.blocked.join(' | '))
+          return await finish('failed', { error: FAILED_MESSAGE })
+        }
+        if (!wait.fresh) {
           await rollback()
           step('error', 'The draft preview did not show the change in time.')
           return await finish('failed', { error: FAILED_MESSAGE })
@@ -392,7 +449,7 @@ export async function runEditJob(ctx: RunContext): Promise<void> {
         const summary = describeChanges({ ds, zones: request.targets.map((target) => target.zone), files: changes, texts: changedTexts, textZones })
         step('check', `Checks: ${publicChecks(raw, warning).map((check) => `${check.label} ${check.ok ? '✓' : '✕'}`).join(' · ')}`)
         return await finish('done', {
-          message: withWarning(clientMessage(message), warning),
+          message: withWarning(toClient(message), warning),
           summary,
           checks: publicChecks(raw, warning),
           texts: changedTexts,
@@ -408,7 +465,7 @@ export async function runEditJob(ctx: RunContext): Promise<void> {
         await rollback()
         if (overBudget && attempt < MAX_ATTEMPTS) step('warn', 'The budget of this change is used up: no second attempt.')
         step('error', 'Change removed: the automatic checks still fail.')
-        return await finish('failed', { error: FAILED_MESSAGE, checks: publicChecks(raw, warning), ...(message ? { message: clientMessage(message) } : {}) })
+        return await finish('failed', { error: FAILED_MESSAGE, checks: publicChecks(raw, warning), ...(message ? { message: toClient(message) } : {}) })
       }
     }
   } catch (error) {

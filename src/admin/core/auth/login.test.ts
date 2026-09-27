@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from 'vitest'
 
+import { parseKuartzAllowlist } from '@/admin/core/contracts/roles'
+
 import { signInWithSid } from './login'
+
+const allowlist = parseKuartzAllowlist('andrea@kuartz.studio')
 
 const SID = 'abcdefghijklmnopqrstuvwxyz0123'
 
@@ -19,32 +23,38 @@ function sanity(me: unknown, meStatus = 200) {
 describe('signInWithSid', () => {
   it('Administrator → session client avec le jeton', async () => {
     const { f } = sanity({ id: 'u1', name: 'Marie', email: 'm@c.com', roles: [{ name: 'administrator' }] })
-    const res = await signInWithSid({ projectId: 'p', sid: SID, fetchImpl: f })
+    const res = await signInWithSid({ projectId: 'p', sid: SID, allowlist, fetchImpl: f })
     expect(res).toEqual({
       ok: true,
       session: { user: { id: 'u1', name: 'Marie', email: 'm@c.com' }, role: 'client', sanityRoles: ['administrator'], sanityToken: 'user-token-abcdef', dev: false },
     })
   })
-  it('Developer → kuartz', async () => {
-    const { f } = sanity({ id: 'u2', name: 'Andrea', email: 'a@k.studio', roles: [{ name: 'developer' }] })
-    const res = await signInWithSid({ projectId: 'p', sid: SID, fetchImpl: f })
+  it('Developer sur la liste blanche de Kuartz → kuartz', async () => {
+    const { f } = sanity({ id: 'u2', name: 'Andrea', email: 'andrea@kuartz.studio', roles: [{ name: 'developer' }] })
+    const res = await signInWithSid({ projectId: 'p', sid: SID, allowlist, fetchImpl: f })
     expect(res.ok && res.session.role).toBe('kuartz')
+  })
+  it('régression SEC-05 : Developer hors liste (invité par le client) → editor, pas kuartz', async () => {
+    const { f } = sanity({ id: 'u5', name: 'Tiers', email: 'dev@agence-tierce.com', roles: [{ name: 'developer' }] })
+    const res = await signInWithSid({ projectId: 'p', sid: SID, allowlist, fetchImpl: f })
+    expect(res.ok && res.session.role).toBe('editor')
+    expect(res.ok && res.session.sanityRoles).toEqual(['developer'])
   })
   it('Viewer → 403 avec message clair, jeton révoqué', async () => {
     const { f, calls } = sanity({ id: 'u3', name: 'V', email: 'v@c.com', roles: [{ name: 'viewer' }] })
-    const res = await signInWithSid({ projectId: 'p', sid: SID, fetchImpl: f })
+    const res = await signInWithSid({ projectId: 'p', sid: SID, allowlist, fetchImpl: f })
     expect(res).toMatchObject({ ok: false, status: 403, code: 'forbidden' })
     expect(!res.ok && res.message).toMatch(/\(Viewer\).*Ask the site owner/)
     expect(calls.some((u) => u.endsWith('/auth/logout'))).toBe(true)
   })
   it('non-membre (aucun rôle) → « Ask the site owner to invite you. »', async () => {
     const { f } = sanity({ id: 'u4', name: 'N', email: 'n@c.com', roles: [] })
-    const res = await signInWithSid({ projectId: 'p', sid: SID, fetchImpl: f })
+    const res = await signInWithSid({ projectId: 'p', sid: SID, allowlist, fetchImpl: f })
     expect(!res.ok && res.message).toBe("Your Sanity account isn't a member of this project. Ask the site owner to invite you.")
   })
   it('/users/me refusé → 401, jeton révoqué', async () => {
     const { f, calls } = sanity({ message: 'nope' }, 401)
-    const res = await signInWithSid({ projectId: 'p', sid: SID, fetchImpl: f })
+    const res = await signInWithSid({ projectId: 'p', sid: SID, allowlist, fetchImpl: f })
     expect(res).toMatchObject({ ok: false, status: 401 })
     expect(calls.some((u) => u.endsWith('/auth/logout'))).toBe(true)
   })

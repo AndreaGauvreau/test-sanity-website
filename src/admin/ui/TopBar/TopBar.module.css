@@ -55,6 +55,14 @@
   white-space: nowrap;
 }
 
+/* Emplacement « See error » (statusAction) : ne rétrécit pas, le texte d'état se coupe avant. */
+.statusAction {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: var(--k-space-8);
+}
+
 .autosave {
   flex-shrink: 0;
   color: var(--k-text-muted);

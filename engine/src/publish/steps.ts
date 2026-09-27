@@ -42,33 +42,58 @@ export function cleanLog(text: string | undefined): string | undefined {
 
 // ─── Étape 1 : Sanity ────────────────────────────────────────────────────────
 
+export type ContentResult = {
+  published: string[]
+  unpublished: string[]
+  deleted: string[]
+  /** Plus rien à faire (brouillon disparu, document déjà dépublié ou supprimé ailleurs). */
+  skipped: string[]
+}
+
 /**
- * Publie les brouillons EN UNE SEULE requête de l'API Actions (tout ou rien côté Sanity), chacun avec
- * `ifDraftRevisionId` = la révision vue au moment de Publish. Les documents dont le brouillon a disparu depuis
- * (publié ou abandonné ailleurs) sont sautés. Renvoie les ids publiés.
+ * Étape 1 en UNE SEULE requête de l'API Actions (tout ou rien côté Sanity) :
+ * - publier : chaque brouillon avec `ifDraftRevisionId` = la révision vue au moment de Publish (brouillon disparu depuis
+ *   → sauté ; révision différente → échec, rien publié) ;
+ * - dépublier (programmé) : `document.unpublish` si le publié existe encore (Sanity garde / crée le brouillon) ;
+ * - supprimer (programmé) : `document.delete` du publié avec son brouillon s'il existe ; jamais publié → abandon du
+ *   brouillon (`discard`).
  */
-export async function publishContent(sanity: SanityPort, items: readonly ContentSnapshot[]): Promise<{ published: string[]; skipped: string[] }> {
-  if (!items.length) return { published: [], skipped: [] }
+export async function publishContent(sanity: SanityPort, items: readonly ContentSnapshot[]): Promise<ContentResult> {
+  const result: ContentResult = { published: [], unpublished: [], deleted: [], skipped: [] }
+  if (!items.length) return result
   for (const item of items) if (!isPublishableId(item.id)) throw new StepFailure('A draft has an invalid id: nothing was published.')
-  const drafts = await sanity.getDocuments(items.map((item) => draftIdOf(item.id)))
-  const todo = items.filter((_, index) => drafts[index] !== null)
-  const skipped = items.filter((_, index) => drafts[index] === null).map((item) => item.id)
-  const changed = todo.filter((item, index) => {
-    const draft = drafts[items.indexOf(item)]
-    return draft?._rev !== item.rev
-  })
+  const docs = await sanity.getDocuments(items.flatMap((item) => [draftIdOf(item.id), item.id]))
+  const draftOf = (index: number) => docs[index * 2]
+  const publishedOf = (index: number) => docs[index * 2 + 1]
+  const changed = items.filter((item, index) => !item.action && draftOf(index) && draftOf(index)?._rev !== item.rev)
   if (changed.length) {
     throw new StepFailure(
       `${changed.map((item) => item.path).join(', ')} changed after you pressed Publish. Nothing was published: review the list and publish again.`,
     )
   }
-  if (!todo.length) return { published: [], skipped }
-  const actions: SanityAction[] = todo.map((item) => ({
-    actionType: 'sanity.action.document.publish',
-    draftId: draftIdOf(item.id),
-    publishedId: item.id,
-    ifDraftRevisionId: item.rev,
-  }))
+  const actions: SanityAction[] = []
+  items.forEach((item, index) => {
+    const draft = draftOf(index)
+    const published = publishedOf(index)
+    if (!item.action) {
+      if (!draft) return void result.skipped.push(item.id)
+      actions.push({ actionType: 'sanity.action.document.publish', draftId: draftIdOf(item.id), publishedId: item.id, ifDraftRevisionId: item.rev })
+      result.published.push(item.id)
+    } else if (item.action === 'unpublish') {
+      if (!published) return void result.skipped.push(item.id)
+      actions.push({ actionType: 'sanity.action.document.unpublish', draftId: draftIdOf(item.id), publishedId: item.id })
+      result.unpublished.push(item.id)
+    } else if (published) {
+      actions.push({ actionType: 'sanity.action.document.delete', publishedId: item.id, includeDrafts: draft ? [draftIdOf(item.id)] : [] })
+      result.deleted.push(item.id)
+    } else if (draft) {
+      actions.push({ actionType: 'sanity.action.document.discard', draftId: draftIdOf(item.id) })
+      result.deleted.push(item.id)
+    } else {
+      result.skipped.push(item.id)
+    }
+  })
+  if (!actions.length) return result
   try {
     await sanity.action(actions)
   } catch (error) {
@@ -78,7 +103,7 @@ export async function publishContent(sanity: SanityPort, items: readonly Content
     }
     throw new StepFailure('Sanity refused the publication. Nothing was published: the previous content is still live.', cleanLog(text))
   }
-  return { published: todo.map((item) => item.id), skipped }
+  return result
 }
 
 // ─── Étape 2 : git ───────────────────────────────────────────────────────────

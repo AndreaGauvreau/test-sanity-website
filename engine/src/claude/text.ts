@@ -1,4 +1,5 @@
 import type { SanityTextBinding } from '../../../src/admin/core/contracts'
+import { sanitizeClientText } from './sanitize'
 
 /**
  * Textes Sanity de l'éditeur IA : champs d'une zone résolus pour un élément choisi, validation d'un texte proposé par
@@ -236,9 +237,14 @@ export function createTextTool(options: TextToolOptions): TextToolState {
   }
 }
 
-/** Message de Claude au client, en texte simple : sans gras ni puces Markdown, retours à la ligne gardés. */
-export const clientMessage = (text: string) =>
-  text
-    .replace(/\*\*([^*]+)\*\*/g, '$1')
-    .replace(/^[ \t]*[-*•][ \t]+/gm, '')
-    .trim()
+/**
+ * Message de Claude au client, en texte simple : sans gras ni puces Markdown, retours à la ligne gardés, et sans adresse
+ * web hors de `allowedDomains` (SEC-08 : filtre commun `sanitizeClientText` ; vide par défaut = aucune adresse).
+ */
+export const clientMessage = (text: string, allowedDomains: readonly string[] = []) =>
+  sanitizeClientText(
+    text
+      .replace(/\*\*([^*]+)\*\*/g, '$1')
+      .replace(/^[ \t]*[-*•][ \t]+/gm, ''),
+    allowedDomains,
+  ).trim()

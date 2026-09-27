@@ -88,7 +88,8 @@ describe('ScriptDialog', () => {
     await user.click(code())
     await user.keyboard('<script>{{{{')
     const menu = await screen.findByRole('menu', { name: 'Blog fields' })
-    expect(menu).toBeTruthy()
+    // Focus initial posé par le Menu du kit (ouverture sans clic), sans contournement dans la fenêtre (FOLLOWUPS #40).
+    await waitFor(() => expect(document.activeElement).toBe(menu.querySelector('[role^="menuitem"]')))
     await user.click(screen.getByRole('menuitemcheckbox', { name: /Title/ }))
     expect(code().value).toBe('<script>{{title}}')
   })

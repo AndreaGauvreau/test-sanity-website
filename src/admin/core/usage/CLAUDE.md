@@ -14,7 +14,7 @@ et agrégats par période. Côté serveur seulement. Ne rend rien, n'écrit jama
 ## Contrats
 - Entrées : documents `AiUsageDoc` (`core/contracts/engine.ts`) lus avec `getReadClient({ perspective: 'raw' })` (jeton Viewer),
   requête `*[_type == "aiUsage" && _id in path("aiUsage.**") && ($since == null || createdAt >= $since)] | order(createdAt desc)`.
-  Champ facultatif lu en plus s'il existe : `request` (texte de la demande, hors contrat — voir Demandes de contrat).
+  Champ facultatif `request` (texte de la demande, contrat `AiUsageDoc.request`, ≤ 120 car., écrit par le moteur).
 - Sorties (signature STABLE, utilisée par settings/B1, ask-ai/G4, usage/B5) :
   - `getUsageSummary(period: 'month' | '3-months' | 'all-time', deps?) → Promise<UsageSummary>` avec
     `UsageSummary = { period, totals: { inputTokens, outputTokens, costUsd }, byFeature: [{ feature: 'editor'|'ask', label, usage }], byModel: [{ model, label, usage }], requests, since? }`
@@ -34,6 +34,8 @@ et agrégats par période. Côté serveur seulement. Ne rend rien, n'écrit jama
 - `costKind` d'un cumul = `estimated` dès qu'une demande l'est. Coûts arrondis au millionième de $ (`roundCost`) ;
   jetons arrondis à l'entier. L'affichage passe par `formatTokens` / `formatCost` du contrat (« 1.2M », « $0.003 »).
 - Documents mal formés (type, id, feature, date) ignorés ; nombres invalides → 0 ; rôle inconnu → `client`.
+- `UsageRow.request` : espaces et retours à la ligne réduits, recoupé à `REQUEST_MAX` = 120 caractères (longueur du
+  contrat), absent s'il est vide ou mal typé.
 - Toutes les statuts comptent (une demande échouée a coûté). Jamais de crédits, plafond, solde ni alerte (Figma B5).
 
 ## Forces
@@ -44,7 +46,8 @@ et agrégats par période. Côté serveur seulement. Ne rend rien, n'écrit jama
 - Agrégation en mémoire : tous les documents de la période sont lus (GROQ n'a pas de GROUP BY). Suffisant pour des
   milliers de demandes ; au-delà, prévoir des cumuls mensuels écrits par le moteur.
 - Mois en UTC : une demande du 1er à 00:30 heure de Paris compte dans le mois précédent.
-- « Since launch » = depuis la première demande IA, pas la date de mise en ligne du site (inconnue de l'admin).
+- `UsageSummary.since` (all-time) = date de la première demande IA ; la date de mise en ligne du site
+  (`adminConfig.site.launchedAt`) est lue par B5 (features/usage), pas ici.
 - Pas de cache : chaque rendu de B5 relit le journal (jeton Viewer, sans CDN).
 
 ## Points sensibles
@@ -60,12 +63,12 @@ et agrégats par période. Côté serveur seulement. Ne rend rien, n'écrit jama
 ## Comment modifier
 - Nouvelle période : `UsagePeriod` + `USAGE_PERIODS` + `USAGE_PERIOD_LABELS` + `periodStart` (et `AI_USAGE_PERIODS` du kit).
 - Nouvelle fonctionnalité IA : contrat `AiUsageDoc.feature` (orchestrateur), puis `USAGE_FEATURE_LABELS` + `FEATURE_ORDER`.
-- Afficher le texte de la demande : quand le moteur écrira `request`, rien à changer ici (déjà projeté et raccourci à 200 car.).
+- Texte de la demande : déjà projeté (`PROJECTION`) et recoupé à 120 car. ; changer la longueur = contrat d'abord.
 
 ## Tests
 `npx vitest run src/admin/core/usage` — 23 tests : lecture défensive, bornes des périodes (UTC, changement d'année),
 totaux, regroupements, modèle le plus récent, coût estimé, arrondis, période vide, lignes (ordre, limite 1-500,
-texte raccourci), requête (`path("aiUsage.**")`, perspective raw, `$since`), session exigée, une seule lecture pour B5.
+texte raccourci à 120 car.), requête (`path("aiUsage.**")`, perspective raw, `$since`), session exigée, une seule lecture pour B5.
 À la main : `/admin/settings/usage` (le dataset `development` n'a aucun `aiUsage` : état vide).
 
 ## Décisions et « À trancher »
@@ -73,6 +76,5 @@ texte raccourci), requête (`path("aiUsage.**")`, perspective raw, `$since`), se
 - Mois calendaires UTC plutôt que 30/90 jours glissants (libellés « This month » / « Last 3 months »).
 
 ## Demandes de contrat
-- **contracts/engine.ts (`AiUsageDoc`)** : ajouter `request?: string` (texte de la demande, ≤ 200 car.) écrit par le moteur,
-  pour la colonne « Request » de B5 (Figma). Aujourd'hui repli : « Edit on / » ou « Question ».
-- **contracts/manifest.ts (`AdminConfig.site`)** : `launchedAt?: string` (date de mise en ligne) pour « online since Sep 2, 2026 » (B5).
+- Aucune : `AiUsageDoc.request` (≤ 120 car.) et `AdminConfig.site.launchedAt` sont au contrat. Reste l'écriture de
+  `request` par le moteur (engine-publish, FOLLOWUPS #27) et le schéma `aiUsage.request` (site-adapter, #28).

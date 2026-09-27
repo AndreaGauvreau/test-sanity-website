@@ -8,7 +8,6 @@ import { autosave } from '@/admin/core/autosave'
 // Les vraies server actions ne sont jamais chargées : le formulaire reçoit de fausses actions.
 vi.mock('./actions', () => ({
   saveGeneralValueAction: vi.fn(),
-  uploadGeneralImageAction: vi.fn(),
   removeGeneralImageAction: vi.fn(),
 }))
 
@@ -149,12 +148,12 @@ describe('GeneralForm (B2)', () => {
     await waitFor(() => expect(screen.queryByText('No dark favicon: the light one is used everywhere.')).toBeNull())
   })
 
-  it('fichier de plus de 1 Mo : refusé sans appel', async () => {
+  it('fichier de plus de 5 Mo : refusé sans appel', async () => {
     const { actions, container } = setup()
     const input = container.querySelectorAll<HTMLInputElement>('input[type="file"]')[2]
-    const big = new File([new Uint8Array(1_000_001)], 'huge.jpg', { type: 'image/jpeg' })
+    const big = new File([new Uint8Array(5 * 1024 * 1024 + 1)], 'huge.jpg', { type: 'image/jpeg' })
     fireEvent.change(input, { target: { files: [big] } })
-    await waitFor(() => expect(screen.getByRole('alert').textContent).toMatch(/larger than 1 MB/))
+    await waitFor(() => expect(screen.getByRole('alert').textContent).toMatch(/larger than 5 MB/))
     expect(actions.upload).not.toHaveBeenCalled()
   })
 

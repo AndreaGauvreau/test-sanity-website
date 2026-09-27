@@ -24,10 +24,11 @@ import {
   useMotionVariants,
 } from '@/admin/ui'
 
-import { removeGeneralImageAction, saveGeneralValueAction, uploadGeneralImageAction } from './actions'
+import { removeGeneralImageAction, saveGeneralValueAction } from './actions'
 import { createDebouncer } from './debounce'
-import { GENERAL_TEXT_FIELDS, UPLOAD_MAX_BYTES, acceptFor, formatsLabel, type GeneralImageSlot, type GeneralTextField } from './fields'
+import { GENERAL_TEXT_FIELDS, UPLOAD_MAX_BYTES, UPLOAD_TOO_LARGE, acceptFor, formatsLabel, type GeneralImageSlot, type GeneralTextField } from './fields'
 import { ratioWarning, type GeneralImage } from './images'
+import { uploadGeneralImageRequest } from './upload-client'
 import { truncateWords, type GeneralView } from './view'
 import styles from './general.module.css'
 
@@ -37,7 +38,7 @@ export type GeneralFormProps = {
   view: GeneralView
   /** Droit `content.write` : sans lui, l'écran est en lecture seule. */
   canEdit: boolean
-  /** Injection pour les tests (par défaut : les server actions). */
+  /** Injection pour les tests (par défaut : les server actions ; l'envoi d'image passe par la route, upload-client.ts). */
   actions?: {
     save: (input: unknown) => Promise<ActionResult>
     upload: (form: FormData) => Promise<({ ok: true; image: GeneralImage }) | { ok: false; error: string }>
@@ -45,7 +46,7 @@ export type GeneralFormProps = {
   }
 }
 
-const DEFAULT_ACTIONS = { save: saveGeneralValueAction, upload: uploadGeneralImageAction, remove: removeGeneralImageAction }
+const DEFAULT_ACTIONS = { save: saveGeneralValueAction, upload: (form: FormData) => uploadGeneralImageRequest(form), remove: removeGeneralImageAction }
 
 type Images = Record<GeneralImageSlot, GeneralImage | null>
 type SlotState = { uploading?: string; error?: string }
@@ -151,7 +152,7 @@ export function GeneralForm({ view, canEdit, actions = DEFAULT_ACTIONS }: Genera
 
   const upload = useCallback(async (slot: GeneralImageSlot, file: File) => {
     if (file.size > UPLOAD_MAX_BYTES) {
-      setSlot(slot, { error: 'This image is larger than 1 MB. Use a smaller file.' })
+      setSlot(slot, { error: UPLOAD_TOO_LARGE })
       return
     }
     setSlot(slot, { uploading: file.name })

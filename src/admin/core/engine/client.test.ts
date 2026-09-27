@@ -34,6 +34,16 @@ describe('engineClient (navigateur → relais)', () => {
     await expect(engineClient.health({ fetchImpl: fakeFetch(new TypeError('Failed to fetch')) })).rejects.toBeInstanceOf(EngineClientError)
     await expect(engineClient.health({ fetchImpl: fakeFetch(new Response('<html>', { status: 500 })) })).rejects.toMatchObject({ code: 'internal' })
   })
+  it('publish.stage / unstage → POST /publish/stage et /publish/unstage', async () => {
+    const f = fakeFetch(Response.json({ state: 'idle' }))
+    await engineClient.publish.stage({ kind: 'unpublish', id: 'post-1' }, { fetchImpl: f })
+    await engineClient.publish.unstage('post-1', { fetchImpl: f })
+    const calls = f.mock.calls as [string, RequestInit][]
+    expect(calls.map(([url, init]) => [url, init.method, JSON.parse(String(init.body))])).toEqual([
+      ['/admin/api/engine/publish/stage', 'POST', { kind: 'unpublish', id: 'post-1' }],
+      ['/admin/api/engine/publish/unstage', 'POST', { id: 'post-1' }],
+    ])
+  })
   it('shotUrl pour <img>', () => {
     expect(engineClient.editor.shotUrl('j1', '001-before.png')).toBe('/admin/api/engine/editor/jobs/j1/shots/001-before.png')
   })

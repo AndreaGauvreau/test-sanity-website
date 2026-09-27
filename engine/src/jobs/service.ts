@@ -30,7 +30,8 @@ import { INTERRUPTED_MESSAGE, STOPPED_MESSAGE, type EditorDeps } from './types'
  */
 
 export type EditorService = EditorGate & {
-  state(page: string): Promise<EditorState>
+  /** État de l'éditeur pour `user` (l'URL de l'aperçu porte un jeton court émis pour lui). */
+  state(page: string, user: EngineUser): Promise<EditorState>
   request(user: EngineUser, body: unknown): Promise<EditJob>
   job(id: string): EditJob
   answer(user: EngineUser, id: string, body: unknown): Promise<EditJob>
@@ -277,19 +278,21 @@ export function createEditorService(deps: EditorDeps): EditorService {
   const service: EditorService = {
     blocker,
 
-    async state(page) {
+    async state(page, user) {
       if (!isPagePath(page)) throw badRequest('Invalid page.')
       const thread = store.thread(page)
       const usages = thread.flatMap((entry) => (entry.type === 'job' && entry.job.usage ? [entry.job.usage] : []))
       return {
         page,
         health: await deps.health(),
-        preview: deps.previewUrl(page),
+        preview: await deps.previewUrl(page, user),
         active: store.activeJobs()[0]?.job ?? null,
         pending: store.openChange()?.change ?? null,
         thread,
         conversationUsage: sumUsage(usages),
-        model: { id: deps.settings.model, label: modelLabel(deps.settings.model) },
+        model: deps.fakeClaude
+          ? { id: deps.settings.model, label: `Fake Claude (${deps.fakeClaude}) — no real call` }
+          : { id: deps.settings.model, label: modelLabel(deps.settings.model) },
       }
     },
 

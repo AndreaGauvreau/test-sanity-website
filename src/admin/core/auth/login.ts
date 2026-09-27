@@ -1,11 +1,12 @@
 import type { Session } from '@/admin/core/contracts/session'
 
 import { AUTH_MESSAGES } from './constants'
-import { resolveAdminRole } from './roles'
+import { resolveAdminRole, type KuartzAllowlist } from './roles'
 import { exchangeSid, fetchSanityMe, revokeSanityToken, SanityAuthError, type FetchLike } from './sanity-auth'
 
 /**
- * Connexion A1 côté serveur : sid → jeton → /users/me → rôle de l'admin. Pur (fetch injectable).
+ * Connexion A1 côté serveur : sid → jeton → /users/me → rôle de l'admin. Pur (fetch et liste blanche injectés).
+ * Le rôle « kuartz » exige la liste blanche de Kuartz (SEC-05, voir roles.ts) : un Developer hors liste = editor.
  * Un compte sans rôle d'admin (Viewer, rôle personnalisé, non-membre) est refusé ET son jeton est révoqué
  * aussitôt : on ne garde jamais un jeton qui n'ouvre pas de session.
  */
@@ -16,7 +17,13 @@ export type SignInResult =
 
 const ROLE_TITLES: Record<string, string> = { viewer: 'Viewer', contributor: 'Contributor' }
 
-export async function signInWithSid(input: { projectId: string; sid: string; fetchImpl?: FetchLike }): Promise<SignInResult> {
+export async function signInWithSid(input: {
+  projectId: string
+  sid: string
+  /** Liste blanche de Kuartz (route : `kuartzAllowlistFromEnv()`). */
+  allowlist: KuartzAllowlist
+  fetchImpl?: FetchLike
+}): Promise<SignInResult> {
   const fetchImpl = input.fetchImpl ?? fetch
   let token: string
   try {
@@ -33,7 +40,7 @@ export async function signInWithSid(input: { projectId: string; sid: string; fet
     return failure(err)
   }
 
-  const role = resolveAdminRole(me.roles)
+  const role = resolveAdminRole(me.roles, me, input.allowlist)
   if (!role) {
     await revokeSanityToken(input.projectId, token, fetchImpl)
     const message =

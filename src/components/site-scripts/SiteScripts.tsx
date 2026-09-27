@@ -6,6 +6,7 @@ import {
   parseScriptCode,
   resolveScriptParts,
   scriptsForPage,
+  verifiedScripts,
   type ScriptPlacement,
   type SiteScript,
 } from '@/lib/site-scripts'
@@ -26,9 +27,11 @@ type Props = {
 /**
  * Scripts de siteSettings (B3, G6), rendus là où le layout ou la page les pose.
  *
- * POINT SENSIBLE — XSS par conception : le code est écrit par Kuartz (droit settings.code) et injecté
- * tel quel ; seules les valeurs des {{variables}} (contenu de l'article) sont échappées. Jamais rendu en
- * Draft Mode ni dans l'aperçu de l'éditeur IA (KZ_EDITOR_PREVIEW) : ce ne sont pas des visiteurs.
+ * POINT SENSIBLE — XSS par conception : le code est injecté tel quel. Seuls les scripts SIGNÉS par l'admin
+ * (droit settings.code, secret serveur SCRIPTS_SIGNING_SECRET) sont rendus : un script écrit ou modifié
+ * ailleurs (Studio, API) est ignoré (SEC-04). Les valeurs des {{variables}} (contenu de l'article) ne sont
+ * remplacées que dans une chaîne, échappées (SEC-01). Jamais rendu en Draft Mode ni dans l'aperçu de
+ * l'éditeur IA (KZ_EDITOR_PREVIEW) : ce ne sont pas des visiteurs.
  *
  * Correspondance avec Next (le layout du site n'est pas le layout racine, qui ne lui appartient pas) :
  * - <script> JavaScript, « Once » : next/script (id stable, exécuté une fois par chargement du site),
@@ -43,7 +46,10 @@ export async function SiteScripts({ scripts, page, placements, values }: Props) 
   const { isEnabled: isDraftMode } = await draftMode()
   if (isDraftMode) return null
 
-  const selected = scriptsForPage(scripts, page).filter((script) => placements.includes(script.placement))
+  const candidates = scriptsForPage(scripts, page).filter((script) => placements.includes(script.placement))
+  if (candidates.length === 0) return null
+  // Secret lu à l'exécution, côté serveur seulement (jamais NEXT_PUBLIC_*).
+  const selected = await verifiedScripts(candidates, process.env.SCRIPTS_SIGNING_SECRET)
   if (selected.length === 0) return null
 
   return (
@@ -65,7 +71,7 @@ export async function SiteScripts({ scripts, page, placements, values }: Props) 
                 key={id}
                 id={id}
                 type={part.type}
-                // Contenu écrit par Kuartz (valeurs des variables échappées) : voir le point sensible.
+                // Contenu signé par l'admin (valeurs des variables échappées) : voir le point sensible.
                 dangerouslySetInnerHTML={{ __html: part.content }}
               />
             )

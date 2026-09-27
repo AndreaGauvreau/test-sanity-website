@@ -33,6 +33,13 @@ describe('escapeValue', () => {
     expect(JSON.parse(`"${escaped}"`)).toBe(value)
   })
 
+  // SEC-01 : la valeur doit rester inerte entre guillemets doubles, apostrophes ET accents graves.
+  it('js : ni apostrophe, ni accent grave, ni $, ni barre oblique en clair', () => {
+    const escaped = escapeValue("it's `x` ${alert(1)} */", 'js')
+    expect(escaped).not.toMatch(/['`$/]/)
+    expect(JSON.parse(`"${escaped}"`)).toBe("it's `x` ${alert(1)} */")
+  })
+
   it('css : ni guillemet ni accolade', () => {
     const escaped = escapeValue(`a"}body{color:red}'`, 'css')
     expect(escaped).not.toMatch(/["'{}]/)

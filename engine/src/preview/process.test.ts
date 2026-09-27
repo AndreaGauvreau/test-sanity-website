@@ -69,7 +69,7 @@ describe('createPreviewProcess', () => {
     assert.deepEqual(h.spawned[0].args, ['dev', '-H', '127.0.0.1', '-p', '4999'])
     assert.equal(h.spawned[0].cwd, '/ws/repo')
     assert.equal(h.spawned[0].detached, true)
-    assert.deepEqual(Object.keys(h.spawned[0].env).sort(), ['FORCE_COLOR', 'HOME', 'NEXT_TELEMETRY_DISABLED', 'PATH'])
+    assert.deepEqual(Object.keys(h.spawned[0].env).sort(), ['EDITOR', 'FORCE_COLOR', 'HOME', 'NEXT_TELEMETRY_DISABLED', 'PATH', 'REACT_EDITOR', 'VISUAL'])
     assert.equal(await h.preview.waitReady(1_000), true)
     assert.deepEqual({ ...h.preview.status(), lastExit: null }, { state: 'ready', ready: true, url: 'http://127.0.0.1:4999', pid: 1000, restarts: 0, lastExit: null, error: null })
     h.children[0].stdout.write('▲ Next.js 16\n compiling...\n ⨯ Error: boom\n')
@@ -118,13 +118,38 @@ describe('createPreviewProcess', () => {
     await h.preview.stop()
   })
 
-  it('previewEnv ne garde que les variables système', () => {
-    assert.deepEqual(previewEnv({ PATH: '/bin', ANTHROPIC_API_KEY: 'x', CLAUDE_CODE_OAUTH_TOKEN: 'y', TMPDIR: '/t' }), {
+  it('previewEnv ne garde que les variables système, avec un éditeur inerte (SEC-06)', () => {
+    assert.deepEqual(previewEnv({ PATH: '/bin', ANTHROPIC_API_KEY: 'x', CLAUDE_CODE_OAUTH_TOKEN: 'y', TMPDIR: '/t', REACT_EDITOR: 'code', EDITOR: 'vim' }), {
       NEXT_TELEMETRY_DISABLED: '1',
       FORCE_COLOR: '0',
+      REACT_EDITOR: 'none',
+      VISUAL: 'true',
+      EDITOR: 'true',
       PATH: '/bin',
       TMPDIR: '/t',
     })
+  })
+
+  it('SEC-06 : le processus next dev lancé reçoit REACT_EDITOR=none (launch-editor de Next ne lance rien)', () => {
+    const seen: NodeJS.ProcessEnv[] = []
+    const spawn: SpawnFn = (_command, _args, options) => {
+      seen.push(options.env)
+      return new FakeChild(0)
+    }
+    const preview = createPreviewProcess({
+      repoDir: '/r',
+      port: 4999,
+      origin: 'http://127.0.0.1:4999',
+      secret: 's',
+      spawn,
+      command: 'next',
+      baseEnv: { PATH: '/bin', REACT_EDITOR: 'code' },
+      fetchImpl: (async () => new Response('', { status: 503 })) as unknown as typeof fetch,
+      log: () => {},
+    })
+    preview.start()
+    preview.stopSync()
+    assert.equal(seen[0]?.REACT_EDITOR, 'none')
   })
 
   it('sans next installé dans le clone : échec clair, pas de processus', async () => {

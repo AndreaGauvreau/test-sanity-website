@@ -1,0 +1,76 @@
+/* Figma « Checklist item » (E1, carte « After “Publish” ») : H gap 10, pad 10 0 ; icône 18 ;
+   titre Body text/primary, description Body Small text/tertiary, V gap 2. */
+.item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--k-space-10);
+  padding: var(--k-space-10) 0;
+  --k-icon-current: var(--k-icon-muted);
+}
+
+.item[data-state='done'] {
+  --k-icon-current: var(--k-icon-success);
+}
+
+.item[data-state='running'] {
+  --k-icon-current: var(--k-icon-primary);
+}
+
+.item[data-state='failed'] {
+  --k-icon-current: var(--k-icon-error);
+}
+
+.icon {
+  display: flex;
+  flex-shrink: 0;
+  margin-top: -1px;
+  animation: stepIn var(--k-duration-fast) var(--k-ease-out);
+}
+
+/* Nouvel état : l'icône entre depuis 0.8 (jamais depuis 0), 150 ms ease-out. */
+@keyframes stepIn {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+}
+
+.text {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: var(--k-space-2);
+  min-width: 0;
+}
+
+.title {
+  color: var(--k-text-primary);
+  font: var(--k-text-body);
+  letter-spacing: var(--k-text-body-tracking);
+}
+
+.item[data-state='skipped'] .title {
+  color: var(--k-text-tertiary);
+}
+
+.description {
+  color: var(--k-text-tertiary);
+  font: var(--k-text-body-small);
+  letter-spacing: var(--k-text-body-small-tracking);
+}
+
+.item[data-state='failed'] .description {
+  color: var(--k-interactive-danger);
+}
+
+.action {
+  display: flex;
+  gap: var(--k-space-8);
+  margin-top: var(--k-space-6);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .icon {
+    animation: none;
+  }
+}

@@ -6,9 +6,10 @@ import path from 'node:path'
 import { afterEach, describe, it } from 'vitest'
 import type { EngineError } from '../server/errors'
 import { fakeScenarios } from '../claude'
-import { CLIENT, editRequest, HERO_CSS, KUARTZ, PAGE_DOC, TITLE_FIELD } from '../jobs/testing'
+import type { EngineUser } from '../../../src/admin/core/contracts'
+import { CLIENT, editRequest, HERO_CSS, KUARTZ, LEDE_MUTED, ledeColor, PAGE_DOC, TITLE_FIELD } from '../jobs/testing'
 import { INTERRUPTED_PUBLISH } from './service'
-import { readExtra } from './state'
+import { readExtra, readMarks } from './state'
 import { makePublishBench, writeDraft, type PublishBench, type PublishBenchOptions } from './testing'
 
 /**
@@ -28,6 +29,7 @@ async function setup(options: PublishBenchOptions = {}) {
   return bench
 }
 
+const EDITOR: EngineUser = { id: 'u-ed', name: 'Paul Editor', email: 'paul@conduit.test', role: 'editor' }
 const HOME = { _id: PAGE_DOC, _type: 'dockSchedulingPage' }
 const POST = {
   _id: 'post-carrier',
@@ -156,7 +158,7 @@ describe('POST /publish', () => {
 
   it('contenu + code (vrai cycle de l’éditeur) : typecheck, main ← draft sans checkout, tag, hook Vercel, statut published', async () => {
     const b = await setup({
-      script: [fakeScenarios.editCss(HERO_CSS, 'color: var(--color-text-muted);', 'color: var(--color-text);', 'Darker.')],
+      script: [fakeScenarios.editCss(HERO_CSS, LEDE_MUTED, ledeColor('var(--color-text)'), 'Darker.')],
       deployHookUrl: 'https://api.vercel.com/v1/integrations/deploy/secret-hook',
       respond: (call) => (call.url.includes('vercel') ? { status: 201, body: '{"job":{"id":"dpl_job1","state":"PENDING"}}' } : { status: 200 }),
     })
@@ -188,7 +190,7 @@ describe('POST /publish', () => {
     assert.ok(!JSON.stringify(status).includes('secret-hook'))
   })
 
-  it('échec au build : état failed, journal, main inchangée, contenu déjà en ligne ; retry reprend à l’étape 2', async () => {
+  it('code qui ne compile pas : typecheck AVANT l’étape 1, rien publié (contenu compris) ; retry sans second typecheck', async () => {
     let compiles = false
     const b = await setup({ typecheck: async () => (compiles ? null : "src/components/Hero.tsx(3,1): error TS1005: ';' expected.") })
     const change = await b.addValidatedChange({ file: HERO_CSS, content: '.title { color: red; }\n' })
@@ -199,10 +201,14 @@ describe('POST /publish', () => {
     await b.publish.idle()
     let status = await b.publish.status()
     assert.equal(status.state, 'failed')
-    assert.equal(status.run?.step, 2)
-    assert.deepEqual(status.run?.steps.map((step) => step.status), ['done', 'failed', 'waiting', 'waiting'])
-    assert.match(status.run?.error?.message ?? '', /doesn’t compile.*previous code version is still live.*content changes are already live/)
+    assert.equal(status.run?.step, 1)
+    assert.deepEqual(status.run?.steps.map((step) => step.status), ['failed', 'waiting', 'waiting', 'waiting'])
+    assert.match(status.run?.error?.message ?? '', /doesn’t compile, so nothing was published/)
+    assert.doesNotMatch(status.run?.error?.message ?? '', /already live/)
     assert.match(status.run?.error?.log ?? '', /TS1005/)
+    // Rien n'est parti : ni le contenu, ni le code.
+    assert.ok(b.sanity.docs[`drafts.${PAGE_DOC}`], 'brouillon toujours là')
+    assert.equal(b.sanity.log.filter((line) => line.startsWith('sanity.action')).length, 0)
     assert.equal(b.git('rev-parse', 'main'), mainBefore)
     assert.deepEqual(b.store.publications.get().publications.map((p) => [p.number, p.status]), [[1, 'failed']])
     assert.equal(b.store.editor.change(change.id)?.change.status, 'validated')
@@ -216,11 +222,19 @@ describe('POST /publish', () => {
     status = await b.publish.status()
     assert.equal(status.state, 'published')
     assert.deepEqual(status.run?.steps.map((step) => step.status), ['done', 'done', 'skipped', 'done'])
-    assert.equal(b.sanity.log.filter((line) => line.startsWith('sanity.action.document.publish')).length, 1, 'étape 1 pas refaite')
+    assert.equal(b.sanity.log.filter((line) => line.startsWith('sanity.action.document.publish')).length, 1)
+    assert.equal(b.typechecks, 2, 'échec + succès à l’étape 1 ; l’étape 2 ne recompile pas le même draft')
     assert.equal(b.git('rev-parse', 'main'), b.git('rev-parse', 'draft'))
     assert.deepEqual(b.store.publications.get().publications.map((p) => [p.number, p.status, p.tag]), [[1, 'live', 'publication-1']])
     assert.equal(b.store.editor.change(change.id)?.change.status, 'published')
     await rejects(b.publish.retry(CLIENT), 409, 'conflict')
+  })
+
+  it('design en attente : `page` rempli d’après la modification (View ↗ d’E1)', async () => {
+    const b = await setup()
+    const change = await b.addValidatedChange({ file: HERO_CSS, content: '.title { color: red; }\n' })
+    const [item] = (await b.publish.status()).pending.design
+    assert.deepEqual([item.changeId, item.page], [change.id, '/'])
   })
 
   it('échec de la revalidation (étape 4) puis retry ; la publication suivante prend le numéro suivant', async () => {
@@ -274,7 +288,7 @@ describe('POST /publish', () => {
   })
 
   it('409 : liste changée, @version périmée, demande active, modification non validée, publication en cours ; 400 sans rien', async () => {
-    const b = await setup({ script: [fakeScenarios.ask([{ question: 'Which size?', options: [{ label: 'Heading XL', tone: 'recommended' }, { label: 'Keep it', tone: 'neutral' }] }]), fakeScenarios.editCss(HERO_CSS, 'color: var(--color-text-muted);', 'color: var(--color-text);')] })
+    const b = await setup({ script: [fakeScenarios.ask([{ question: 'Which size?', options: [{ label: 'Heading XL', tone: 'recommended' }, { label: 'Keep it', tone: 'neutral' }] }]), fakeScenarios.editCss(HERO_CSS, LEDE_MUTED, ledeColor('var(--color-text)'))] })
     await rejects(b.publish.publish(CLIENT, { expected: [] }), 400, 'bad_request')
     await rejects(b.publish.publish(CLIENT, { nope: true }), 400, 'bad_request')
     await writeDraft(b.sanity, HOME, { 'hero.title': 'One' })
@@ -361,6 +375,83 @@ describe('POST /publish', () => {
     await b.publish.idle()
     assert.equal((await b.publish.status()).state, 'published')
     assert.equal((b.sanity.docs[PAGE_DOC].hero as { title: string }).title, 'Two')
+  })
+})
+
+describe('POST /publish/stage et /publish/unstage', () => {
+  it('dépublier au prochain Publish : ligne « Will be unpublished », exécutée à l’étape 1, brouillon retenu ensuite', async () => {
+    const b = await setup()
+    await b.sanity.createIfNotExists(POST)
+    let status = await b.publish.stage(CLIENT, { kind: 'unpublish', id: POST._id })
+    assert.equal(status.state, 'pending')
+    const [item] = status.pending.content
+    assert.deepEqual(
+      [item.id, item.action, item.path, item.summary, item.viewPath, item.author],
+      [POST._id, 'unpublish', 'Blog › Carrier portals: a checklist', 'Will be unpublished', '/blog/carrier-portals', CLIENT.name],
+    )
+    assert.ok(b.sanity.docs[POST._id], 'rien ne change avant Publish')
+
+    await b.publish.publish(CLIENT, { expected: [`${item.id}@${item.updatedAt}`] })
+    await b.publish.idle()
+    status = await b.publish.status()
+    assert.equal(status.state, 'published', JSON.stringify(status.run?.error))
+    assert.match(status.run?.steps[0].detail ?? '', /1 unpublished/)
+    assert.equal(b.sanity.docs[POST._id], undefined, 'publié retiré')
+    assert.ok(b.sanity.docs[`drafts.${POST._id}`], 'Sanity garde le contenu en brouillon')
+    // Le brouillon laissé par la dépublication n'est PAS « à publier » (sinon le Publish suivant le remettrait en ligne).
+    assert.deepEqual(status.pending.content, [])
+    assert.deepEqual(b.store.publications.get().publications[0].content, [{ id: POST._id, path: 'Blog › Carrier portals: a checklist' }])
+    // Modifié ensuite : il redevient un contenu à publier.
+    await b.sanity.patch(`drafts.${POST._id}`, { set: { excerpt: 'Back soon.' } })
+    status = await b.publish.status()
+    assert.deepEqual(status.pending.content.map((entry) => [entry.id, entry.summary, entry.action]), [[POST._id, 'New post', undefined]])
+  })
+
+  it('supprimer au prochain Publish : publié + brouillon supprimés en une requête, avec un brouillon publié à côté', async () => {
+    const b = await setup()
+    await b.sanity.createIfNotExists(POST)
+    await writeDraft(b.sanity, POST, { excerpt: 'Edited.' })
+    await writeDraft(b.sanity, HOME, { 'hero.title': 'One' })
+    const status = await b.publish.stage(EDITOR, { kind: 'delete', id: POST._id })
+    assert.deepEqual(
+      status.pending.content.map((entry) => [entry.id, entry.action ?? 'publish', entry.summary]).sort(),
+      [[PAGE_DOC, 'publish', '“One”'], [POST._id, 'delete', 'Will be deleted']],
+      'la ligne programmée remplace le brouillon du même document',
+    )
+    await b.publish.publish(CLIENT, { expected: await keysOf(b) })
+    await b.publish.idle()
+    assert.equal((await b.publish.status()).state, 'published')
+    assert.equal(b.sanity.docs[POST._id], undefined)
+    assert.equal(b.sanity.docs[`drafts.${POST._id}`], undefined)
+    assert.equal((b.sanity.docs[PAGE_DOC].hero as { title: string }).title, 'One')
+    assert.deepEqual(readMarks(b.store.publications.get()), { staged: {}, held: {} })
+  })
+
+  it('refus : hors collection 400, inconnu 404, dépublier un brouillon jamais publié 409, publication en cours 409 ; unstage et Discard annulent', async () => {
+    const b = await setup()
+    await b.sanity.createIfNotExists(POST)
+    await rejects(b.publish.stage(CLIENT, { kind: 'unpublish', id: PAGE_DOC }), 400, 'bad_request')
+    await rejects(b.publish.stage(CLIENT, { kind: 'delete', id: 'post-missing' }), 404, 'not_found')
+    await rejects(b.publish.stage(CLIENT, { kind: 'archive', id: POST._id }), 400, 'bad_request')
+    await rejects(b.publish.stage(CLIENT, { kind: 'delete', id: 'drafts.post-carrier' }), 404, 'not_found')
+    await b.sanity.createIfNotExists({ _id: 'drafts.post-new', _type: 'post', title: 'New one' })
+    await rejects(b.publish.stage(CLIENT, { kind: 'unpublish', id: 'post-new' }), 409, 'conflict')
+    const release = b.lock.acquirePublish()
+    await rejects(b.publish.stage(CLIENT, { kind: 'delete', id: POST._id }), 409, 'publishing')
+    await rejects(b.publish.unstage(CLIENT, { id: POST._id }), 409, 'publishing')
+    release()
+
+    await b.publish.stage(CLIENT, { kind: 'delete', id: POST._id })
+    let status = await b.publish.unstage(CLIENT, { id: POST._id })
+    assert.ok(!status.pending.content.some((entry) => entry.id === POST._id))
+    await rejects(b.publish.unstage(CLIENT, { id: POST._id }), 404, 'not_found')
+    await rejects(b.publish.unstage(CLIENT, {}), 400, 'bad_request')
+
+    // Discard d'une ligne programmée : annule l'action, le document n'est pas touché.
+    await b.publish.stage(CLIENT, { kind: 'unpublish', id: POST._id })
+    status = await b.publish.discard(CLIENT, { kind: 'content', id: POST._id })
+    assert.ok(!status.pending.content.some((entry) => entry.id === POST._id))
+    assert.ok(b.sanity.docs[POST._id])
   })
 })
 

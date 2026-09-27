@@ -1,15 +1,8 @@
-/* Champs composés du panneau C4 : image (Image upload + « Choose from Media ») et choix dans la médiathèque. */
+/* Champs composés du panneau C4 : image (Image upload du kit, « Choose from Media » dans son emplacement `actions`)
+   et choix dans la médiathèque. */
 
 .imageField {
-  display: flex;
-  flex-direction: column;
-  gap: var(--k-space-4);
   outline: none;
-}
-
-.imageActions {
-  display: flex;
-  justify-content: flex-start;
 }
 
 .picker {

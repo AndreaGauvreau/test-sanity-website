@@ -11,6 +11,9 @@ import { urlFor } from '@/sanity/lib/image'
 import {
   arrayItems,
   childOf,
+  mergeArrayItems,
+  moveTarget,
+  previousSavedKey,
   imageAssetId,
   isFixedLength,
   itemPath,
@@ -21,8 +24,10 @@ import {
   textValue,
   toImage,
   toReference,
+  type ArrayOp,
   type Obj,
 } from '../lib/form'
+import type { SaveResult } from '../server/save'
 import { isHiddenField } from '../lib/manifest'
 import { useForm } from './FormContext'
 import { useFieldSave } from './useFieldSave'
@@ -31,8 +36,9 @@ import styles from './fields.module.css'
 /**
  * Champs du formulaire généré depuis le manifeste (C1). Un composant par genre de FieldDef ; chacun valide tout de
  * suite dans le navigateur (validateFieldValue, la même fonction que le serveur) et s'enregistre seul dans le
- * brouillon (useFieldSave → server action). Les tableaux à longueur variable s'enregistrent en entier (ajout,
- * suppression), ceux à longueur fixe champ par champ.
+ * brouillon (useFieldSave → server action). Les tableaux à longueur variable s'enregistrent ÉLÉMENT PAR ÉLÉMENT par
+ * leur clé (ajout, modification, retrait, déplacement : écritures sans course de core/sanity), ceux à longueur fixe
+ * champ par champ.
  */
 
 export type FieldProps = {
@@ -340,28 +346,113 @@ function FixedArrayField({ field, path, value, label }: FieldProps) {
   )
 }
 
+/** Message de validation d'UN élément (sous-champs), sans les bornes du tableau : null = l'élément peut partir. */
+function itemError(field: FieldDef, item: Obj): string | null {
+  return validateFieldValue({ ...field, min: undefined, max: undefined, required: false }, [item])
+}
+
 /**
- * Longueur variable : ajout et suppression dans les bornes min / max. Le tableau entier est enregistré (FieldDef du
- * tableau : bornes, clés, sous-champs) ; un élément incomplet n'est pas envoyé tant qu'il est invalide.
+ * Longueur variable : ajout, suppression et réordonnancement dans les bornes min / max. Chaque opération part SEULE,
+ * par la clé de l'élément (`form.saveArray` → `savePageArrayAction` → insertDraftArrayItem / updateDraftArray /
+ * moveDraftArrayItem) : un ajout fait ailleurs entre-temps n'est jamais effacé (FOLLOWUPS #40). Les opérations d'un
+ * même tableau passent l'une après l'autre (file locale) ; un élément neuf reste local tant qu'il est invalide, puis
+ * part en `insert`, ensuite en `update`. Quand la file est vide, le tableau renvoyé par le serveur est fusionné avec
+ * la saisie locale (mergeArrayItems).
  */
 function VariableArrayField({ field, path, value, label }: FieldProps) {
   const form = useForm()
-  const [items, setItems] = useState<Obj[]>(() => arrayItems(value))
+  const [items, setItemsState] = useState<Obj[]>(() => arrayItems(value))
+  const itemsRef = useRef(items)
   const [localError, setLocalError] = useState<string | null>(null)
-  const saver = useFieldSave((next: Obj[]) => form.saveField(path, next), items)
+  const [opError, setOpError] = useState<string | null>(null)
+  // Clés des éléments ajoutés ici et pas encore écrits ; clés retirées ici (une sauvegarde en retard les ignore).
+  const unsaved = useRef(new Set<string>())
+  const removed = useRef(new Set<string>())
+  const queue = useRef<Promise<unknown>>(Promise.resolve())
+  const pending = useRef(0)
   const itemLabel = field.itemLabel ?? 'Item'
   const title = label ?? field.label
 
-  const commit = (next: Obj[], immediate = false) => {
-    setItems(next)
-    const message = validateFieldValue(field, next.length ? next : null)
-    setLocalError(message)
-    if (message) {
-      saver.cancel()
-      return
-    }
-    saver.schedule(next)
-    if (immediate) void saver.flush()
+  const setItems = (next: Obj[]) => {
+    itemsRef.current = next
+    setItemsState(next)
+    setLocalError(validateFieldValue(field, next.length ? next : null))
+  }
+
+  /**
+   * File des opérations du tableau. `build` est appelée au moment d'envoyer (après les précédentes) : elle voit l'état
+   * à jour (élément déjà inséré ou non, ordre local). null → rien à envoyer. `track` : signale l'enregistrement dans
+   * la Top bar (les modifications d'élément le font déjà via useFieldSave).
+   */
+  const enqueue = (build: () => ArrayOp | null, track: boolean): Promise<SaveResult> => {
+    pending.current++
+    const task = queue.current.then(async (): Promise<SaveResult> => {
+      try {
+        const op = build()
+        if (!op) return { ok: true }
+        if (track) autosave.saving()
+        const result = await form.saveArray(path, op)
+        if (!result.ok) {
+          if (track) {
+            setOpError(result.error)
+            autosave.failed(result.error)
+          }
+          return result
+        }
+        if (op.op === 'insert') unsaved.current.delete(op.item._key as string)
+        if (track) {
+          setOpError(null)
+          autosave.saved()
+        }
+        // Tableau du serveur appliqué seulement file vide : une opération encore en attente garde l'ordre local.
+        if (result.items && pending.current === 1) setItems(mergeArrayItems(itemsRef.current, result.items, unsaved.current))
+        return { ok: true }
+      } catch {
+        const message = "Couldn't save. Check your connection and try again."
+        if (track) {
+          setOpError(message)
+          autosave.failed(message)
+        }
+        return { ok: false, error: message }
+      } finally {
+        pending.current--
+      }
+    })
+    queue.current = task
+    return task
+  }
+
+  /** Enregistrement d'un élément (appelé par useFieldSave de sa carte) : insert s'il est neuf, sinon update. */
+  const saveItem = (item: Obj): Promise<SaveResult> => {
+    const key = item._key as string
+    return enqueue(() => {
+      if (removed.current.has(key)) return null
+      if (unsaved.current.has(key)) return { op: 'insert', item, after: previousSavedKey(itemsRef.current, key, unsaved.current) }
+      return { op: 'update', item }
+    }, false)
+  }
+
+  const changeItem = (next: Obj) => setItems(itemsRef.current.map((it) => (it._key === next._key ? next : it)))
+
+  const removeItem = (key: string) => {
+    removed.current.add(key)
+    setItems(itemsRef.current.filter((it) => it._key !== key))
+    // Jamais écrit (ni en cours d'écriture, la file passe avant) → rien à envoyer.
+    void enqueue(() => (unsaved.current.has(key) ? null : { op: 'remove', key }), true)
+  }
+
+  const moveItem = (key: string, direction: -1 | 1) => {
+    const list = [...itemsRef.current]
+    const from = list.findIndex((it) => it._key === key)
+    const to = from + direction
+    if (from === -1 || to < 0 || to >= list.length) return
+    ;[list[from], list[to]] = [list[to], list[from]]
+    setItems(list)
+    void enqueue(() => {
+      if (unsaved.current.has(key) || removed.current.has(key)) return null
+      const target = moveTarget(itemsRef.current, key, unsaved.current)
+      return target ? { op: 'move', key, to: target } : null
+    }, true)
   }
 
   const canAdd = !form.readOnly && (field.max === undefined || items.length < field.max)
@@ -376,27 +467,19 @@ function VariableArrayField({ field, path, value, label }: FieldProps) {
         </span>
       </legend>
       {items.map((item, index) => (
-        <div key={item._key as string} className={styles.item} role="group" aria-label={`${itemLabel} ${index + 1}`}>
-          <div className={styles.itemHeader}>
-            <p className={styles.itemTitle}>{`${itemLabel} ${index + 1}`}</p>
-            <IconButton
-              icon="trash"
-              size="xsmall"
-              label={`Remove ${itemLabel.toLowerCase()} ${index + 1}`}
-              disabled={!canRemove}
-              onClick={() => commit(items.filter((_, i) => i !== index), true)}
-            />
-          </div>
-          {(field.fields ?? []).map((sub) => (
-            <LocalField
-              key={sub.name}
-              field={sub}
-              value={item[sub.name]}
-              disabled={form.readOnly}
-              onChange={(next) => commit(items.map((it, i) => (i === index ? { ...it, [sub.name]: next ?? undefined } : it)))}
-            />
-          ))}
-        </div>
+        <ArrayItemCard
+          key={item._key as string}
+          field={field}
+          item={item}
+          index={index}
+          count={items.length}
+          canRemove={canRemove}
+          readOnly={form.readOnly}
+          onChange={changeItem}
+          onSave={saveItem}
+          onRemove={removeItem}
+          onMove={moveItem}
+        />
       ))}
       <div className={styles.arrayFooter}>
         <Button
@@ -406,21 +489,86 @@ function VariableArrayField({ field, path, value, label }: FieldProps) {
           disabled={!canAdd}
           onClick={() => {
             // L'élément neuf reste local tant que ses champs obligatoires sont vides (erreur affichée).
-            const next = [...items, newArrayItem(items)]
-            setItems(next)
-            setLocalError(validateFieldValue(field, next))
+            const item = newArrayItem(itemsRef.current, undefined, field.itemType)
+            unsaved.current.add(item._key as string)
+            setItems([...itemsRef.current, item])
           }}
         >
           {`Add ${itemLabel.toLowerCase()}`}
         </Button>
         {field.max !== undefined && items.length >= field.max ? <span className={styles.arrayNote}>{`${field.max} at most`}</span> : null}
       </div>
-      {localError || saver.error ? (
+      {localError || opError ? (
         <p className={styles.arrayError} role="alert">
-          {localError ?? saver.error}
+          {localError ?? opError}
         </p>
       ) : null}
     </fieldset>
+  )
+}
+
+/** Carte d'un élément de tableau à longueur variable : sous-champs locaux, enregistrement de l'élément (debounce). */
+function ArrayItemCard({
+  field,
+  item,
+  index,
+  count,
+  canRemove,
+  readOnly,
+  onChange,
+  onSave,
+  onRemove,
+  onMove,
+}: {
+  field: FieldDef
+  item: Obj
+  index: number
+  count: number
+  canRemove: boolean
+  readOnly: boolean
+  onChange: (item: Obj) => void
+  onSave: (item: Obj) => Promise<SaveResult>
+  onRemove: (key: string) => void
+  onMove: (key: string, direction: -1 | 1) => void
+}) {
+  const saver = useFieldSave(onSave, item)
+  const itemLabel = field.itemLabel ?? 'Item'
+  const name = `${itemLabel.toLowerCase()} ${index + 1}`
+  const key = item._key as string
+  return (
+    <div className={styles.item} role="group" aria-label={`${itemLabel} ${index + 1}`}>
+      <div className={styles.itemHeader}>
+        <p className={styles.itemTitle}>{`${itemLabel} ${index + 1}`}</p>
+        <IconButton icon="chevron-up" size="xsmall" label={`Move ${name} up`} disabled={readOnly || index === 0} onClick={() => onMove(key, -1)} />
+        <IconButton
+          icon="chevron-down"
+          size="xsmall"
+          label={`Move ${name} down`}
+          disabled={readOnly || index === count - 1}
+          onClick={() => onMove(key, 1)}
+        />
+        <IconButton icon="trash" size="xsmall" label={`Remove ${name}`} disabled={!canRemove} onClick={() => onRemove(key)} />
+      </div>
+      {(field.fields ?? []).map((sub) => (
+        <LocalField
+          key={sub.name}
+          field={sub}
+          value={item[sub.name]}
+          disabled={readOnly}
+          onChange={(value) => {
+            const next = { ...item, [sub.name]: value ?? undefined }
+            onChange(next)
+            if (itemError(field, next)) saver.cancel()
+            else saver.schedule(next)
+          }}
+        />
+      ))}
+      {saver.error ? (
+        <p className={styles.arrayError} role="alert">
+          {saver.error}
+        </p>
+      ) : null}
+    </div>
   )
 }
 

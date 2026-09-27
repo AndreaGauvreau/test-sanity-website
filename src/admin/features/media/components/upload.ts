@@ -1,11 +1,13 @@
 'use client'
 
 import type { MediaAsset } from '../lib/assets'
+import { checkUpload } from '../lib/upload-limits'
 
 /**
  * Envoi d'un fichier vers la route `/admin/media/upload` (même origine, cookie de session) avec la
  * progression (XMLHttpRequest : fetch ne donne pas l'avancement de l'envoi). `replace` : id de l'asset
- * remplacé (ses utilisations suivent, dans les brouillons).
+ * remplacé (ses utilisations suivent, dans les brouillons). Un fichier d'un type refusé ou plus gros que la
+ * limite de son genre (lib/upload-limits.ts) est refusé tout de suite, sans être envoyé ; le serveur revérifie.
  */
 
 export const UPLOAD_URL = '/admin/media/upload'
@@ -16,6 +18,8 @@ export function uploadFile(
   file: File,
   options: { replace?: string; onProgress?: (percent: number) => void; signal?: AbortSignal } = {},
 ): Promise<UploadResult> {
+  const problem = checkUpload({ type: file.type, size: file.size })
+  if (problem) return Promise.resolve({ ok: false, error: `${file.name}: ${problem}` })
   return new Promise((resolve) => {
     const xhr = new XMLHttpRequest()
     const form = new FormData()

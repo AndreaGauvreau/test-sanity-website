@@ -2,16 +2,22 @@ import { spawn as nodeSpawn } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import path from 'node:path'
 import type { Readable } from 'node:stream'
-import { PREVIEW_COOKIE } from '../content/visible'
+import { credentialValue, PREVIEW_COOKIE, type PreviewCredential } from '../content/visible'
 
 /**
  * Aperçu du brouillon (127.0.0.1:ENGINE_PREVIEW_PORT) : `next dev -H 127.0.0.1 -p <port>` dans le clone de travail
  * (branche draft), lancé et surveillé par le moteur.
  * - environnement MINIMAL (jamais les secrets du moteur : Claude, jeton d'écriture Sanity, ENGINE_SECRET) ; le site lit
  *   ses variables d'aperçu dans le `.env.local` du clone, écrit par `npm run engine:setup` ;
- * - sonde de disponibilité : une requête HTTP avec le cookie du secret d'aperçu (toute réponse < 500 = prêt) ;
+ * - sonde de disponibilité : une requête HTTP avec le cookie `kz_preview` (jeton du moteur, dérivé du secret racine ;
+ *   toute réponse < 500 = prêt) ;
  * - redémarrage après un plantage (attente croissante), abandon après `maxRestarts` plantages en `windowMs` ;
  * - arrêt propre : SIGTERM au groupe de processus (next dev lance des processus enfants), SIGKILL après 5 s.
+ *
+ * Exposition (SEC-06) : next dev sert ses routes internes (`/__nextjs_*`, `/_next/*`, HMR) AVANT le proxy de l'app, donc
+ * sans le secret d'aperçu ; seule la boucle locale (127.0.0.1) et le blocage cross-site de Next les protègent. En mode
+ * hébergé, next dev ne doit JAMAIS être exposé tel quel : un frontal (moteur ou reverse proxy) doit exiger le jeton
+ * d'aperçu sur TOUS les chemins, `/_next` et `/__nextjs` compris, avant de relayer.
  */
 
 export type ChildLike = {
@@ -56,7 +62,8 @@ export type PreviewProcessSettings = {
   port: number
   /** http://127.0.0.1:<port> */
   origin: string
-  secret: string
+  /** Valeur du cookie `kz_preview` de la sonde (jeton du moteur, `createPreviewCredential`). */
+  secret: PreviewCredential
   spawn?: SpawnFn
   fetchImpl?: typeof fetch
   /** Envoie un signal au groupe du processus (défaut : process.kill(-pid)). */
@@ -76,9 +83,18 @@ const LOG_LINES = 200
 // Lignes de next dev reprises dans le journal du moteur (le reste reste dans logs()).
 const INTERESTING = /error|warn|fail|ready|started|⨯|⚠|✓/i
 
-/** Environnement minimal de next dev : jamais `...process.env` (secrets du moteur). */
+/**
+ * Éditeur INERTE pour next dev (SEC-06) : la route interne `/__nextjs_launch-editor` de Next (servie avant le proxy de
+ * l'app, donc sans le secret d'aperçu) ouvre un fichier dans l'éditeur choisi par `guessEditor()` de
+ * next/dist/next-devtools/server/launch-editor.js : REACT_EDITOR d'abord (« none » → rien n'est lancé), sinon un éditeur
+ * deviné d'après `ps x`, sinon VISUAL / EDITOR. REACT_EDITOR=none coupe la devinette ; VISUAL / EDITOR = `true` (commande
+ * qui ne fait rien) en second rideau. Next ne remplace pas une variable déjà posée par le `.env.local` du clone.
+ */
+export const INERT_EDITOR_ENV = Object.freeze({ REACT_EDITOR: 'none', VISUAL: 'true', EDITOR: 'true' })
+
+/** Environnement minimal de next dev : jamais `...process.env` (secrets du moteur) ; éditeur inerte (SEC-06). */
 export function previewEnv(base: Readonly<Record<string, string | undefined>>): NodeJS.ProcessEnv {
-  const env: Record<string, string | undefined> = { NEXT_TELEMETRY_DISABLED: '1', FORCE_COLOR: '0' }
+  const env: Record<string, string | undefined> = { NEXT_TELEMETRY_DISABLED: '1', FORCE_COLOR: '0', ...INERT_EDITOR_ENV }
   for (const name of ['PATH', 'HOME', 'TMPDIR', 'LANG', 'LC_ALL', 'USER', 'TZ']) {
     if (base[name] !== undefined) env[name] = base[name]
   }
@@ -138,7 +154,7 @@ export function createPreviewProcess(settings: PreviewProcessSettings): PreviewP
   async function probe(): Promise<boolean> {
     try {
       const response = await fetchImpl(`${settings.origin}/`, {
-        headers: { cookie: `${PREVIEW_COOKIE}=${settings.secret}` },
+        headers: { cookie: `${PREVIEW_COOKIE}=${await credentialValue(settings.secret)}` },
         redirect: 'manual',
         signal: AbortSignal.timeout(10_000),
       })

@@ -10,9 +10,14 @@ export type ContentSnapshot = {
   /** Id publié. */
   id: string
   type: string
-  /** Révision du brouillon vue au moment de Publish : `ifDraftRevisionId` (jamais écraser un brouillon plus récent). */
+  /**
+   * Révision du brouillon vue au moment de Publish : `ifDraftRevisionId` (jamais écraser un brouillon plus récent).
+   * Pour une action programmée (dépublier / supprimer) : révision du document vu, indicative.
+   */
   rev: string
   path: string
+  /** Absent = publier le brouillon ; sinon action programmée depuis le CMS (POST /publish/stage). */
+  action?: 'unpublish' | 'delete'
 }
 
 export type DesignSnapshot = { changeId: string; commit: string; title: string }
@@ -27,6 +32,8 @@ export type RunInternal = {
   textChanges: string[]
   /** Du code attendait (main ≠ draft) au moment de Publish. */
   codeChanged: boolean
+  /** Sha de draft dont le typecheck a réussi (fait AVANT l'étape 1 : un code qui ne compile pas ne publie rien). */
+  compiled?: string
   /** Avance rapide faite : main est passé de `from` à `to`. */
   merged?: { from: string; to: string }
   pushed?: boolean
@@ -36,6 +43,18 @@ export type RunInternal = {
 }
 
 export type PublishExtra = { run: RunInternal | null }
+
+/** Action programmée pour le prochain Publish (POST /publish/stage), par id publié. */
+export type StagedAction = { action: 'unpublish' | 'delete'; type: string; by: string; at: string }
+
+/**
+ * Marques du contenu, rangées dans `publications.json > extra.content` :
+ * - `staged` : dépublier / supprimer au prochain Publish ;
+ * - `held` : documents DÉPUBLIÉS par une publication, id → révision du brouillon laissé par Sanity. Ce brouillon n'est
+ *   pas « à publier » (sinon le Publish suivant remettrait en ligne ce qu'on vient de retirer) tant qu'il n'a pas été
+ *   modifié depuis (révision différente) ou libéré par POST /publish/unstage.
+ */
+export type ContentMarks = { staged: Record<string, StagedAction>; held: Record<string, string> }
 
 export const STEP_LABELS: Readonly<Record<PublishStep, string>> = {
   1: 'Content goes live in Sanity',
@@ -65,4 +84,25 @@ export function readExtra(data: PublicationsData): PublishExtra {
 
 export function writeExtra(data: PublicationsData, extra: PublishExtra): void {
   data.extra.publish = structuredClone(extra) as unknown as Record<string, unknown>
+}
+
+const isStaged = (value: unknown): value is StagedAction =>
+  isRecord(value) &&
+  (value.action === 'unpublish' || value.action === 'delete') &&
+  typeof value.type === 'string' &&
+  typeof value.by === 'string' &&
+  typeof value.at === 'string'
+
+/** Lecture tolérante de `extra.content` (entrées mal formées ignorées). */
+export function readMarks(data: PublicationsData): ContentMarks {
+  const raw = isRecord(data.extra.content) ? data.extra.content : {}
+  const staged: Record<string, StagedAction> = {}
+  const held: Record<string, string> = {}
+  if (isRecord(raw.staged)) for (const [id, entry] of Object.entries(raw.staged)) if (isStaged(entry)) staged[id] = { ...entry }
+  if (isRecord(raw.held)) for (const [id, rev] of Object.entries(raw.held)) if (typeof rev === 'string') held[id] = rev
+  return { staged, held }
+}
+
+export function writeMarks(data: PublicationsData, marks: ContentMarks): void {
+  data.extra.content = structuredClone(marks) as unknown as Record<string, unknown>
 }

@@ -85,6 +85,49 @@
   cursor: grab;
 }
 
+/* Poignée focalisable (gripProps) : même rendu, zone 12 × 24, focus visible ; active = icon/active. */
+.gripButton {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 12px;
+  height: 24px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--k-radius-sm);
+  background: none;
+  cursor: grab;
+  touch-action: none;
+  --k-icon-current: var(--k-text-disabled);
+  transition: color var(--k-duration-fast) ease;
+}
+
+.gripButton:hover:not([aria-disabled='true']),
+.gripButton[aria-pressed='true'] {
+  --k-icon-current: var(--k-icon-active);
+}
+
+.gripButton[aria-pressed='true'] {
+  cursor: grabbing;
+}
+
+.gripButton[aria-disabled='true'] {
+  cursor: default;
+}
+
+.gripButton:focus-visible {
+  outline: 2px solid var(--k-border-focus);
+  outline-offset: 2px;
+}
+
+/* Remplissage avant Row open : grandit quand les colonnes sont plus étroites que le tableau, sinon 0. */
+.filler {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
 .thumb {
   display: block;
   width: 56px;
@@ -123,7 +166,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .row {
+  .row,
+  .gripButton {
     transition: none;
   }
 }

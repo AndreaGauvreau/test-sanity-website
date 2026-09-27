@@ -1,6 +1,6 @@
 /*
  * Figma « Chip » 321:421 : hug, H gap 4, pad 4 10 4 8, radius/full, bg/input + border/default,
- * Body Small text/secondary, icône 12 (mode default). hover : bg/input-hover + icône active.
+ * Body Small text/secondary, icône 12 (mode default). hover (état off seulement) : bg/input-hover + icône active.
  * on : bg/inverse + text/inverse + icône inverse (Figma retire le contour : 64×23 ; ici le contour prend
  * la couleur du fond pour garder 66×25 et éviter un saut de mise en page à la bascule).
  */
@@ -25,7 +25,9 @@
     color var(--k-duration-fast) ease;
 }
 
-.chip:hover:not(:disabled) {
+/* Survol limité à l'état off : sans cela, `:hover:not(:disabled)` (0,3,0) l'emportait sur `[data-state='on']`
+   (0,2,0) et une chip active survolée devenait #111 sur #2b2b2b (illisible). */
+.chip[data-state='off']:hover:not(:disabled) {
   background-color: var(--k-bg-input-hover);
   --k-icon-current: var(--k-icon-active);
 }
@@ -35,6 +37,12 @@
   border-color: var(--k-bg-inverse);
   color: var(--k-text-inverse);
   --k-icon-current: var(--k-text-inverse);
+}
+
+/* Actif survolé : pas de variante Figma ; le fond clair s'assombrit à peine, texte et icône restent inversés. */
+.chip[data-state='on']:hover:not(:disabled) {
+  background-color: color-mix(in srgb, var(--k-bg-inverse) 88%, var(--k-bg-input-hover));
+  border-color: color-mix(in srgb, var(--k-bg-inverse) 88%, var(--k-bg-input-hover));
 }
 
 .chip:focus-visible {

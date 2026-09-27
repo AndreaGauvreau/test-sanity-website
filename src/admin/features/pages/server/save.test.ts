@@ -2,10 +2,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('server-only', () => ({}))
 
+import { adminConfig } from '@/admin.config'
 import type { Session } from '@/admin/core/contracts'
 import type { DraftMutation, DraftStore, SanityDoc } from '@/admin/core/sanity/store'
 
-const { saveArticleSeo, savePageField, savePageSeo } = await import('./save')
+const { saveArticleSeo, savePageArray, savePageField, savePageSeo } = await import('./save')
+const { SanityWriteError } = await import('@/admin/core/sanity/paths')
+const { setAtPath } = await import('../lib/form')
+type Config = import('../lib/manifest').Config
 
 /**
  * Cœur des écritures avec un FAUX magasin Sanity (en mémoire) : aucun réseau. Vérifie la liste blanche du
@@ -68,13 +72,11 @@ describe('savePageField (C1)', () => {
     expect(fake.mutations[1].at(-1)).toEqual({ patch: { id: 'drafts.dockSchedulingPage', unset: ['hero.primaryCta.href'] } })
   })
 
-  it('validation du FieldDef : longueur, obligation, lien sûr, liste fermée, bornes du tableau', async () => {
+  it('validation du FieldDef : longueur, obligation, lien sûr, une ligne', async () => {
     const cases: [string, unknown, string][] = [
       ['hero.title', 'x'.repeat(71), 'Title must be 70 characters or fewer.'],
       ['hero.title', '', 'Title is required.'],
       ['hero.primaryCta.href', 'javascript:alert(1)', 'Link must be a valid link (https://…, /page, mailto:…).'],
-      ['hero.ratings', [{ _key: 'a', platform: 'nope', label: 'x' }], 'Ratings 1 · Platform must be one of the proposed options.'],
-      ['hero.ratings', [1, 2, 3].map((i) => ({ _key: `k${i}`, platform: 'g2', label: 'x' })), 'Ratings can have at most 2 ratings.'],
       ['hero.title', 'two\nlines', 'Title must be a single line.'],
     ]
     for (const [path, value, error] of cases) {
@@ -109,9 +111,130 @@ describe('savePageField (C1)', () => {
     expect(await savePageField(session, { pageId: 'home', path: 'testimonial.item', value: { _type: 'reference', _ref: 'drafts.t1' } }, { store: fake.store })).toMatchObject({ ok: false })
   })
 
+  it('FOLLOWUPS #40 : tableau ENTIER refusé (il effacerait un ajout concurrent), rien d’écrit', async () => {
+    const value = [{ _key: 'a', platform: 'g2', label: 'x' }]
+    expect(await savePageField(session, { pageId: 'home', path: 'hero.ratings', value }, { store: fake.store })).toEqual({
+      ok: false,
+      error: 'This list is saved item by item. Reload the page and try again.',
+    })
+    expect(fake.mutations).toHaveLength(0)
+  })
+
   it('sans le droit content.write (rôle inconnu du contrat) : refus', async () => {
     const result = await savePageField({ ...session, role: 'viewer' as never }, { pageId: 'home', path: 'hero.title', value: 'x' }, { store: fake.store })
     expect(result.ok).toBe(false)
+  })
+})
+
+/**
+ * Faux Sanity À RÉVISIONS (comme l'API) : `patch.ifRevisionID` périmé → 409, `create` d'un id existant → 409.
+ * `beforeMutate` simule un autre onglet qui écrit entre la lecture et l'écriture.
+ */
+function revisionStore(docs: Record<string, SanityDoc>, beforeMutate?: () => void) {
+  const mutations: DraftMutation[][] = []
+  let rev = 1
+  const conflict = () => new SanityWriteError('bad_request', 'This item was changed at the same time. Reload and try again.', undefined, 409)
+  const store: DraftStore = {
+    async getDocuments(ids) {
+      return ids.map((id) => (docs[id] ? structuredClone(docs[id]) : null))
+    },
+    async mutate(batch) {
+      beforeMutate?.()
+      beforeMutate = undefined
+      for (const m of batch) {
+        if ('create' in m && docs[m.create._id]) throw conflict()
+        if ('patch' in m && m.patch.ifRevisionID && docs[m.patch.id]?._rev !== m.patch.ifRevisionID) throw conflict()
+      }
+      mutations.push(batch)
+      for (const m of batch) {
+        if ('create' in m) docs[m.create._id] = { ...m.create, _rev: `r${++rev}` }
+        if ('patch' in m) {
+          let doc = docs[m.patch.id]
+          for (const [path, value] of Object.entries(m.patch.set ?? {})) doc = setAtPath(doc, path, value) as SanityDoc
+          docs[m.patch.id] = { ...doc, _rev: `r${++rev}` }
+        }
+      }
+    },
+  }
+  return { store, mutations, docs }
+}
+
+const ratings = (doc: SanityDoc | undefined) => ((doc?.hero as { ratings?: { _key: string }[] })?.ratings ?? []).map((r) => r._key)
+
+describe('savePageArray (C1, FOLLOWUPS #40 : tableaux sans course)', () => {
+  const draftOf = (keys: string[]): SanityDoc => ({
+    _id: 'drafts.dockSchedulingPage',
+    _type: 'dockSchedulingPage',
+    _rev: 'd1',
+    hero: { title: 'Dock', ratings: keys.map((k) => ({ _key: k, _type: 'rating', platform: 'g2', label: `R ${k}` })) },
+  })
+
+  it('insert : élément ajouté par sa clé, _type imposé par itemType, champs non déclarés écartés', async () => {
+    const f = revisionStore({ dockSchedulingPage: home() })
+    const item = { _key: 'new1', _type: 'forged', platform: 'capterra', label: '4.8 on Capterra', evil: 'x' }
+    const result = await savePageArray(session, { pageId: 'home', path: 'hero.ratings', op: 'insert', item, after: 'g2' }, { store: f.store })
+    expect(result).toMatchObject({ ok: true })
+    const written = f.docs['drafts.dockSchedulingPage'].hero as { ratings: Record<string, unknown>[] }
+    expect(written.ratings.map((r) => r._key)).toEqual(['g2', 'new1'])
+    expect(written.ratings[1]).toEqual({ _key: 'new1', _type: 'rating', platform: 'capterra', label: '4.8 on Capterra' })
+    // Pas de brouillon : create (et non createIfNotExists) puis patch.
+    expect(f.mutations[0][0]).toHaveProperty('create')
+  })
+
+  it('régression : un ajout fait par un autre onglet entre la lecture et l’écriture n’est PAS effacé', async () => {
+    const docs: Record<string, SanityDoc> = { dockSchedulingPage: home(), 'drafts.dockSchedulingPage': draftOf([]) }
+    const f = revisionStore(docs, () => {
+      // L'autre onglet ajoute « other » : la révision du brouillon change (d1 → d2).
+      docs['drafts.dockSchedulingPage'] = { ...draftOf(['other']), _rev: 'd2' }
+    })
+    const item = { _key: 'mine', platform: 'g2', label: 'Mine' }
+    const result = await savePageArray(session, { pageId: 'home', path: 'hero.ratings', op: 'insert', item, after: null }, { store: f.store })
+    expect(result).toMatchObject({ ok: true })
+    expect(ratings(docs['drafts.dockSchedulingPage'])).toEqual(['mine', 'other'])
+    // L'écriture est conditionnée par la révision lue.
+    expect(f.mutations[0][0]).toMatchObject({ patch: { ifRevisionID: 'd2' } })
+  })
+
+  it('update : sous-champs déclarés remplacés par clé, autres champs Sanity gardés ; élément disparu → message clair', async () => {
+    const draft = draftOf(['g2', 'b'])
+    ;(draft.hero as { ratings: Record<string, unknown>[] }).ratings[1].note = 'kept'
+    const f = revisionStore({ dockSchedulingPage: home(), 'drafts.dockSchedulingPage': draft })
+    const ok = await savePageArray(session, { pageId: 'home', path: 'hero.ratings', op: 'update', item: { _key: 'b', platform: 'capterra', label: 'New' } }, { store: f.store })
+    expect(ok).toMatchObject({ ok: true })
+    expect((f.docs['drafts.dockSchedulingPage'].hero as { ratings: unknown[] }).ratings[1]).toEqual({
+      _key: 'b',
+      _type: 'rating',
+      platform: 'capterra',
+      label: 'New',
+      note: 'kept',
+    })
+    const gone = await savePageArray(session, { pageId: 'home', path: 'hero.ratings', op: 'update', item: { _key: 'zz', platform: 'g2', label: 'x' } }, { store: f.store })
+    expect(gone).toEqual({ ok: false, error: 'This item no longer exists. Reload and try again.' })
+  })
+
+  it('remove et move par clé ; retrait déjà fait ailleurs = succès sans écriture', async () => {
+    const f = revisionStore({ dockSchedulingPage: home(), 'drafts.dockSchedulingPage': draftOf(['a', 'b']) })
+    expect(await savePageArray(session, { pageId: 'home', path: 'hero.ratings', op: 'move', key: 'b', to: { before: 'a' } }, { store: f.store })).toMatchObject({ ok: true })
+    expect(ratings(f.docs['drafts.dockSchedulingPage'])).toEqual(['b', 'a'])
+    expect(await savePageArray(session, { pageId: 'home', path: 'hero.ratings', op: 'remove', key: 'a' }, { store: f.store })).toMatchObject({ ok: true })
+    expect(ratings(f.docs['drafts.dockSchedulingPage'])).toEqual(['b'])
+    const writes = f.mutations.length
+    expect(await savePageArray(session, { pageId: 'home', path: 'hero.ratings', op: 'remove', key: 'a' }, { store: f.store })).toEqual({ ok: true })
+    expect(f.mutations).toHaveLength(writes)
+  })
+
+  it('validation d’après le FieldDef du tableau (bornes, sous-champs) et liste blanche', async () => {
+    const f = revisionStore({ dockSchedulingPage: home(), 'drafts.dockSchedulingPage': draftOf(['a', 'b']) })
+    const cases: [unknown, string][] = [
+      [{ pageId: 'home', path: 'hero.ratings', op: 'insert', item: { _key: 'c', platform: 'g2', label: 'x' }, after: 'b' }, 'Ratings can have at most 2 ratings.'],
+      [{ pageId: 'home', path: 'hero.ratings', op: 'update', item: { _key: 'a', platform: 'nope', label: 'x' } }, 'Ratings 1 · Platform must be one of the proposed options.'],
+      [{ pageId: 'home', path: 'features.items', op: 'remove', key: 'a' }, "This field can't be edited here."],
+      [{ pageId: 'home', path: 'hero.title', op: 'remove', key: 'a' }, "This field can't be edited here."],
+      [{ pageId: 'home', path: 'hero.ratings', op: 'insert', item: { _key: 'bad key!' }, after: null }, "This change couldn't be saved. Reload the page and try again."],
+      [{ pageId: 'home', path: 'hero.ratings', op: 'move', key: 'a', to: 'up' }, "This change couldn't be saved. Reload the page and try again."],
+    ]
+    for (const [input, error] of cases) expect(await savePageArray(session, input, { store: f.store }), JSON.stringify(input)).toEqual({ ok: false, error })
+    expect(f.mutations).toHaveLength(0)
   })
 })
 

@@ -153,7 +153,7 @@ export async function normalizeFieldValue(
       return iso
     }
     case 'portableText': {
-      const blocks = sanitizePortableText(value, richTextConfigFor(collection.type, field.name))
+      const blocks = sanitizePortableText(value, richTextConfigFor(field))
       return isEmptyRichText(blocks) ? null : blocks
     }
     case 'image': {

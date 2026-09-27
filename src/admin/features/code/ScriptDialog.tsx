@@ -47,6 +47,8 @@ export type ScriptDialogProps = {
   /** Enregistre ; renvoie les erreurs du serveur (message général et par champ) ou rien si c'est bon. */
   onSave: (values: ScriptValues) => Promise<{ error: string; fieldErrors?: Record<string, string> } | void>
   onClose: () => void
+  /** Avertissement en tête de la fenêtre (SEC-04 : script modifié hors de l'admin, Save le signe). */
+  notice?: ReactNode
 }
 
 /** Icône du menu « Insert field » selon le champ (Figma G6). */
@@ -96,7 +98,7 @@ export function ScriptDialog({ open, ...rest }: ScriptDialogProps) {
   )
 }
 
-function DialogBody({ mode, initial, pages, onSave, onClose }: Omit<ScriptDialogProps, 'open'>) {
+function DialogBody({ mode, initial, pages, onSave, onClose, notice }: Omit<ScriptDialogProps, 'open'>) {
   const id = useId()
   const titleId = `${id}-title`
   const codeId = `${id}-code`
@@ -196,23 +198,9 @@ function DialogBody({ mode, initial, pages, onSave, onClose }: Omit<ScriptDialog
     }
   }
 
-  // Liste des champs ouverte (bouton ou « {{ ») : focus sur le premier champ dès qu'elle est visible. Le Popover du kit
-  // est masqué (visibility: hidden) tant qu'il n'est pas positionné, ce qui fait échouer le focus initial du Menu.
+  // Liste des champs (bouton ou « {{ ») : le focus initial est posé par le MenuPanel du kit, qui réessaie tant que le
+  // Popover est encore masqué avant positionnement (ouverture contrôlée sans clic) — plus de contournement ici.
   const menuLabel = article ? `${article.collectionLabel} fields` : ''
-  useEffect(() => {
-    if (!menuOpen || !menuLabel) return
-    let frame = 0
-    let tries = 0
-    const tick = () => {
-      const menu = document.querySelector<HTMLElement>(`[role="menu"][aria-label="${CSS.escape(menuLabel)}"]`)
-      const item = menu?.querySelector<HTMLElement>('[role^="menuitem"]:not([aria-disabled="true"])')
-      if (menu?.contains(document.activeElement)) return
-      if (item && getComputedStyle(item).visibility !== 'hidden') item.focus({ preventScroll: true })
-      else if (tries++ < 20) frame = requestAnimationFrame(tick)
-    }
-    frame = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(frame)
-  }, [menuOpen, menuLabel])
 
   // Le texte d'erreur du serveur est annoncé ; on garde la fenêtre ouverte.
   useEffect(() => {
@@ -254,6 +242,11 @@ function DialogBody({ mode, initial, pages, onSave, onClose }: Omit<ScriptDialog
         }}
         id={`${id}-form`}
       >
+        {notice ? (
+          <Callout tone="warning" className={styles.notice}>
+            {notice}
+          </Callout>
+        ) : null}
         <div className={styles.row}>
           <div data-field="name" className={styles.cell}>
             <Input

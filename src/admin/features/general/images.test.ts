@@ -71,8 +71,8 @@ describe('reconnaissance du format par les octets', () => {
   })
 
   it('libellés et accept', () => {
-    expect(formatsLabel('faviconLight')).toBe('PNG, JPG, SVG or ICO · 1 MB max')
-    expect(formatsLabel('socialImage')).toBe('PNG, JPG or WebP · 1 MB max')
+    expect(formatsLabel('faviconLight')).toBe('PNG, JPG, SVG or ICO · 5 MB max')
+    expect(formatsLabel('socialImage')).toBe('PNG, JPG or WebP · 5 MB max')
     expect(acceptFor('socialImage')).toBe('image/png,image/jpeg,image/webp')
     expect(acceptFor('faviconDark')).toContain('.ico')
   })

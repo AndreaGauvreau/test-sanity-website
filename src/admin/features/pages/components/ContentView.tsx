@@ -8,7 +8,7 @@ import { Callout, Icon, motion, useMotionVariants, fade } from '@/admin/ui'
 
 import { childOf, setAtPath, toImage } from '../lib/form'
 import type { SectionSource } from '../lib/manifest'
-import { savePageFieldAction } from '../server/actions'
+import { savePageArrayAction, savePageFieldAction } from '../server/actions'
 import { DraftPreview } from './DraftPreview'
 import { FieldControl } from './fields'
 import { FormProvider, postImage, type FormContextValue } from './FormContext'
@@ -30,6 +30,7 @@ export type ContentViewProps = {
   referenceOptions: FormContextValue['referenceOptions']
   /** Injection pour les tests (server action par défaut). */
   saveField?: FormContextValue['saveField']
+  saveArray?: FormContextValue['saveArray']
   uploadImage?: FormContextValue['uploadImage']
 }
 
@@ -37,7 +38,7 @@ export type ContentViewProps = {
  * Onglet Content (C1) : sections en accordéon dans l'ordre du site, une seule ouverte à la fois (proposé), champs
  * générés depuis le manifeste ; aperçu du brouillon à droite, la section ouverte y est surlignée.
  */
-export function ContentView({ pageId, sections, value, hasDraft, readOnly, referenceOptions, saveField, uploadImage }: ContentViewProps) {
+export function ContentView({ pageId, sections, value, hasDraft, readOnly, referenceOptions, saveField, saveArray, uploadImage }: ContentViewProps) {
   const [open, setOpen] = useState<string | null>(sections[0]?.section.name ?? null)
   // Le premier enregistrement crée le brouillon : le badge de l'aperçu passe à « Draft ».
   const [drafted, setDrafted] = useState(hasDraft)
@@ -59,6 +60,15 @@ export function ContentView({ pageId, sections, value, hasDraft, readOnly, refer
         }
         return result
       },
+      saveArray: async (path, op) => {
+        const result = await (saveArray ?? ((p, o) => savePageArrayAction({ pageId, path: p, ...o })))(path, op)
+        if (result.ok && result.items) {
+          const items = result.items
+          setDrafted(true)
+          setDoc((current) => setAtPath(current, path, items))
+        }
+        return result
+      },
       uploadImage: async (path, file) => {
         const result = await (uploadImage ?? ((p, f) => postImage(pageId, { target: 'field', path: p, file: f })))(path, file)
         if (result.ok) {
@@ -68,7 +78,7 @@ export function ContentView({ pageId, sections, value, hasDraft, readOnly, refer
         return result
       },
     }),
-    [pageId, readOnly, referenceOptions, saveField, uploadImage],
+    [pageId, readOnly, referenceOptions, saveField, saveArray, uploadImage],
   )
 
   const toggle = useCallback((name: string) => setOpen((current) => (current === name ? null : name)), [])
@@ -121,7 +131,7 @@ export function ContentView({ pageId, sections, value, hasDraft, readOnly, refer
                         <Icon name="database" size={12} set={18} />
                         <span>{`Items come from the CMS. `}</span>
                         <Link href={source.href} className={styles.sourceLink}>
-                          {source.label.replace('From CMS › ', 'Open ')}
+                          {source.linkLabel}
                         </Link>
                       </p>
                     ) : null}

@@ -87,14 +87,38 @@ export function keyedTargetsExist(doc: Record<string, unknown> | null | undefine
   return true
 }
 
+/**
+ * Valeur de `doc` au chemin validé (sélecteurs `_key` suivis), ou undefined si un maillon manque.
+ * « features.items » → le tableau ; « sections[_key=="s1"].items » → le tableau de la section s1.
+ */
+export function getValueAtPath(doc: Record<string, unknown> | null | undefined, path: string): unknown {
+  let current: unknown = doc
+  for (const { name, keys } of parseFieldPath(path)) {
+    if (current === undefined || current === null || typeof current !== 'object' || Array.isArray(current)) return undefined
+    current = (current as Record<string, unknown>)[name]
+    for (const key of keys) {
+      if (!Array.isArray(current)) return undefined
+      current = current.find((item) => !!item && typeof item === 'object' && (item as { _key?: unknown })._key === key)
+    }
+  }
+  return current
+}
+
 /** Erreur des écritures de l'admin : code proche de EngineErrorCode, message en anglais pour l'interface. */
 export class SanityWriteError extends Error {
   constructor(
     readonly code: 'bad_request' | 'not_found' | 'forbidden' | 'unavailable' | 'validation',
     message: string,
     readonly details?: Record<string, string>,
+    /** Statut HTTP de Sanity quand l'erreur en vient (409 = écriture concurrente : révision changée, id déjà pris). */
+    readonly httpStatus?: number,
   ) {
     super(message)
     this.name = 'SanityWriteError'
   }
+}
+
+/** Écriture refusée parce que le document a changé entre la lecture et l'écriture (Sanity 409). */
+export function isWriteConflict(err: unknown): boolean {
+  return err instanceof SanityWriteError && err.httpStatus === 409
 }

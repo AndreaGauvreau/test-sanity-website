@@ -49,6 +49,33 @@ describe('loadTeam', () => {
     await expect(loadTeam({ ...session, sanityRoles: ['developer'], role: 'kuartz' }, fetchImpl)).resolves.toMatchObject({ canInvite: false })
   })
 
+  it('FOLLOWUPS #40 (B4) : tag KUARTZ d’après KUARTZ_ALLOWLIST du serveur', async () => {
+    const membership = (roles: string[]) => [{ resourceType: 'project', resourceId: 'proj1', roleNames: roles }]
+    const fetchImpl = routeFetch({
+      users: {
+        status: 200,
+        body: {
+          data: [
+            { sanityUserId: 'm', profile: { displayName: 'Marie', email: 'marie@conduit.com' }, memberships: membership(['administrator']) },
+            { sanityUserId: 'a', profile: { displayName: 'Andrea', email: 'andrea@kuartz.studio' }, memberships: membership(['developer']) },
+            { sanityUserId: 'd', profile: { displayName: 'Dev', email: 'dev@agency.com' }, memberships: membership(['developer']) },
+          ],
+        },
+      },
+      invites: { status: 200, body: { data: [] } },
+    })
+    vi.stubEnv('KUARTZ_ALLOWLIST', '@kuartz.studio')
+    const state = await loadTeam(session, fetchImpl)
+    if (state.kind !== 'ok') throw new Error(`état inattendu : ${state.kind}`)
+    expect(state.members.map((m) => [m.id, m.kuartz])).toEqual([
+      ['m', false],
+      ['d', false],
+      ['a', true],
+    ])
+    vi.stubEnv('KUARTZ_ALLOWLIST', '')
+    await expect(loadTeam(session, fetchImpl)).resolves.toMatchObject({ summary: { members: 3, kuartz: 0 } })
+  })
+
   it('refus de Sanity : état d’erreur explicite', async () => {
     await expect(loadTeam(session, routeFetch({ users: { status: 403 } }))).resolves.toMatchObject({ kind: 'error', code: 'forbidden' })
     await expect(loadTeam(session, routeFetch({ users: { status: 503 } }))).resolves.toMatchObject({ kind: 'error', code: 'unavailable' })

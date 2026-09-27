@@ -160,12 +160,12 @@ describe('usageRows', () => {
     expect(items[0]).toMatchObject({ featureLabel: 'AI editor', modelLabel: 'Sonnet 5', inputTokens: 39_100, costUsd: 0.16 })
   })
 
-  it('borne la limite (1 à 500) et raccourcit le texte de la demande', () => {
+  it('borne la limite (1 à 500) et raccourcit le texte de la demande à 120 caractères (contrat AiUsageDoc.request)', () => {
     const long = parseUsageDocs([doc({ feature: 'editor', createdAt: '2026-09-03T00:00:00Z', model: 'm', request: `  Make\nit ${'x'.repeat(400)}` })])
     const { items } = usageRows(long, 'month', NOW, 0)
     expect(items).toHaveLength(1)
     expect(items[0].request?.startsWith('Make it x')).toBe(true)
-    expect([...items[0].request!].length).toBe(200)
+    expect([...items[0].request!].length).toBe(120)
     expect(usageRows(docs, 'all-time', NOW, 10_000).items).toHaveLength(6)
   })
 })

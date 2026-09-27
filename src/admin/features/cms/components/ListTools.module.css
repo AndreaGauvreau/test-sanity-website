@@ -19,9 +19,8 @@
 }
 
 .search {
+  /* Taille `small` du kit (28 px) : à la hauteur des icônes, pas de saut de l'en-tête à l'ouverture. */
   width: 240px;
-  /* Champ de 30 px dans une barre d'icônes de 28 : pas de saut de l'en-tête à l'ouverture. */
-  margin-block: -1px;
   animation: searchIn var(--k-duration-fast) var(--k-ease-out);
   transform-origin: right center;
 }

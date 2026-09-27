@@ -177,53 +177,134 @@ describe('EditorCanvas — sélection depuis le pont', () => {
 describe('EditorCanvas — modification à valider', () => {
   const pending = { id: 'c1', status: 'to-validate', targets: [TARGET] } as unknown as PendingChange
 
-  it('barre flottante : Validate passe par les actions de la sidebar quand elles existent', async () => {
+  it('barre flottante : Validate / Cancel passent par les actions de la sidebar, jamais par le moteur direct', async () => {
     renderCanvas()
     await flush()
     const validate = vi.fn().mockResolvedValue(undefined)
+    const cancel = vi.fn().mockResolvedValue(undefined)
     act(() => {
-      store.registerDecisions({ validate, cancel: vi.fn() })
+      store.registerDecisions({ validate, cancel })
       store.setPending(pending)
     })
     expect(screen.getByText('Modified by Claude · to validate')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Validate' }))
     await flush()
-    expect(validate).toHaveBeenCalledTimes(1)
-    expect(engine.validate).not.toHaveBeenCalled()
-  })
-
-  it('sans sidebar : Cancel appelle le moteur, vide pending et recharge l’aperçu', async () => {
-    renderCanvas()
-    await flush()
-    act(() => store.setPending(pending))
-    const nonce = store.get().previewNonce
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
     await flush()
-    expect(engine.cancel).toHaveBeenCalledWith('c1')
-    expect(store.get().pending).toBeNull()
-    expect(store.get().previewNonce).toBe(nonce + 1)
+    expect(validate).toHaveBeenCalledTimes(1)
+    expect(cancel).toHaveBeenCalledTimes(1)
+    expect(engine.validate).not.toHaveBeenCalled()
+    expect(engine.cancel).not.toHaveBeenCalled()
   })
 
-  it('erreur du moteur affichée dans la barre', async () => {
-    const { EngineClientError } = await import('@/admin/core/engine/client')
-    engine.validate.mockRejectedValueOnce(new EngineClientError(409, 'conflict', 'Something changed meanwhile.'))
+  it('FOLLOWUPS #29 : sans actions de la sidebar, pas de barre et aucun appel direct au moteur', async () => {
     renderCanvas()
     await flush()
     act(() => store.setPending(pending))
-    fireEvent.click(screen.getByRole('button', { name: 'Validate' }))
+    expect(screen.queryByText('Modified by Claude · to validate')).toBeNull()
+    expect(engine.validate).not.toHaveBeenCalled()
+    expect(engine.cancel).not.toHaveBeenCalled()
+  })
+
+  it('FOLLOWUPS #29 : `deciding` du magasin met le bouton en chargement et bloque un second choix', async () => {
+    renderCanvas()
     await flush()
-    expect(screen.getByRole('alert').textContent).toBe('Something changed meanwhile.')
-    expect(store.get().pending).not.toBeNull()
+    const validate = vi.fn().mockResolvedValue(undefined)
+    const cancel = vi.fn().mockResolvedValue(undefined)
+    act(() => {
+      store.registerDecisions({ validate, cancel })
+      store.setPending(pending)
+      store.setDeciding('validate')
+    })
+    const cancelButton = screen.getByRole('button', { name: 'Cancel' }) as HTMLButtonElement
+    expect(cancelButton.disabled).toBe(true)
+    expect(screen.getByRole('region', { name: 'Preview change to validate' }).querySelector('[aria-busy="true"]')).not.toBeNull()
+    fireEvent.click(cancelButton)
+    await flush()
+    expect(cancel).not.toHaveBeenCalled()
+  })
+
+  it('QA-5 : en Mobile, la barre est bornée à la largeur du cadre (375 − 2 × 12)', async () => {
+    renderCanvas()
+    await flush()
+    act(() => {
+      store.registerDecisions({ validate: vi.fn(), cancel: vi.fn() })
+      store.setPending(pending)
+      store.setViewport(375)
+    })
+    const wrapper = screen.getByRole('region', { name: 'Preview change to validate' }).parentElement!
+    expect(wrapper.style.maxWidth).toBe('351px')
   })
 
   it('pas de barre pendant le travail (ajustement en cours)', async () => {
     renderCanvas()
     await flush()
     act(() => {
+      store.registerDecisions({ validate: vi.fn(), cancel: vi.fn() })
       store.setPending(pending)
       store.setJob({ id: 'j2', status: 'running', request: { targets: [TARGET] } } as unknown as EditJob)
     })
     expect(screen.queryByText('Modified by Claude · to validate')).toBeNull()
+  })
+})
+
+describe('EditorCanvas — jeton d’aperçu court (SEC-09)', () => {
+  const now = () => Math.floor(Date.now() / 1000)
+  const withToken = (exp: number, path = '/') => `${PREVIEW_ORIGIN}${path}?kz_preview=v1.${exp}.dXNlcg.c2ln`
+
+  it('charge l’URL à jeton court ; un jeton renouvelé pour la même page ne recharge pas l’iframe', async () => {
+    const first = withToken(now() + 900)
+    engine.state.mockResolvedValue({ preview: { url: first, origin: PREVIEW_ORIGIN } })
+    renderCanvas()
+    await flush()
+    const iframe = document.querySelector('iframe')!
+    expect(iframe.getAttribute('src')).toBe(first)
+    fromBridge(bridgeMessage({ type: 'ready', path: '/' }))
+
+    // La sidebar relit GET /editor/state (fin de demande, décision) : nouveau jeton, même page.
+    act(() => store.setPreview({ url: withToken(now() + 1800), origin: PREVIEW_ORIGIN }))
+    expect(document.querySelector('iframe')).toBe(iframe)
+    expect(iframe.getAttribute('src')).toBe(first)
+    expect(store.get().bridgeReady).toBe(true)
+
+    // Autre page : l'iframe change d'adresse.
+    const other = withToken(now() + 1800, '/about')
+    act(() => store.setPreview({ url: other, origin: PREVIEW_ORIGIN }))
+    expect(document.querySelector('iframe')!.getAttribute('src')).toBe(other)
+  })
+
+  it('rechargement (« Try again ») : prend le jeton le plus récent', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    engine.state.mockResolvedValue({ preview: { url: withToken(now() + 900), origin: PREVIEW_ORIGIN } })
+    renderCanvas()
+    await flush()
+    const fresh = withToken(now() + 1800)
+    act(() => store.setPreview({ url: fresh, origin: PREVIEW_ORIGIN }))
+    act(() => {
+      vi.advanceTimersByTime(BRIDGE_TIMEOUT_MS + 10)
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    await flush()
+    expect(document.querySelector('iframe')!.getAttribute('src')).toBe(fresh)
+  })
+
+  it('previewNonce avec un jeton chargé expiré : nouvelle adresse demandée au moteur, puis rechargement complet', async () => {
+    const expired = withToken(now() + 10)
+    engine.state.mockResolvedValueOnce({ preview: { url: expired, origin: PREVIEW_ORIGIN } })
+    renderCanvas()
+    await flush()
+    fromBridge(bridgeMessage({ type: 'ready', path: '/' }))
+    const post = vi.spyOn(document.querySelector('iframe')!.contentWindow!, 'postMessage')
+    const fresh = withToken(now() + 900)
+    engine.state.mockResolvedValueOnce({ preview: { url: fresh, origin: PREVIEW_ORIGIN } })
+    act(() => store.refreshPreview())
+    await flush()
+    await flush()
+    // Le cookie posé avec l'ancien jeton a expiré : router.refresh dans l'aperçu serait refusé (403).
+    expect(post).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'refresh' }), PREVIEW_ORIGIN)
+    expect(engine.state).toHaveBeenCalledTimes(2)
+    expect(document.querySelector('iframe')!.getAttribute('src')).toBe(fresh)
+    expect(store.get().preview?.url).toBe(fresh)
   })
 })
 

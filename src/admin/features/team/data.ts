@@ -1,6 +1,7 @@
 import 'server-only'
 
 import type { Session } from '@/admin/core/contracts'
+import { parseKuartzAllowlist } from '@/admin/core/contracts/roles'
 import { readSanityEnv } from '@/admin/core/sanity/env'
 
 import { TeamApiError, listProjectInvites, listProjectUsers, type AccessDeps } from './access-api'
@@ -24,7 +25,9 @@ export async function loadTeam(session: Session, fetchImpl?: typeof fetch): Prom
     const users = await listProjectUsers(deps)
     // Les invitations ne servent qu'au « invited by » et à la liste des invitations en attente : leur échec ne bloque pas l'écran.
     const invites = await listProjectInvites(deps).catch(() => [])
-    const team = buildTeam(users, invites, deps.projectId, session.user.id)
+    // Tag KUARTZ : même liste blanche que le rôle `kuartz` de l'admin (FOLLOWUPS #40), lue ici, côté serveur.
+    const allowlist = parseKuartzAllowlist(process.env.KUARTZ_ALLOWLIST)
+    const team = buildTeam(users, invites, deps.projectId, { allowlist, currentUserId: session.user.id })
     // Inviter = rôle Administrator dans Sanity (le seul qui gère les membres), c'est-à-dire le client admin.
     return { kind: 'ok', ...team, canInvite: session.sanityRoles.includes('administrator') }
   } catch (err) {

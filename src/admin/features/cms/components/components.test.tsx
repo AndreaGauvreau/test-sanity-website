@@ -7,12 +7,18 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { autosave } from '@/admin/core/autosave'
 import type { FilterCondition } from '@/admin/ui'
+import type { AdminConfig, FieldDef } from '@/admin/core/contracts/manifest'
+import adminConfig from '@/admin.config'
 
 import { DEFAULT_RICH_TEXT, richTextConfigFor } from '../lib/portable-text'
+import { ImageField } from './fields/ImageField'
 import { ListTools } from './ListTools'
 import { RichTextField } from './RichTextField/RichTextField'
 import { createFieldSaver } from './useFieldSaver'
 import { moveIndex, neighbourOffset, targetFromOffset, useReorder } from './useReorder'
+
+const collections: AdminConfig['collections'] = adminConfig.collections
+const faqAnswer: FieldDef = collections.find((c) => c.id === 'faq')!.fields.find((f) => f.name === 'answer')!
 
 beforeEach(() => {
   MotionGlobalConfig.skipAnimations = true
@@ -160,6 +166,36 @@ function ToolsHarness({ onAdd = () => {} }: { onAdd?: () => void }) {
   )
 }
 
+vi.mock('@/admin/features/media/server/actions', () => ({ listImagesAction: vi.fn(async () => ({ ok: true, images: [] })) }))
+
+describe('ImageField (C4)', () => {
+  const onSave = vi.fn(async () => null)
+
+  it('vide : « Choose from Media » dans la ligne d’actions du kit, hors de la zone-bouton', () => {
+    render(<ImageField id="cover" label="Cover image" image={null} onSave={onSave} />)
+    const choose = screen.getByRole('button', { name: 'Choose from Media' })
+    const upload = choose.closest('[data-state]')!
+    expect(upload.getAttribute('data-state')).toBe('empty')
+    // Posé par l'emplacement `actions` d'ImageUpload, jamais imbriqué dans la zone (un bouton dans un bouton).
+    expect(choose.parentElement?.closest('button')).toBeNull()
+  })
+
+  it('rempli : « Choose from Media » dans la ligne fichier, juste avant Replace', () => {
+    render(
+      <ImageField
+        id="cover"
+        label="Cover image"
+        image={{ assetId: 'image-1', src: null, name: 'cover.jpg', size: 420_000, altText: 'A truck' }}
+        onSave={onSave}
+      />,
+    )
+    const choose = screen.getByRole('button', { name: 'Choose from Media' })
+    const replace = screen.getByRole('button', { name: 'Replace' })
+    expect(choose.parentElement).toBe(replace.parentElement)
+    expect(choose.nextElementSibling).toBe(replace)
+  })
+})
+
 describe('ListTools (G5)', () => {
   it('+ appelle onAdd ; ⌕ devient un champ, Échap vide et referme', async () => {
     const user = userEvent.setup()
@@ -170,6 +206,8 @@ describe('ListTools (G5)', () => {
     await user.click(screen.getByRole('button', { name: 'Search' }))
     const field = screen.getByRole('searchbox', { name: 'Search Blog' })
     expect(document.activeElement).toBe(field)
+    // Taille « small » du kit (28 px, à la hauteur des icônes) : plus de marge négative maison.
+    expect(field.closest('[data-size]')?.getAttribute('data-size')).toBe('small')
     await user.type(field, 'carrier')
     expect(screen.getByTestId('state').textContent).toContain('"search":"carrier"')
     await user.keyboard('{Escape}')
@@ -214,7 +252,7 @@ describe('RichTextField', () => {
   })
 
   it('FAQ : seulement gras, italique et lien', () => {
-    render(<RichTextField label="Answer" initialValue={[]} config={richTextConfigFor('faq', 'answer')} onChange={() => {}} />)
+    render(<RichTextField label="Answer" initialValue={[]} config={richTextConfigFor(faqAnswer)} onChange={() => {}} />)
     const names = Array.from(screen.getByRole('toolbar').querySelectorAll('button')).map((b) => b.getAttribute('aria-label'))
     expect(names).toEqual(['Bold', 'Italic', 'Link'])
   })

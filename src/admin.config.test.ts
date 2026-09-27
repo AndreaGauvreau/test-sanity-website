@@ -171,6 +171,84 @@ describe('admin.config ↔ schéma Sanity', () => {
     expect(blog.article?.seoTemplate).toEqual(adminConfig.articleSeoTemplates[0].document)
   })
 
+  // FOLLOWUPS #28 : itemType, richText, source, launchedAt d'après le schéma réel.
+  const allFields = (defs: readonly FieldDef[], parent: Field | undefined): [FieldDef, Field | undefined][] =>
+    defs.flatMap((def) => {
+      const field = parent ? childField(parent, def.name, index) : undefined
+      const container = field && def.kind === 'array' ? arrayMember(field, index) : field
+      return [[def, field] as [FieldDef, Field | undefined], ...(def.fields ? allFields(def.fields, container) : [])]
+    })
+  const everyField = (): [string, FieldDef, Field | undefined][] => [
+    ...adminConfig.pages.flatMap((page) =>
+      (page.sections as readonly SectionDef[]).flatMap((section) =>
+        allFields(section.fields, childField(docType(page.document!.type), section.name, index)).map(
+          ([def, field]) => [`${page.id}.${section.name}.${def.name}`, def, field] as [string, FieldDef, Field | undefined],
+        ),
+      ),
+    ),
+    ...adminConfig.collections.flatMap((collection) =>
+      allFields(collection.fields, docType(collection.type)).map(
+        ([def, field]) => [`${collection.id}.${def.name}`, def, field] as [string, FieldDef, Field | undefined],
+      ),
+    ),
+  ]
+
+  it('tableaux d’objets : itemType = type Sanity des éléments (_type à écrire)', () => {
+    const problems: string[] = []
+    for (const [where, def, field] of everyField()) {
+      if (def.kind !== 'array') continue
+      const member = field?.of?.find((item) => item.type === 'object' || index.get(item.type)?.type === 'object')
+      const expected = member ? (member.type === 'object' ? member.name : member.type) : undefined
+      if (!expected || def.itemType !== expected) problems.push(`${where} : itemType ${def.itemType} ≠ ${expected}`)
+    }
+    expect(problems).toEqual([])
+  })
+
+  it('Portable Text : richText = styles, listes, décorateurs, annotations et blocs du schéma', () => {
+    type Block = { type: string; name?: string; styles?: { value: string }[]; lists?: { value: string }[]; marks?: { decorators?: { value: string }[]; annotations?: { name: string }[] } }
+    const problems: string[] = []
+    let count = 0
+    for (const [where, def, field] of everyField()) {
+      if (def.kind !== 'portableText') continue
+      count += 1
+      const members = (field?.of ?? []) as Block[]
+      const block = members.find((member) => member.type === 'block')
+      const expected = {
+        styles: (block?.styles ?? []).map((style) => style.value),
+        lists: (block?.lists ?? []).map((list) => list.value),
+        decorators: (block?.marks?.decorators ?? []).map((decorator) => decorator.value),
+        annotations: (block?.marks?.annotations ?? []).map((annotation) => annotation.name),
+        blocks: members.filter((member) => member.type !== 'block').map((member) => member.type),
+      }
+      if (JSON.stringify(def.richText) !== JSON.stringify(expected)) problems.push(`${where} : ${JSON.stringify(def.richText)} ≠ ${JSON.stringify(expected)}`)
+    }
+    expect(count).toBeGreaterThanOrEqual(2)
+    expect(problems).toEqual([])
+  })
+
+  it('sections alimentées par une collection : source = id d’une collection du manifeste (C1)', () => {
+    const home = adminConfig.pages.find((page) => page.id === 'home')!
+    const sources = Object.fromEntries((home.sections as readonly SectionDef[]).filter((s) => s.source).map((s) => [s.name, s.source]))
+    expect(sources).toEqual({
+      testimonial: { collection: 'testimonials', label: 'From CMS › Testimonials' },
+      faq: { collection: 'faq', label: 'From CMS › FAQ' },
+      insights: { collection: 'blog', label: '4 latest Blog posts' },
+    })
+    const ids = adminConfig.collections.map((collection) => collection.id)
+    for (const source of Object.values(sources)) expect(ids).toContain(source!.collection)
+  })
+
+  it('site.launchedAt : date ISO (AAAA-MM-JJ) lue dans NEXT_PUBLIC_SITE_LAUNCHED_AT, absente sinon', async () => {
+    const site = adminConfig.site as { launchedAt?: string }
+    if (site.launchedAt !== undefined) expect(site.launchedAt).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+    const { siteLaunchedAt } = await import('./admin.config')
+    expect(siteLaunchedAt('2026-09-02')).toBe('2026-09-02')
+    expect(siteLaunchedAt(' 2026-09-02 ')).toBe('2026-09-02')
+    expect(siteLaunchedAt('2026-13-40')).toBeUndefined()
+    expect(siteLaunchedAt('Sep 2')).toBeUndefined()
+    expect(siteLaunchedAt(undefined)).toBeUndefined()
+  })
+
   it('le manifeste est pur : aucun import autre que des types', () => {
     const source = readFileSync(path.join(__dirname, 'admin.config.ts'), 'utf8')
     const imports = source.match(/^import .*$/gm) ?? []

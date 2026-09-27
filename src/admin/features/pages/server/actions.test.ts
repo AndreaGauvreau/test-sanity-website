@@ -57,7 +57,7 @@ vi.mock('@/admin/core/sanity/clients', () => ({
   }),
 }))
 
-const { saveArticleSeoAction, savePageFieldAction, savePageSeoAction } = await import('./actions')
+const { saveArticleSeoAction, savePageArrayAction, savePageFieldAction, savePageSeoAction } = await import('./actions')
 
 beforeEach(() => {
   state.mode = 'ok'
@@ -92,6 +92,23 @@ describe('server actions', () => {
     state.mode = 'forbidden'
     expect(await savePageSeoAction({ pageId: 'home', key: 'metaTitle', value: 'x' })).toEqual({ ok: false, error: "You don't have access to this." })
     expect(state.calls.some((c) => c.startsWith('client:'))).toBe(false)
+    expect(state.mutations).toHaveLength(0)
+  })
+
+  it('C1 tableau (FOLLOWUPS #40) : garde d’abord, puis ajout par clé en écriture conditionnée avec le jeton de l’utilisateur', async () => {
+    const item = { _key: 'r1', platform: 'g2', label: '4.7 on G2' }
+    const result = await savePageArrayAction({ pageId: 'home', path: 'hero.ratings', op: 'insert', item, after: null })
+    expect(result).toEqual({ ok: true, items: [{ ...item, _type: 'rating' }] })
+    expect(state.calls[0]).toBe('guard:content.write:action')
+    expect(state.calls).toContain('client:user-token')
+    // Pas de brouillon : create (409 si un brouillon naît entre-temps), jamais createIfNotExists + tableau entier.
+    expect(state.mutations[0]).toEqual([
+      { create: expect.objectContaining({ _id: 'drafts.dockSchedulingPage' }) },
+      { patch: { id: 'drafts.dockSchedulingPage', set: { 'hero.ratings': [{ ...item, _type: 'rating' }] } } },
+    ])
+    state.mode = 'forbidden'
+    state.mutations = []
+    expect(await savePageArrayAction({ pageId: 'home', path: 'hero.ratings', op: 'remove', key: 'r1' })).toEqual({ ok: false, error: "You don't have access to this." })
     expect(state.mutations).toHaveLength(0)
   })
 

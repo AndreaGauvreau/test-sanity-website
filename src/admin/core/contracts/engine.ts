@@ -9,8 +9,11 @@ import type { EngineUser } from './session'
  *
  * Transport :
  * - `Authorization: Bearer <ENGINE_SECRET>` ;
- * - `X-Kz-User: base64url(JSON.stringify(EngineUser))` + `X-Kz-User-Sig: hex(HMAC-SHA256(ENGINE_SECRET, X-Kz-User))` :
- *   le moteur refuse toute requête dont l'identité n'est pas signée (le rôle décide des droits, voir roles.ts) ;
+ * - `X-Kz-User: base64url(JSON.stringify({ ...EngineUser, iat, exp }))` (secondes Unix, exp − iat ≤ 120 s) +
+ *   `X-Kz-User-Sig: base64url(Ed25519(X-Kz-User))` signé avec ENGINE_IDENTITY_PRIVATE_KEY (admin seulement, PKCS#8
+ *   base64) et vérifié par le moteur avec ENGINE_IDENTITY_PUBLIC_KEY (SPKI base64). Clé d'identité DISTINCTE du
+ *   Bearer (constat SEC-10) : qui vole ENGINE_SECRET ne peut pas forger un rôle. Identité expirée, future
+ *   (iat > maintenant + 30 s) ou mal signée → 401. Le rôle décide des droits (voir roles.ts) ;
  * - corps et réponses en JSON ; erreur = statut HTTP + `EngineErrorBody`.
  *
  * Les messages destinés au client (`message`, `error`, `label`…) sont en ANGLAIS : l'admin est en anglais.
@@ -77,6 +80,10 @@ export type EngineHealth = {
   sanityWrite: boolean
   preview: { url: string; ready: boolean }
   git: { branch: string; clean: boolean; aheadOfMain: number }
+  /** Avertissements de configuration (anglais), ex. faux Claude actif, jeton d'écriture absent. */
+  warnings?: string[]
+  /** Scénario du faux Claude actif (ENGINE_FAKE_CLAUDE, mode local seulement) : jamais en production. */
+  fakeClaude?: string
 }
 
 // ─── Éditeur IA (D1-D3, G1, G2) ──────────────────────────────────────────────

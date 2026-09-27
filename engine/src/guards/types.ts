@@ -1,5 +1,6 @@
 import type { Scope } from '../../../src/admin/core/contracts/engine'
 import type { ControlDef, TokenGroup, TokensFile, ZoneDef, ZonesFile } from '../../../src/admin/core/contracts/zones'
+import type { LintContext } from './guards'
 
 /**
  * Types communs des garde-fous. Les types du design system viennent du contrat partagé (`core/contracts/zones.ts`) :
@@ -28,8 +29,13 @@ export type ChangedFile = { file: string; before: string | null; after: string |
 /** Refus d'un contrôle statique : fichier, règle, consigne pour Claude (en anglais), extrait. */
 export type Violation = { file: string; rule: string; message: string; line?: string }
 
-/** Ce que le périmètre de la demande autorise : fichiers modifiables et outil de texte Sanity (set_text). */
-export type ToolAccess = { files: string[]; textTool: boolean }
+/**
+ * Ce que le périmètre de la demande autorise : fichiers modifiables et outil de texte Sanity (set_text).
+ * `lint` (SEC-07) : contexte du contrôle des fichiers (le même que `runStaticChecks`, voir `lintContextFor`) ; avec lui,
+ * chaque Edit est jugé sur le fichier FUTUR avant d'être écrit. Sans lui, un Edit de composant est refusé et un Edit de
+ * CSS n'est jugé qu'après l'essai. `lint.hardcoded` doit être le tableau VIVANT de la demande (réponses du client).
+ */
+export type ToolAccess = { files: string[]; textTool: boolean; lint?: LintContext }
 
 /** Ensemble en lecture seule, gelé pour de bon : add, delete et clear lèvent une erreur (mineur #83 du POC). */
 export function frozenSet<T>(values: Iterable<T>): ReadonlySet<T> {

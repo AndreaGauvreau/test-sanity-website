@@ -227,6 +227,13 @@ export function CompositesNavigation() {
               pendingCount={3}
               onReview={() => {}}
               siteUrl="https://conduit.com"
+              statusAction={
+                state === 'failed' ? (
+                  <Button variant="ghost" size="small" aria-haspopup="dialog">
+                    See error
+                  </Button>
+                ) : undefined
+              }
               publish={<PublishButton state={state} pendingCount={3} />}
             />
           ))}
@@ -274,6 +281,7 @@ export function CompositesNavigation() {
             }
           />
           <SectionHeader title="Danger zone" />
+          <SectionHeader headingLevel={1} title="Usage" description="headingLevel={1}: screen title when the Figma header is a Section header (B3, B5)." />
         </div>
       </Item>
 

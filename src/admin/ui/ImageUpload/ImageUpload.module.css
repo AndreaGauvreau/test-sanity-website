@@ -154,6 +154,14 @@
   letter-spacing: var(--k-text-body-small-tracking);
 }
 
+/* Actions de la feature hors état filled (« Choose from Media ») : H gap 8, alignées à gauche. */
+.actionRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--k-space-8);
+}
+
 .error {
   color: var(--k-interactive-danger);
   font: var(--k-text-body-small);

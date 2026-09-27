@@ -22,6 +22,7 @@ vi.mock('next/link', () => ({
 }))
 vi.mock('../server/actions', () => ({
   savePageFieldAction: vi.fn(),
+  savePageArrayAction: vi.fn(),
   savePageSeoAction: vi.fn(),
   saveArticleSeoAction: vi.fn(),
 }))
@@ -58,8 +59,12 @@ const doc = {
 }
 
 type SaveFn = (path: string, value: unknown) => Promise<{ ok: true } | { ok: false; error: string }>
+type ArrayFn = (path: string, op: import('../lib/form').ArrayOp) => Promise<{ ok: true; items?: Record<string, unknown>[] } | { ok: false; error: string }>
 
-function renderContent(saveField: ReturnType<typeof vi.fn<SaveFn>> = vi.fn<SaveFn>(async () => ({ ok: true }))) {
+function renderContent(
+  saveField: ReturnType<typeof vi.fn<SaveFn>> = vi.fn<SaveFn>(async () => ({ ok: true })),
+  saveArray: ReturnType<typeof vi.fn<ArrayFn>> = vi.fn<ArrayFn>(async () => ({ ok: true })),
+) {
   const sections = home.sections.map((section) => ({
     section,
     summary: sectionSummary(section, ((doc as unknown as Record<string, Record<string, unknown>>)[section.name]) ?? null),
@@ -74,6 +79,7 @@ function renderContent(saveField: ReturnType<typeof vi.fn<SaveFn>> = vi.fn<SaveF
       readOnly={false}
       referenceOptions={{ testimonial: [{ value: 't1', label: 'Jane Doe' }] }}
       saveField={saveField}
+      saveArray={saveArray}
       uploadImage={vi.fn()}
     />,
   )
@@ -144,19 +150,72 @@ describe('C1 · formulaire généré depuis le manifeste', () => {
     expect(await screen.findByText("You don't have permission to edit this in Sanity.")).toBeTruthy()
   })
 
-  it('tableau à longueur variable : un élément ajouté incomplet n’est pas envoyé, la suppression l’est', async () => {
+  it('tableau à longueur variable : un élément ajouté incomplet n’est pas envoyé, la suppression part par clé', async () => {
     const user = userEvent.setup()
-    const saveField = renderContent()
+    const saveArray = vi.fn<ArrayFn>(async () => ({ ok: true }))
+    const saveField = renderContent(undefined, saveArray)
     await user.click(screen.getByRole('button', { name: 'Add rating' }))
     expect((screen.getByRole('button', { name: 'Add rating' }) as HTMLButtonElement).disabled).toBe(true)
     expect(text(screen.getByRole('alert'))).toContain('Ratings 2 · Platform is required.')
     // Retirer l'élément neuf revient à l'état enregistré : rien à envoyer.
     await user.click(screen.getByRole('button', { name: 'Remove rating 2' }))
     await new Promise((r) => setTimeout(r, 800))
-    expect(saveField).not.toHaveBeenCalled()
-    // Retirer l'élément existant : le tableau entier est enregistré.
+    expect(saveArray).not.toHaveBeenCalled()
+    // Retirer l'élément existant : opération par CLÉ (FOLLOWUPS #40), jamais le tableau entier.
     await user.click(screen.getByRole('button', { name: 'Remove rating 1' }))
-    await waitFor(() => expect(saveField).toHaveBeenCalledWith('hero.ratings', []))
+    await waitFor(() => expect(saveArray).toHaveBeenCalledWith('hero.ratings', { op: 'remove', key: 'g2' }))
+    expect(saveField).not.toHaveBeenCalledWith('hero.ratings', expect.anything())
+  })
+
+  it('FOLLOWUPS #40 : ajout complété → insert après le dernier élément enregistré, puis update ; ajout fait ailleurs affiché', async () => {
+    const user = userEvent.setup()
+    const saveArray = vi.fn<ArrayFn>(async (_path, op) =>
+      op.op === 'insert'
+        ? // Le serveur renvoie aussi un élément ajouté entre-temps par un autre onglet.
+          { ok: true, items: [{ _key: 'g2', _type: 'rating', platform: 'g2', label: '4.7 stars on G2' }, { _key: 'other', _type: 'rating', platform: 'g2', label: 'Other tab' }, op.item] }
+        : { ok: true },
+    )
+    renderContent(undefined, saveArray)
+    await user.click(screen.getByRole('button', { name: 'Add rating' }))
+    const card = screen.getByRole('group', { name: 'Rating 2' })
+    await user.click(within(card).getByRole('combobox', { name: /Platform/ }))
+    await user.click(screen.getByRole('option', { name: 'Capterra' }))
+    await user.type(within(card).getByLabelText(/^Text/), 'Top rated')
+    await waitFor(() => expect(saveArray).toHaveBeenCalledTimes(1), { timeout: 2000 })
+    const [path, op] = saveArray.mock.calls[0]
+    expect(path).toBe('hero.ratings')
+    expect(op).toMatchObject({ op: 'insert', after: 'g2', item: { _type: 'rating', platform: 'capterra', label: 'Top rated' } })
+    // Le tableau du serveur est fusionné : l'ajout de l'autre onglet apparaît, la saisie locale reste.
+    await waitFor(() => expect(screen.getAllByRole('group', { name: /^Rating \d$/ })).toHaveLength(3))
+    expect(value(within(screen.getByRole('group', { name: 'Rating 3' })).getByLabelText(/^Text/))).toBe('Top rated')
+    // Frappe suivante sur le même élément : update par clé (l'élément existe désormais).
+    await user.type(within(screen.getByRole('group', { name: 'Rating 3' })).getByLabelText(/^Text/), '!')
+    await waitFor(() => expect(saveArray).toHaveBeenCalledTimes(2), { timeout: 2000 })
+    expect(saveArray.mock.calls[1][1]).toMatchObject({ op: 'update', item: { _key: (op as unknown as { item: { _key: string } }).item._key, label: 'Top rated!' } })
+  })
+
+  it('FOLLOWUPS #40 : réordonnancement par clé (move before / after), bornes désactivées', async () => {
+    const user = userEvent.setup()
+    const saveArray = vi.fn<ArrayFn>(async () => ({ ok: true }))
+    const two = { ...doc, hero: { ...doc.hero, ratings: [...doc.hero.ratings, { _key: 'cap', _type: 'rating', platform: 'capterra', label: '4.8' }] } }
+    render(
+      <ContentView
+        pageId="home"
+        sections={home.sections.map((section) => ({ section, summary: '', source: null }))}
+        value={two}
+        hasDraft
+        readOnly={false}
+        referenceOptions={{}}
+        saveField={vi.fn()}
+        saveArray={saveArray}
+        uploadImage={vi.fn()}
+      />,
+    )
+    expect((screen.getByRole('button', { name: 'Move rating 1 up' }) as HTMLButtonElement).disabled).toBe(true)
+    expect((screen.getByRole('button', { name: 'Move rating 2 down' }) as HTMLButtonElement).disabled).toBe(true)
+    await user.click(screen.getByRole('button', { name: 'Move rating 2 up' }))
+    await waitFor(() => expect(saveArray).toHaveBeenCalledWith('hero.ratings', { op: 'move', key: 'cap', to: { before: 'g2' } }))
+    expect(value(within(screen.getByRole('group', { name: 'Rating 1' })).getByLabelText(/^Text/))).toBe('4.8')
   })
 
   it('référence : liste des éléments de la collection', async () => {

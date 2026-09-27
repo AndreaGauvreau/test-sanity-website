@@ -2,7 +2,7 @@
 
 import { AdminAuthError, requireCapability } from '@/admin/core/auth/session'
 
-import { saveArticleSeo, savePageField, savePageSeo, type SaveResult } from './save'
+import { saveArticleSeo, savePageArray, savePageField, savePageSeo, type ArraySaveResult, type SaveResult } from './save'
 
 /**
  * Server actions des écrans C1, C2, C6. Chacune : droit `content.write` EN PREMIER, puis le cœur (save.ts) qui
@@ -10,7 +10,9 @@ import { saveArticleSeo, savePageField, savePageSeo, type SaveResult } from './s
  * brouillon. Réponse sérialisable, message anglais prêt à afficher ; jamais d'exception vers le navigateur.
  */
 
-async function guarded(run: (session: Awaited<ReturnType<typeof requireCapability>>) => Promise<SaveResult>): Promise<SaveResult> {
+async function guarded<R extends SaveResult | ArraySaveResult>(
+  run: (session: Awaited<ReturnType<typeof requireCapability>>) => Promise<R>,
+): Promise<R | { ok: false; error: string }> {
   let session
   try {
     session = await requireCapability('content.write', 'action')
@@ -21,9 +23,14 @@ async function guarded(run: (session: Awaited<ReturnType<typeof requireCapabilit
   return run(session)
 }
 
-/** C1 : un champ (ou un tableau à longueur variable) du document de la page. */
+/** C1 : un champ du document de la page (jamais un tableau entier). */
 export async function savePageFieldAction(input: unknown): Promise<SaveResult> {
   return guarded((session) => savePageField(session, input))
+}
+
+/** C1 : un élément d'un tableau à longueur variable (ajout, modification, retrait, déplacement), sans course. */
+export async function savePageArrayAction(input: unknown): Promise<ArraySaveResult> {
+  return guarded((session) => savePageArray(session, input))
 }
 
 /** C2 : un champ SEO de la page (meta title, description, image OG, indexation). */

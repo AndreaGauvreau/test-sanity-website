@@ -17,7 +17,7 @@ vi.mock('@/admin/core/auth/session', async () => {
 vi.mock('@/admin/features/code/data', () => ({
   loadCodeScreen: async () => {
     state.calls.push('load')
-    return { scripts: [], pages: [], hasDraft: false }
+    return { scripts: [], pages: [], hasDraft: false, signingReady: true }
   },
 }))
 vi.mock('@/admin/features/code/CodeScreen', () => ({ CodeScreen: () => null }))

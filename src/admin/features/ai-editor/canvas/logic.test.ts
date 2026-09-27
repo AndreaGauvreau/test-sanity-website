@@ -5,8 +5,8 @@ import { bridgeMessage } from '@/admin/editor-bridge/protocol'
 import { createEditorStore } from '../state/store'
 import { resolveEditorPage } from '../page/resolve'
 import { connectPreview } from './channel'
-import { resolvePreview } from './preview-url'
-import { computeFrame } from './scale'
+import { previewKey, previewTokenExpired, previewTokenExpiry, resolvePreview } from './preview-url'
+import { computeFrame, floatingMaxWidth } from './scale'
 import { bridgeViewFrom } from './view'
 
 describe('computeFrame — mise à l’échelle de l’aperçu', () => {
@@ -35,6 +35,43 @@ describe('computeFrame — mise à l’échelle de l’aperçu', () => {
 
   it('petite place : Mobile réduit aussi', () => {
     expect(computeFrame({ width: 300, height: 600 }, 375).scale).toBeCloseTo(0.8)
+  })
+})
+
+describe('floatingMaxWidth — barres flottantes dans le cadre (QA-5)', () => {
+  it('largeur du cadre moins 12 px de chaque côté : Mobile 375 → 351 (la barre Figma fait 388)', () => {
+    expect(floatingMaxWidth(375)).toBe(351)
+    expect(floatingMaxWidth(computeFrame({ width: 1080, height: 860 }, 1280).width)).toBeCloseTo(1056)
+  })
+  it('jamais négatif ni NaN', () => {
+    expect(floatingMaxWidth(10)).toBe(0)
+    expect(floatingMaxWidth(Number.NaN)).toBe(0)
+  })
+})
+
+describe('jeton d’aperçu court (SEC-09)', () => {
+  const now = 1_790_000_000
+  const url = (exp: number) => `http://127.0.0.1:4042/?kz_preview=v1.${exp}.dXNlcg.c2lnLV9z`
+
+  it('resolvePreview accepte l’URL à jeton court et la garde intacte', () => {
+    expect(resolvePreview(url(now + 900), 'http://127.0.0.1:4042', 'http://127.0.0.1:4040/admin/editor')).toEqual({
+      url: url(now + 900),
+      origin: 'http://127.0.0.1:4042',
+    })
+  })
+  it('previewKey : même page quel que soit le jeton, autre page sinon', () => {
+    expect(previewKey(url(now + 900))).toBe(previewKey(url(now + 1800)))
+    expect(previewKey(url(now + 900))).toBe('http://127.0.0.1:4042/')
+    expect(previewKey('http://127.0.0.1:4042/about?kz_preview=x')).not.toBe(previewKey(url(now)))
+    expect(previewKey('pas une url')).toBe('pas une url')
+  })
+  it('échéance lue dans le jeton ; sans jeton daté, jamais expiré', () => {
+    expect(previewTokenExpiry(url(now + 900))).toBe(now + 900)
+    expect(previewTokenExpired(url(now + 900), now)).toBe(false)
+    expect(previewTokenExpired(url(now + 20), now)).toBe(true)
+    expect(previewTokenExpired(url(now - 1), now)).toBe(true)
+    expect(previewTokenExpiry('http://127.0.0.1:4042/?kz_preview=root-secret-value')).toBeNull()
+    expect(previewTokenExpired('http://127.0.0.1:4040/admin/editor/harness', now)).toBe(false)
   })
 })
 

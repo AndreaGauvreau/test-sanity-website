@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { notFound } from 'next/navigation'
 import { connection } from 'next/server'
 
 import { LiveStatus } from '@/components/LiveStatus'
@@ -63,6 +64,8 @@ async function measureImage(variant: ImageVariant): Promise<ImageRow> {
 }
 
 export default async function BenchPage() {
+  // Outil de développement (SEC-02) : introuvable hors `next dev` (mesures coûteuses, purge du cache).
+  if (process.env.NODE_ENV !== 'development') notFound()
   // Mesures refaites à chaque visite : cette page n'est jamais mise en cache.
   await connection()
 
@@ -119,8 +122,8 @@ export default async function BenchPage() {
     <section className="bench">
       <h1>Bench lecture</h1>
       <p className="lead">
-        Mesures prises par le serveur Next à chaque chargement de la page (
-        {process.env.NODE_ENV === 'production' ? 'build de production' : 'mode dev'}). Requête testée :
+        Mesures prises par le serveur Next à chaque chargement de la page (mode dev : la page n’existe
+        pas en production). Requête testée :
         la liste du blog, {posts.length} articles, {formatBytes(responseBytes)} de JSON. Sanity l’exécute
         en {reference.ms} ms : le reste du temps, c’est le réseau jusqu’à l’API.
       </p>

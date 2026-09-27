@@ -9,8 +9,10 @@ import type {
   EditJob,
   EditRequest,
   EditorState,
+  EngineHealth,
   PendingChange,
   PendingDesignItem,
+  PublishStatus,
   Question,
   Step,
   StepKind,
@@ -18,8 +20,11 @@ import type {
   ThreadEntry,
   Usage,
 } from '../../contracts/engine'
+import type { EngineUser } from '../../contracts/session'
 import { engineErrorBody } from '../errors'
 import { MOCK_HEALTH } from './health'
+// Import circulaire assumé (publish.ts importe aussi ce fichier) : rien n'est appelé au chargement des modules.
+import { publishMock } from './publish'
 import type { MockEngineRequest, MockEngineResponse, MockHandler } from './types'
 
 /**
@@ -28,10 +33,14 @@ import type { MockEngineRequest, MockEngineResponse, MockHandler } from './types
  * Rejoue le cycle d'une demande dans le temps, sans minuteur : l'état avance à chaque lecture d'après l'horloge
  * (`advance`). queued → running (étapes) → waiting (question 🟢 ⚪ 🔴) → réponse → running → done (résumé, contrôles,
  * usage) → Validate / Cancel ; Stop ; échec (« fail » dans la demande) ; refus (« already » / « nothing »).
- * Mêmes règles que le vrai moteur : une demande à la fois (409 busy), une modification en attente à la fois
- * (409 awaiting_validation), entrées validées (zod), question sans réponse 15 min → stopped.
- * Fil persistant en mémoire (globalThis : survit au rechargement à chaud, pas au redémarrage du serveur).
- * AUCUNE écriture réelle : ni Sanity, ni git.
+ * Refus dans l'ordre du vrai moteur (engine/src/jobs/service.ts, assertCanStart puis request) : 400 (zod) →
+ * 409 publishing (publication simulée en cours, mock/publish.ts) → 409 busy → 409 awaiting_validation / conflict /
+ * 404 → 503 unavailable (scénario nommé : pas d'accès Claude, aperçu pas prêt, texte Sanity sans jeton, texte à
+ * restaurer). Validate / Cancel : idempotents, 409 busy / conflict / publishing, Cancel 503 sans jeton Sanity.
+ * Scénario : `ENGINE_MOCK_EDITOR` au démarrage, `setEditorMockScenario()` ensuite ; par défaut « ready » (santé
+ * configurée : accès Claude, aperçu prêt, jeton Sanity). Question sans réponse 15 min → stopped.
+ * Monde (fil, modifications, scénario) sur globalThis : survit au rechargement à chaud, pas au redémarrage ; le code,
+ * lui, est celui du module courant. AUCUNE écriture réelle : ni Sanity, ni git.
  */
 
 // ─── Validation des entrées (miroir du moteur) ──────────────────────────────────────────────────────────
@@ -105,18 +114,74 @@ export type EditorMockWorld = {
   validated: PendingDesignItem[]
 }
 
-/** Brouillons de contenu « déjà en attente » dans la démo : 2 + 1 modification validée → « (3 changes) » du Figma. */
+/**
+ * Brouillons de contenu « déjà en attente » dans la démo, pour `pendingTotal` quand aucun total n'est branché
+ * (fabrique de test) : 2 + 1 modification validée → « (3 changes) » du Figma.
+ */
 export const MOCK_CONTENT_DRAFTS = 2
 export const MOCK_QUESTION_TTL_MS = 15 * 60 * 1000
 const THREAD_LIMIT = 50
 const ACTIVE = new Set(['queued', 'running', 'waiting'])
 const MODEL = { id: 'claude-opus-5-5', label: 'Opus 5.5' }
 
+// ─── Scénarios nommés (santé du moteur) ─────────────────────────────────────────────────────────────────
+
+/** Conditions du moteur simulé. Libellés lus par Kuartz (anglais). */
+export const MOCK_EDITOR_SCENARIOS = [
+  { id: 'ready', label: 'Claude access configured (API key), preview ready, Sanity write token: requests run.' },
+  { id: 'no-claude', label: 'No Claude access on the engine: health not ok, every request → 503 unavailable.' },
+  { id: 'preview-starting', label: 'Draft preview not ready yet: health not ok, every request → 503 unavailable.' },
+  {
+    id: 'no-sanity-token',
+    label: 'No Sanity write token: Style works; Text on a Sanity zone → 503, Cancel of a change with texts → 503.',
+  },
+  { id: 'restore-pending', label: 'A previous change could not be undone in Sanity: every new request → 503.' },
+] as const
+
+export type MockEditorScenario = (typeof MOCK_EDITOR_SCENARIOS)[number]['id']
+
+export function isMockEditorScenario(value: unknown): value is MockEditorScenario {
+  return typeof value === 'string' && MOCK_EDITOR_SCENARIOS.some((s) => s.id === value)
+}
+
+/** Messages du vrai moteur (engine/src/server/errors.ts et engine/src/jobs/service.ts), à garder identiques. */
+export const MOCK_EDITOR_MESSAGES = {
+  busy: 'Claude is already working on a change. Wait for it to finish.',
+  awaiting: 'Validate or cancel the current change first.',
+  publishing: 'A publication is in progress. Try again in a moment.',
+  noClaude: 'The AI editor is unavailable: Claude access is not configured on the engine.',
+  previewNotReady: 'The draft preview is not ready yet. Try again in a moment.',
+  noSanityToken: 'Text changes are unavailable: the engine has no Sanity write token. Use “Style” only, or ask Kuartz.',
+  restorePending: 'A previous change could not be fully undone in Sanity yet. Try again in a moment, or ask Kuartz.',
+  cancelNoToken: 'The texts of this change cannot be restored: the engine has no Sanity write token.',
+} as const
+
+/**
+ * Santé annoncée par l'éditeur simulé (EditorState.health) : MOCK_HEALTH (auth-core) corrigé par le scénario.
+ * « ready » est TOUJOURS configuré (un MOCK_HEALTH sans accès Claude passe en 'api-key', comme l'usage simulé) ;
+ * `ok` suit la règle du vrai moteur (engine/src/server/health.ts) : accès Claude, aperçu prêt, branche draft.
+ */
+export function mockEditorHealthFor(scenario: MockEditorScenario): EngineHealth {
+  const base = structuredClone(MOCK_HEALTH)
+  const configured = base.claude.access === 'none' ? 'api-key' : base.claude.access
+  const health: EngineHealth = {
+    ...base,
+    claude: { ...base.claude, access: scenario === 'no-claude' ? 'none' : configured },
+    sanityWrite: scenario !== 'no-sanity-token',
+    preview: { ...base.preview, ready: scenario !== 'preview-starting' },
+  }
+  health.ok = health.claude.access !== 'none' && health.preview.ready && health.git.branch === 'draft'
+  return health
+}
+
 function emptyWorld(): EditorMockWorld {
   return { seq: 0, sims: new Map(), threads: new Map(), changes: new Map(), pendingId: null, validated: [] }
 }
 
-type ZoneLike = { label?: string; section?: string; files?: string[] }
+/** Ce qui survit au rechargement à chaud (rangé sur globalThis pour l'instance du processus). */
+export type EditorMockHolder = { world?: EditorMockWorld; scenario?: MockEditorScenario }
+
+type ZoneLike = { label?: string; section?: string; files?: string[]; text?: { source?: string } }
 const ZONES = (zonesFile as unknown as { zones: Record<string, ZoneLike> }).zones
 
 function cssFileOf(zone: string): string {
@@ -144,7 +209,7 @@ function previewFor(path: string): EditorState['preview'] {
   return { url: `${origin}/admin/editor/harness?page=${encodeURIComponent(pageIdOf(path))}`, origin }
 }
 
-function usageOf(kind: 'request' | 'adjustment' | 'partial' | 'rejected', durationMs: number): Usage {
+function usageOf(kind: 'request' | 'adjustment' | 'partial' | 'rejected', durationMs: number, access: Usage['access']): Usage {
   const table = {
     request: [20_900, 1_600, 0.09],
     adjustment: [12_400, 620, 0.05],
@@ -160,7 +225,7 @@ function usageOf(kind: 'request' | 'adjustment' | 'partial' | 'rejected', durati
     cacheWriteTokens: Math.round(input * 0.2),
     costUsd: cost,
     costKind: kind === 'partial' ? 'estimated' : 'billed',
-    access: 'api-key',
+    access,
     durationMs: Math.max(0, durationMs),
     turns: kind === 'request' ? 9 : 5,
   }
@@ -204,16 +269,44 @@ function sizeQuestion(req: EditRequest): Question {
 // ─── Moteur simulé ───────────────────────────────────────────────────────────────────────────────────
 
 export type EditorMock = {
-  handle: MockHandler
+  /** Synchrone (la publication simulée lit GET /editor/state sans attendre). */
+  handle: (request: MockEngineRequest) => MockEngineResponse
   /** Pour les tests : l'état brut (ne pas le muter hors de ce fichier). */
   readonly world: EditorMockWorld
   reset: () => void
+  /** Change les conditions du moteur ; le fil et les modifications restent. */
+  setScenario: (scenario: MockEditorScenario) => void
+  scenario: () => MockEditorScenario
+  /** Santé annoncée (identique à EditorState.health). */
+  health: () => EngineHealth
 }
 
-export function createEditorMock(options: { now?: () => number } = {}): EditorMock {
+/** Ce que l'éditeur simulé lit de la publication simulée (même rôle que PublishLock et pendingTotal du vrai moteur). */
+export type EditorPublishPort = {
+  /** Une publication tourne : nouvelle demande, Validate et Cancel → 409 publishing. */
+  isPublishing: () => boolean
+  /** Total de E1 (contenus + modifications validées) pour « Validated — added to Publish (N changes) ». */
+  pendingTotal?: () => number | null
+}
+
+export function createEditorMock(
+  options: { now?: () => number; scenario?: MockEditorScenario; holder?: EditorMockHolder; publish?: EditorPublishPort } = {},
+): EditorMock {
   const now = options.now ?? (() => Date.now())
-  let world = emptyWorld()
+  // Le monde vit dans `holder` : l'instance du processus le range sur globalThis (le code, lui, suit le rechargement).
+  const holder: EditorMockHolder = options.holder ?? {}
+  holder.world ??= emptyWorld()
+  holder.scenario ??= options.scenario ?? 'ready'
+  const publish = options.publish ?? null
   const iso = (t: number) => new Date(t).toISOString()
+  const scenario = () => holder.scenario ?? 'ready'
+  const health = () => mockEditorHealthFor(scenario())
+  // Accès annoncé dans l'usage : celui de la santé (une demande ne démarre jamais sans accès).
+  const usageAccess = (): Usage['access'] => {
+    const access = health().claude.access
+    return access === 'none' ? 'api-key' : access
+  }
+  let world: EditorMockWorld = holder.world
   const nextId = (prefix: string) => `${prefix}-${now().toString(36)}-${++world.seq}`
 
   function threadOf(page: string): ThreadEntry[] {
@@ -248,7 +341,7 @@ export function createEditorMock(options: { now?: () => number } = {}): EditorMo
     const duration = at - Date.parse(job.startedAt ?? job.createdAt)
     const change = world.changes.get(job.changeId)
     if (status === 'done') {
-      job.usage = usageOf(job.kind === 'adjustment' ? 'adjustment' : 'request', duration)
+      job.usage = usageOf(job.kind === 'adjustment' ? 'adjustment' : 'request', duration, usageAccess())
       if (change) {
         change.status = 'to-validate'
         change.summary = job.summary
@@ -259,7 +352,7 @@ export function createEditorMock(options: { now?: () => number } = {}): EditorMo
       }
       return
     }
-    job.usage = usageOf(status === 'rejected' ? 'rejected' : 'partial', duration)
+    job.usage = usageOf(status === 'rejected' ? 'rejected' : 'partial', duration, usageAccess())
     if (!change) return
     if (job.kind === 'adjustment' && sim.previous) {
       // L'ajustement est retiré ; la modification d'avant reste à valider.
@@ -467,7 +560,7 @@ export function createEditorMock(options: { now?: () => number } = {}): EditorMo
     const usages = thread.flatMap((e) => (e.type === 'job' && e.job.usage ? [e.job.usage] : []))
     const state: EditorState = {
       page,
-      health: MOCK_HEALTH,
+      health: health(),
       preview: previewFor(page),
       active: activeSim()?.job ?? null,
       pending: pending(),
@@ -478,20 +571,56 @@ export function createEditorMock(options: { now?: () => number } = {}): EditorMo
     return { status: 200, json: snapshot(state) }
   }
 
+  /** Une publication simulée tourne (lue à chaque décision, comme le verrou du vrai moteur). */
+  function publishing(): boolean {
+    try {
+      return publish?.isPublishing() ?? false
+    } catch {
+      return false
+    }
+  }
+
+  /** Miroir d'assertCanStart (engine/src/jobs/service.ts). */
+  function refuseStart(changeId: string | undefined): MockEngineResponse | null {
+    if (publishing()) return errorResponse(409, 'publishing', MOCK_EDITOR_MESSAGES.publishing)
+    if (activeSim()) return errorResponse(409, 'busy', MOCK_EDITOR_MESSAGES.busy)
+    const open = pending()
+    if (!changeId) return open ? errorResponse(409, 'awaiting_validation', MOCK_EDITOR_MESSAGES.awaiting) : null
+    if (!open || open.id !== changeId) {
+      return world.changes.has(changeId)
+        ? errorResponse(409, 'conflict', 'This change can no longer be adjusted.')
+        : errorResponse(404, 'not_found', 'This change no longer exists.')
+    }
+    if (open.status !== 'to-validate') return errorResponse(409, 'busy', MOCK_EDITOR_MESSAGES.busy)
+    return null
+  }
+
+  /** Les 503 du vrai moteur, dans son ordre (texte à restaurer, accès Claude, aperçu, texte Sanity sans jeton). */
+  function unavailableFor(request: EditRequest): string | null {
+    const current = scenario()
+    if (current === 'restore-pending') return MOCK_EDITOR_MESSAGES.restorePending
+    const h = health()
+    if (h.claude.access === 'none') return MOCK_EDITOR_MESSAGES.noClaude
+    if (!h.preview.ready) return MOCK_EDITOR_MESSAGES.previewNotReady
+    const sanityText = request.scope.includes('text') && request.targets.some((t) => ZONES[t.zone]?.text?.source === 'sanity')
+    if (sanityText && !h.sanityWrite) return MOCK_EDITOR_MESSAGES.noSanityToken
+    return null
+  }
+
   function postRequest(req: MockEngineRequest): MockEngineResponse {
     const parsed = EditRequestSchema.safeParse(req.body)
     if (!parsed.success) return errorResponse(400, 'bad_request', parsed.error.issues[0]?.message ?? 'Invalid request.')
     advanceAll()
     const request = parsed.data as EditRequest
     request.note = request.note.trim()
-    if (activeSim()) return errorResponse(409, 'busy', 'Claude is already working on a request. Try again when it’s done.')
+    // Même ordre que le vrai moteur : assertCanStart (verrou, file, modification ouverte), puis les 503.
+    const refused = refuseStart(request.changeId)
+    if (refused) return refused
     const current = pending()
-    if (request.changeId) {
-      if (!current || current.id !== request.changeId || current.status !== 'to-validate') {
-        return errorResponse(409, 'conflict', 'This change is no longer waiting for validation. Reload the editor.')
-      }
-    } else if (current) {
-      return errorResponse(409, 'awaiting_validation', 'A change is waiting for validation. Validate or cancel it first.')
+    const unavailable = unavailableFor(request)
+    if (unavailable) return errorResponse(503, 'unavailable', unavailable)
+    if (current && request.changeId && current.page !== request.page) {
+      return errorResponse(400, 'bad_request', 'This change was made on another page: open that page to adjust it.')
     }
     const t = now()
     const kind: EditJob['kind'] = request.changeId ? 'adjustment' : 'request'
@@ -589,12 +718,36 @@ export function createEditorMock(options: { now?: () => number } = {}): EditorMo
     return { status: 200, json: snapshot(sim.job) }
   }
 
+  /** Total de E1 après la validation (publication simulée), sinon 2 brouillons de démo + validées. */
+  function pendingTotal(): number {
+    try {
+      const total = publish?.pendingTotal?.()
+      if (typeof total === 'number' && Number.isFinite(total)) return total
+    } catch {
+      // Publication simulée indisponible : repli de démo.
+    }
+    return MOCK_CONTENT_DRAFTS + world.validated.length
+  }
+
   function decide(req: MockEngineRequest, decision: 'validate' | 'cancel'): MockEngineResponse {
     advanceAll()
     const change = req.params.id ? world.changes.get(req.params.id) : undefined
     if (!change) return errorResponse(404, 'not_found', 'This change no longer exists.')
+    // Miroir de validate / cancel (engine/src/jobs/service.ts) : déjà fait → renvoyé tel quel (idempotent).
+    if (change.status === (decision === 'validate' ? 'validated' : 'cancelled')) return { status: 200, json: snapshot(change) }
+    if (change.status === 'working') {
+      return decision === 'validate'
+        ? errorResponse(409, 'busy', MOCK_EDITOR_MESSAGES.busy)
+        : errorResponse(409, 'busy', 'Claude is still working on this change: stop it first.')
+    }
     if (change.status !== 'to-validate' || world.pendingId !== change.id) {
-      return errorResponse(409, 'conflict', 'This change is no longer waiting for validation. Reload the editor.')
+      return errorResponse(409, 'conflict', `This change can no longer be ${decision === 'validate' ? 'validated' : 'cancelled'}.`)
+    }
+    if (activeSim()) return errorResponse(409, 'busy', MOCK_EDITOR_MESSAGES.busy)
+    if (publishing()) return errorResponse(409, 'publishing', MOCK_EDITOR_MESSAGES.publishing)
+    if (decision === 'cancel' && !health().sanityWrite) {
+      const hasTexts = change.jobIds.some((id) => (world.sims.get(id)?.job.texts.length ?? 0) > 0)
+      if (hasTexts) return errorResponse(503, 'unavailable', MOCK_EDITOR_MESSAGES.cancelNoToken)
     }
     const t = now()
     world.pendingId = null
@@ -610,13 +763,9 @@ export function createEditorMock(options: { now?: () => number } = {}): EditorMo
         validatedBy: req.user.name,
         validatedAt: change.validatedAt,
         files: [...new Set(change.targets.flatMap((x) => ZONES[x.zone]?.files ?? []))],
+        page: change.page,
       })
-      pushEntry(change.page, {
-        type: 'validated',
-        changeId: change.id,
-        at: iso(t),
-        pendingTotal: MOCK_CONTENT_DRAFTS + world.validated.length,
-      })
+      pushEntry(change.page, { type: 'validated', changeId: change.id, at: iso(t), pendingTotal: pendingTotal() })
     } else {
       change.status = 'cancelled'
       pushEntry(change.page, { type: 'cancelled', changeId: change.id, at: iso(t) })
@@ -624,7 +773,7 @@ export function createEditorMock(options: { now?: () => number } = {}): EditorMo
     return { status: 200, json: snapshot(change) }
   }
 
-  const handle: MockHandler = (req) => {
+  const handle = (req: MockEngineRequest): MockEngineResponse => {
     const [, area, , action] = req.segments
     if (req.method === 'GET' && area === 'state') return getState(req)
     if (req.method === 'POST' && area === 'requests') return postRequest(req)
@@ -645,25 +794,82 @@ export function createEditorMock(options: { now?: () => number } = {}): EditorMo
     },
     reset() {
       world = emptyWorld()
+      holder.world = world
     },
+    setScenario(next) {
+      holder.scenario = next
+    },
+    scenario,
+    health,
   }
 }
 
-// Instance du serveur de dev : gardée sur globalThis pour survivre au rechargement à chaud du module.
-const GLOBAL_KEY = Symbol.for('kz.admin.mock.editor')
-const holder = globalThis as unknown as Record<symbol, EditorMock | undefined>
-const instance: EditorMock = holder[GLOBAL_KEY] ?? (holder[GLOBAL_KEY] = createEditorMock())
+// ─── Instance du processus ──────────────────────────────────────────────────────────────────────────
+
+// Le MONDE est rangé sur globalThis (survit au rechargement à chaud) ; le code est celui du module courant.
+// Nouvelle clé : l'ancienne rangeait l'instance entière, dont le code ne suivait pas le rechargement.
+const GLOBAL_KEY = Symbol.for('kz.admin.mock.editor.world')
+const PORT_USER: EngineUser = { id: 'editor-mock', name: 'AI editor', email: 'editor-mock@kuartz.invalid', role: 'kuartz' }
+
+/** GET /publish/status de la publication simulée (publish-ui), lu comme le vrai moteur lit son verrou. */
+function publishStatus(): PublishStatus | null {
+  const res = publishMock().handle({
+    method: 'GET',
+    segments: ['publish', 'status'],
+    params: {},
+    query: new URLSearchParams(),
+    body: null,
+    user: PORT_USER,
+  })
+  return 'json' in res && res.status === 200 ? (res.json as PublishStatus) : null
+}
+
+/** Branche l'éditeur simulé sur la publication simulée (verrou 409 publishing, total de E1). */
+export const MOCK_PUBLISH_PORT: EditorPublishPort = {
+  isPublishing: () => publishStatus()?.state === 'publishing',
+  pendingTotal: () => publishStatus()?.pending.total ?? null,
+}
+
+let instance: EditorMock | null = null
+
+/** Instance du processus (ENGINE_MOCK=1) ; scénario initial : ENGINE_MOCK_EDITOR, sinon « ready ». */
+export function editorMock(): EditorMock {
+  if (instance) return instance
+  const g = globalThis as unknown as Record<symbol, EditorMockHolder | undefined>
+  const holder = (g[GLOBAL_KEY] ??= {})
+  const fromEnv = process.env.ENGINE_MOCK_EDITOR
+  instance = createEditorMock({
+    holder,
+    scenario: isMockEditorScenario(fromEnv) ? fromEnv : 'ready',
+    publish: MOCK_PUBLISH_PORT,
+  })
+  return instance
+}
 
 /** Signature gardée pour mock/index.ts (auth-core). */
-export const handleEditor: MockHandler = (request) => instance.handle(request)
+export const handleEditor: MockHandler = (request) => editorMock().handle(request)
+
+/** Change les conditions du moteur simulé (fil et modifications gardés). Pour une route de dev ou un test. */
+export function setEditorMockScenario(scenario: MockEditorScenario): void {
+  editorMock().setScenario(scenario)
+}
+
+export function editorMockScenario(): MockEditorScenario {
+  return editorMock().scenario()
+}
+
+/** Santé du moteur simulé selon le scénario (même valeur que EditorState.health), pour GET /health (auth-core). */
+export function mockEditorHealth(): EngineHealth {
+  return editorMock().health()
+}
 
 /** Modifications IA validées en attente de Publish (E1 « Design »), pour le mock de publication (publish-ui). Copies. */
 export function listValidatedDesignChanges(): PendingDesignItem[] {
-  return structuredClone(instance.world.validated)
+  return structuredClone(editorMock().world.validated)
 }
 
 /** Retire des modifications validées (publication ou abandon simulés par publish-ui) ; sans liste : toutes. */
 export function clearValidatedDesignChanges(changeIds?: readonly string[]): void {
-  const w = instance.world
+  const w = editorMock().world
   w.validated = changeIds ? w.validated.filter((v) => !changeIds.includes(v.changeId)) : []
 }

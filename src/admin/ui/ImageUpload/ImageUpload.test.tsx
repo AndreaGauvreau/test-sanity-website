@@ -68,3 +68,36 @@ describe('ImageUpload', () => {
     expect(formatBytes(5 * 1024 * 1024)).toBe('5 MB')
   })
 })
+
+describe('ImageUpload actions (FOLLOWUPS #38)', () => {
+  it('vide : actions dans une ligne sous la zone, cliquables', async () => {
+    const onPick = vi.fn()
+    render(<ImageUpload onFile={() => {}} actions={<button type="button" onClick={onPick}>Choose from Media</button>} />)
+    const action = screen.getByRole('button', { name: 'Choose from Media' })
+    // Hors de la zone de dépôt (un bouton dans un bouton serait invalide).
+    expect(action.closest('button')).toBe(action)
+    await userEvent.click(action)
+    expect(onPick).toHaveBeenCalledTimes(1)
+  })
+
+  it('rempli : actions dans la ligne fichier, avant Replace', () => {
+    render(
+      <ImageUpload
+        onFile={() => {}}
+        value={{ name: 'cover.jpg', size: 1000 }}
+        onRemove={() => {}}
+        actions={<button type="button">Choose from Media</button>}
+      />,
+    )
+    const buttons = screen.getAllByRole('button').map((b) => b.getAttribute('aria-label') ?? b.textContent)
+    const media = buttons.indexOf('Choose from Media')
+    expect(media).toBeGreaterThanOrEqual(0)
+    expect(media).toBeLessThan(buttons.findIndex((b) => b?.includes('Replace')))
+    expect(buttons.filter((b) => b === 'Choose from Media')).toHaveLength(1)
+  })
+
+  it('sans actions : pas de ligne vide', () => {
+    const { container } = render(<ImageUpload onFile={() => {}} />)
+    expect(container.firstElementChild?.children).toHaveLength(3) // libellé, zone, input fichier
+  })
+})

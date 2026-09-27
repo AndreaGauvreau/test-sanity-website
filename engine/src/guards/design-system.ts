@@ -40,6 +40,12 @@ export type DesignSystem = {
   policy: TokenSets
   /** Contenu de RULES.md, ou null s'il n'existe pas (le prompt est l'affaire d'engine-claude). */
   rules: string | null
+  /**
+   * Custom properties de tokens.css (`--color-neutral-900` → `#232325`), valeur brute de la dernière déclaration de la
+   * feuille, `var()` non résolus. Vide sans tokens.css (ou feuille illisible). Lu par engine-claude pour résoudre les
+   * couleurs du catalogue du prompt (AI-03 : ton, ratio de contraste). Ne sert à aucun contrôle ici.
+   */
+  cssValues: ReadonlyMap<string, string>
   /** Incohérences non bloquantes (réglage que la politique refuserait, token absent de tokens.css…). */
   warnings: string[]
 }
@@ -78,17 +84,25 @@ const pixels = (width: string) => parseFloat(width) * (width.endsWith('px') ? 1 
 
 const sortWidths = (widths: Iterable<string>) => [...new Set(widths)].sort((a, b) => pixels(a) - pixels(b))
 
-/** Custom properties déclarées dans une feuille (`--color-text`…), toutes règles confondues. CSS illisible : aucune. */
-export function declaredProperties(css: string): Set<string> {
-  const found = new Set<string>()
+/**
+ * Custom properties d'une feuille (`--nom` → valeur brute, sans `!important`), toutes règles confondues, la dernière
+ * déclaration l'emportant (ordre du document, @media compris). CSS illisible : aucune.
+ */
+export function customPropertyValues(css: string): Map<string, string> {
+  const found = new Map<string, string>()
   try {
     postcss.parse(css).walkDecls((decl) => {
-      if (decl.prop.startsWith('--')) found.add(decl.prop)
+      if (decl.prop.startsWith('--')) found.set(decl.prop, decl.value.trim())
     })
   } catch {
-    // Feuille illisible : les noms de tokens suivent alors la convention (tokenVarName).
+    // Feuille illisible : les noms de tokens suivent alors la convention (tokenVarName), aucune valeur connue.
   }
   return found
+}
+
+/** Custom properties déclarées dans une feuille (`--color-text`…), toutes règles confondues. CSS illisible : aucune. */
+export function declaredProperties(css: string): Set<string> {
+  return new Set(customPropertyValues(css).keys())
 }
 
 /** Largeurs des `@media (min-width: …)` simples d'une feuille (« 50.625rem ») ; ni @container, ni requête composée. */
@@ -259,11 +273,19 @@ export function validateDesignSystem(
 
 /**
  * Design system construit depuis des données déjà lues (pur) : validation, politique, points de rupture. Lève
- * DesignSystemError sur un problème bloquant. `declared` : custom properties de tokens.css ; `cssBreakpoints` : largeurs
- * des @media en service dans le CSS du site (repli quand ni l'option ni tokens.json n'en déclarent).
+ * DesignSystemError sur un problème bloquant. `declared` : custom properties de tokens.css ; `cssValues` : leurs valeurs
+ * (copiées dans `ds.cssValues`, vide si absent) ; `cssBreakpoints` : largeurs des @media en service dans le CSS du site
+ * (repli quand ni l'option ni tokens.json n'en déclarent).
  */
 export function buildDesignSystem(
-  input: { tokens: unknown; zones: unknown; rules?: string | null; declared?: ReadonlySet<string>; cssBreakpoints?: readonly string[] },
+  input: {
+    tokens: unknown
+    zones: unknown
+    rules?: string | null
+    declared?: ReadonlySet<string>
+    cssValues?: ReadonlyMap<string, string>
+    cssBreakpoints?: readonly string[]
+  },
   options: DesignSystemOptions = {},
 ): DesignSystem {
   const structure = validateDesignSystem(input.tokens, input.zones)
@@ -317,6 +339,7 @@ export function buildDesignSystem(
     breakpointSource,
     policy,
     rules: input.rules ?? null,
+    cssValues: new Map(input.cssValues ?? []),
     warnings,
   }
 }
@@ -354,12 +377,15 @@ export async function loadDesignSystem(siteDir: string, options: DesignSystemOpt
     for (const file of files) cssBreakpoints.push(...mediaBreakpoints(await readFile(file, 'utf8')))
     cssBreakpoints = sortWidths(cssBreakpoints)
   }
+  // Une seule lecture de tokens.css : noms déclarés (tokenVarName, avertissements) et valeurs (ds.cssValues).
+  const cssValues = tokensCss === null ? undefined : customPropertyValues(tokensCss)
   return buildDesignSystem(
     {
       tokens: JSON.parse(tokensText),
       zones: JSON.parse(zonesText),
       rules,
-      declared: tokensCss === null ? undefined : declaredProperties(tokensCss),
+      declared: cssValues === undefined ? undefined : new Set(cssValues.keys()),
+      cssValues,
       cssBreakpoints,
     },
     options,

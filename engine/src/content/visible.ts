@@ -6,10 +6,48 @@
  * Côté CSS : une requête à `next dev` après une modification attend la recompilation du module (Turbopack compile à la
  * demande) ; `minDelayMs` laisse d'abord au surveillant de fichiers le temps de voir l'écriture.
  *
- * Le secret d'aperçu passe par COOKIE seulement (`kz_preview`), jamais en paramètre d'URL ni en en-tête générique.
+ * L'accès passe par COOKIE seulement (`kz_preview`), jamais en paramètre d'URL ni en en-tête générique. Sa valeur est un
+ * jeton d'aperçu DÉRIVÉ du secret racine (`createPreviewCredential`) : le proxy de l'aperçu n'accepte plus le secret
+ * racine lui-même (SEC-09, auth-core).
  */
 
+import { signPreviewToken } from '../../../src/admin/core/engine/preview-token'
+
 export const PREVIEW_COOKIE = 'kz_preview'
+
+/** Valeur du cookie `kz_preview` : une chaîne fixe (tests) ou un fournisseur de jeton frais. */
+export type PreviewCredential = string | (() => string | Promise<string>)
+
+export const credentialValue = async (credential: PreviewCredential) => (typeof credential === 'function' ? await credential() : credential)
+
+/** Durée des jetons du moteur lui-même (sonde, signal, Chrome) et marge de renouvellement, en secondes. */
+export const ENGINE_PREVIEW_TOKEN_TTL = 2 * 60 * 60
+export const ENGINE_PREVIEW_TOKEN_RENEW = 60 * 60
+/** Id porté par les jetons du moteur (le proxy ne lit pas l'id ; il sert au diagnostic). */
+export const ENGINE_PREVIEW_UID = 'kz-engine'
+
+/**
+ * Jeton d'aperçu du MOTEUR (côté serveur seulement) : `signPreviewToken(secret racine, 'kz-engine', 2 h)`, renouvelé
+ * quand il lui reste moins d'1 h — une session Chrome ouverte avec lui reste valable jusqu'à la fin d'une demande.
+ * Le secret racine ne sort jamais du moteur ; le jeton ne va jamais au navigateur de l'admin.
+ */
+export function createPreviewCredential(rootSecret: string, options: { now?: () => number } = {}): () => Promise<string> {
+  const now = () => Math.floor((options.now?.() ?? Date.now()) / 1000)
+  let current: { token: string; exp: number } | null = null
+  let pending: Promise<string> | null = null
+  return () => {
+    if (current && current.exp - now() > ENGINE_PREVIEW_TOKEN_RENEW) return Promise.resolve(current.token)
+    pending ??= (async () => {
+      const issuedAt = now()
+      const token = await signPreviewToken(rootSecret, ENGINE_PREVIEW_UID, issuedAt, ENGINE_PREVIEW_TOKEN_TTL)
+      current = { token, exp: issuedAt + ENGINE_PREVIEW_TOKEN_TTL }
+      return token
+    })().finally(() => {
+      pending = null
+    })
+    return pending
+  }
+}
 
 export type PreviewSignal = {
   /**
@@ -22,7 +60,8 @@ export type PreviewSignal = {
 export type PreviewSignalSettings = {
   /** Origine de l'aperçu (http://127.0.0.1:4042). */
   origin: string
-  secret: string
+  /** Valeur du cookie `kz_preview` (jeton du moteur, `createPreviewCredential`). */
+  secret: PreviewCredential
   fetchImpl?: typeof fetch
   minDelayMs?: number
   intervalMs?: number
@@ -75,7 +114,7 @@ export function createPreviewSignal(settings: PreviewSignalSettings): PreviewSig
       for (;;) {
         try {
           const response = await fetchImpl(url, {
-            headers: { cookie: `${PREVIEW_COOKIE}=${settings.secret}`, 'cache-control': 'no-cache' },
+            headers: { cookie: `${PREVIEW_COOKIE}=${await credentialValue(settings.secret)}`, 'cache-control': 'no-cache' },
             redirect: 'manual',
             signal: AbortSignal.timeout(15_000),
           })

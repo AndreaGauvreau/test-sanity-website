@@ -5,6 +5,7 @@ import type { DesignSystem } from '../guards/design-system'
 import { describeMeasures, type ZoneMeasure } from '../guards/measure'
 import type { PageText } from '../guards/visual'
 import { SITE_DIRS } from './names'
+import { resolveCssValue } from './palette'
 import { quoteData } from './quote'
 import type { TextField } from './text'
 
@@ -19,8 +20,14 @@ import type { TextField } from './text'
  * (décision 20 du POC) : jamais une consigne.
  */
 
-/** Ce que les prompts lisent du design system chargé par engine-guards (`loadDesignSystem`). */
-export type PromptDesignSystem = Pick<DesignSystem, 'tokens' | 'zones' | 'breakpoints' | 'policy' | 'rules'>
+/**
+ * Ce que les prompts lisent du design system chargé par engine-guards (`loadDesignSystem`). `cssValues` : `ds.cssValues`
+ * d'engine-guards (custom properties de `src/styles/tokens.css`, nom → valeur brute), rempli par `loadDesignSystem` :
+ * le `ds` passé tel quel résout les couleurs écrites en var() de palette (AI-03 : valeur, ton, ratio). Facultatif pour
+ * un design system construit à la main ; absent ou vide, les couleurs en var() restent sans valeur, ton ni ratio.
+ */
+export type PromptDesignSystem = Pick<DesignSystem, 'tokens' | 'zones' | 'breakpoints' | 'policy' | 'rules'> &
+  Partial<Pick<DesignSystem, 'cssValues'>>
 
 // ─── Prompt système ──────────────────────────────────────────────────────────
 
@@ -81,8 +88,8 @@ function varNames(ds: PromptDesignSystem, group: string): string[] {
 const COLOR_GROUPS = new Set(['color', 'colors', 'colour', 'colours'])
 const BACKGROUNDS = ['--color-surface', '--color-background', '--color-bg', '--color-night']
 
-/** Fond de référence pour les ratios : le token de surface de la page. */
-function backgroundOf(ds: PromptDesignSystem): { name: string; label: string; value: string } | null {
+/** Fond de référence pour les ratios : le token de surface de la page (valeur résolue, ou null si irrésoluble). */
+function backgroundOf(ds: PromptDesignSystem): { name: string; label: string; value: string | null } | null {
   for (const wanted of BACKGROUNDS) {
     for (const [group, definition] of Object.entries(ds.tokens)) {
       if (!COLOR_GROUPS.has(group.toLowerCase())) continue
@@ -90,7 +97,7 @@ function backgroundOf(ds: PromptDesignSystem): { name: string; label: string; va
       const index = names.indexOf(wanted)
       if (index >= 0) {
         const token = Object.values(definition.tokens)[index]
-        return { name: wanted, label: token.label, value: token.value }
+        return { name: wanted, label: token.label, value: resolveCssValue(token.value, ds.cssValues) }
       }
     }
   }
@@ -107,20 +114,24 @@ function tokenCatalog(ds: PromptDesignSystem): string {
     for (const { name, label, value } of entries) {
       const reference = `var(${name})`
       if (/-tracking$/.test(name)) continue
-      // Groupe verrouillé (inspecteur) : seuls ses tokens de mise en page restent utilisables dans le CSS (Conduit n'a
-      // pas d'autre espacement ni largeur) ; une police verrouillée ne se propose jamais.
+      // Groupe verrouillé (inspecteur) : seuls ses tokens utiles au CSS restent cités, avec leur usage (rythme de section,
+      // gouttière, retrait : padding / margin ; largeur de page : max-width). Les autres (hauteurs d'en-tête, points de
+      // rupture, polices) ne se proposent jamais ; l'échelle d'espacement (groupe space, non verrouillé) a sa propre ligne.
       if (definition.locked) {
         const use = ds.policy.roles.spaceWide.has(reference) ? 'padding, margin' : ds.policy.roles.measure.has(reference) ? 'max-width' : null
         if (use) items.push(`${reference} (${label}; ${use} only)`)
         continue
       }
       if (COLOR_GROUPS.has(group.toLowerCase())) {
-        const parts = [label, value]
-        const tone = colorTone(value)
+        // Rôle qui renvoie à la palette (Conduit : var(--color-neutral-900)) : on donne la valeur résolue, jamais le nom
+        // de la palette (RULES.md l'interdit), et le ton / le ratio se calculent sur elle (leçon C02 du POC).
+        const resolved = resolveCssValue(value, ds.cssValues)
+        const parts = resolved && !resolved.includes('var(') ? [label, resolved] : [label]
+        const tone = resolved ? colorTone(resolved) : null
         if (tone) parts.push(tone === 'clair' ? 'light' : 'dark')
         if (background && name === background.name) parts.push('page background')
-        else if (background) {
-          const ratio = contrastRatio(value, background.value)
+        else if (background?.value && resolved) {
+          const ratio = contrastRatio(resolved, background.value)
           if (ratio !== null) parts.push(`${ratioText(ratio)}:1 on ${background.label}`)
         }
         items.push(`${reference} (${parts.join(', ')})`)

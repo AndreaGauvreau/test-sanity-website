@@ -247,6 +247,39 @@ export function describeDraft(entry: ManagedDoc, draft: Doc, published: Doc | nu
   }
 }
 
+/** Résumé d'une action programmée (E1). */
+export const REMOVAL_SUMMARY: Readonly<Record<'unpublish' | 'delete', string>> = {
+  unpublish: 'Will be unpublished',
+  delete: 'Will be deleted',
+}
+
+/**
+ * Élément de collection à dépublier / supprimer au prochain Publish (POST /publish/stage) : chemin lisible d'après le
+ * document vu (publié de préférence), résumé fixe, page publique encore en ligne.
+ */
+export function describeRemoval(entry: ManagedDoc, doc: Doc, action: 'unpublish' | 'delete'): DraftDescription {
+  const summary = REMOVAL_SUMMARY[action]
+  switch (entry.kind) {
+    case 'collection': {
+      const { collection } = entry
+      const title = titleOf(doc, collection.titleField) ?? `Untitled ${collection.singular.toLowerCase()}`
+      const slug = collection.slugField ? slugOf(doc, collection.slugField) : null
+      const viewPath = collection.articlePath && slug ? collection.articlePath.replace(':slug', slug) : undefined
+      return { path: `${collection.label} › ${title}`, summary, ...(viewPath ? { viewPath } : {}) }
+    }
+    case 'page':
+      return { path: entry.page.label, summary, viewPath: entry.page.path }
+    case 'settings':
+      return { path: 'Settings', summary }
+    case 'template':
+      return { path: entry.label, summary }
+    case 'type': {
+      const title = titleOf(doc, undefined)
+      return { path: title ? `${entry.label} › ${title}` : entry.label, summary }
+    }
+  }
+}
+
 // ─── Construction du catalogue ──────────────────────────────────────────────
 
 export function catalogFromConfig(config: AdminConfig): Catalog {

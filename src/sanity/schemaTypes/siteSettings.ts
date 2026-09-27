@@ -93,7 +93,7 @@ export const siteSettings = defineType({
       type: 'array',
       group: 'code',
       description:
-        'Code ajouté au site publié (réservé à Kuartz). Jamais chargé dans le Studio, l’admin, le Draft Mode ni l’aperçu de l’éditeur IA.',
+        'Code ajouté au site publié (réservé à Kuartz, depuis l’admin). Seuls les scripts signés par l’admin sont chargés : un script créé ou modifié ici n’est plus injecté. Jamais chargé dans le Studio, l’admin, le Draft Mode ni l’aperçu de l’éditeur IA.',
       of: [
         defineArrayMember({
           name: 'siteScript',
@@ -146,6 +146,16 @@ export const siteSettings = defineType({
               title: 'Actif',
               type: 'boolean',
               initialValue: true,
+            }),
+            // Signature HMAC écrite par l'admin (B3, droit settings.code) avec SCRIPTS_SIGNING_SECRET
+            // (src/lib/script-signature.ts). Le site n'injecte que les scripts dont la signature est valide
+            // (SEC-04) : toute modification hors de l'admin l'invalide. Caché et en lecture seule ici.
+            defineField({
+              name: 'signature',
+              title: 'Signature',
+              type: 'string',
+              hidden: true,
+              readOnly: true,
             }),
           ],
           preview: {

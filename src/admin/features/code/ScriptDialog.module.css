@@ -180,3 +180,8 @@
   flex-shrink: 0;
   gap: var(--k-space-10);
 }
+
+/* Avertissement SEC-04 (script modifié hors de l'admin) en tête du formulaire. */
+.notice {
+  flex: none;
+}

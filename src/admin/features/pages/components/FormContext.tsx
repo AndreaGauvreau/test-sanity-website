@@ -2,7 +2,8 @@
 
 import { createContext, useContext, type ReactNode } from 'react'
 
-import type { SaveResult } from '../server/save'
+import type { ArrayOp } from '../lib/form'
+import type { ArraySaveResult, SaveResult } from '../server/save'
 
 /**
  * Contexte du formulaire généré (C1) : page éditée, droits, options des références et fonctions d'écriture.
@@ -15,6 +16,8 @@ export type FormContextValue = {
   /** Options des champs référence, par type Sanity ciblé. */
   referenceOptions: Record<string, { value: string; label: string }[]>
   saveField: (path: string, value: unknown) => Promise<SaveResult>
+  /** Un élément d'un tableau à longueur variable, par sa clé (écriture sans course côté serveur). */
+  saveArray: (path: string, op: ArrayOp) => Promise<ArraySaveResult>
   /** Envoi d'une image pour un champ image (route d'envoi) : id d'asset et URL. */
   uploadImage: (path: string, file: File) => Promise<{ ok: true; assetId: string; url: string } | { ok: false; error: string }>
 }

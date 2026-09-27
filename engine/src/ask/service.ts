@@ -3,7 +3,7 @@ import type { AdminConfig, AskResponse, EngineUser } from '../../../src/admin/co
 import { CompleteError, type CompleteInput, type CompleteResult } from '../claude'
 import { EngineError, badRequest, unavailable } from '../server/errors'
 import { screenOf } from '../../../src/admin/features/ask-ai/links'
-import { finalizeAnswer } from './answer'
+import { finalizeAnswer, siteDomains } from './answer'
 import { buildSiteData, renderSiteData, type AskReader, type AskSiteData } from './context'
 import { ASK_MAX_TOKENS, ASK_SYSTEM, buildAskMessages } from './prompt'
 import { parseAskRequest } from './request'
@@ -55,6 +55,8 @@ export function createAskService(deps: AskServiceDeps): AskService {
   const inFlight = new Set<string>()
   const recent = new Map<string, number[]>()
   const cache = new Map<string, { at: number; data: Promise<AskSiteData> }>()
+  // Seuls domaines laissés dans une réponse (SEC-08) : ceux du site.
+  const allowedDomains = siteDomains(deps.config.site)
 
   /** Données du site par rôle (les écrans permis en dépendent), réutilisées `cacheMs`. */
   function siteData(user: EngineUser, screen: string | undefined): Promise<AskSiteData> {
@@ -106,6 +108,7 @@ export function createAskService(deps: AskServiceDeps): AskService {
         const final = finalizeAnswer(result.text, data.routes, {
           editorPageIds: data.pages.filter((p) => p.aiEditor).map((p) => p.id),
           screenPageId,
+          allowedDomains,
         })
         const response: AskResponse = { ...final, usage: result.usage }
         if (deps.usage) {

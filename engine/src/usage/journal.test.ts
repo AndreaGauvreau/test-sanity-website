@@ -5,7 +5,8 @@ import path from 'node:path'
 import { afterEach, describe, it } from 'vitest'
 import type { EditJob, Usage } from '../../../src/admin/core/contracts'
 import { createFakeSanity } from '../content/fake'
-import { askUsageDoc, createUsageJournal, isAiUsageDoc, PENDING_FILE, usageDocFromJob } from './journal'
+import type { AskUsageRecorder } from '../ask/usage'
+import { askRecorderFor, askUsageDoc, createUsageJournal, isAiUsageDoc, PENDING_FILE, requestText, usageDocFromJob } from './journal'
 
 /** Journal aiUsage : Sanity (faux) d'abord, journal local de secours ensuite, rejeu, jamais de doublon ni de perte. */
 
@@ -22,12 +23,12 @@ const USAGE: Usage = {
   turns: 6,
 }
 
-function job(id: string, usage: Usage | null = USAGE): EditJob {
+function job(id: string, usage: Usage | null = USAGE, note = 'Bigger'): EditJob {
   return {
     id,
     changeId: 'chg_abcdefgh01',
     kind: 'request',
-    request: { page: '/', targets: [{ zone: 'hero.title', index: 0, label: 'Hero · Title' }], scope: ['style'], note: 'Bigger', viewport: 1280 },
+    request: { page: '/', targets: [{ zone: 'hero.title', index: 0, label: 'Hero · Title' }], scope: ['style'], note, viewport: 1280 },
     requestedBy: { id: 'u-client', name: 'Marie Client', email: 'marie@conduit.test', role: 'client' },
     createdAt: '2026-09-27T10:00:00.000Z',
     finishedAt: '2026-09-27T10:00:24.000Z',
@@ -65,6 +66,7 @@ describe('usageDocFromJob', () => {
       requestId: 'job_abcdefgh01',
       status: 'done',
       page: '/',
+      request: 'Bigger',
       user: { id: 'u-client', name: 'Marie Client', role: 'client' },
       createdAt: '2026-09-27T10:00:24.000Z',
       ...USAGE,
@@ -75,6 +77,35 @@ describe('usageDocFromJob', () => {
     assert.ok(!isAiUsageDoc({ ...doc, _id: 'aiUsage.../x' }))
     const ask = askUsageDoc({ requestId: 'ask_abcdefgh01', user: { id: 'u', name: 'Andrea', email: 'a@b.c', role: 'kuartz' }, usage: USAGE, screen: '/admin/media', at: '2026-09-27T11:00:00Z' })
     assert.deepEqual([ask._id, ask.feature, ask.page, ask.status], ['aiUsage.ask_abcdefgh01', 'ask', '/admin/media', 'done'])
+  })
+})
+
+describe('request (colonne « Request » de B5)', () => {
+  it('note de la demande : espaces réunis, 120 caractères au plus ; vide → absent', () => {
+    const long = `Make the title   bigger\nand ${'x'.repeat(200)}`
+    const doc = usageDocFromJob(job('job_abcdefgh03', USAGE, long))!
+    assert.equal(doc.request?.length, 120)
+    assert.ok(doc.request?.startsWith('Make the title bigger and x'))
+    assert.ok(doc.request?.endsWith('…'))
+    assert.ok(isAiUsageDoc(doc))
+    assert.ok(!('request' in usageDocFromJob(job('job_abcdefgh04', USAGE, '   '))!))
+    assert.equal(requestText('  a  b '), 'a b')
+    assert.ok(!isAiUsageDoc({ ...doc, request: 'y'.repeat(121) }), 'une ligne relue trop longue est refusée')
+  })
+})
+
+describe('askRecorderFor (Ask AI par le journal commun)', () => {
+  it('port AskUsageRecorder : document « ask » dans Sanity, secours local si Sanity est en panne', async () => {
+    const sanity = createFakeSanity()
+    const journal = createUsageJournal({ sanity, dataDir: await dataDir(), log: quiet })
+    const recorder: AskUsageRecorder = askRecorderFor(journal)
+    const user = { id: 'u', name: 'Andrea', email: 'a@b.c', role: 'kuartz' as const }
+    await recorder.recordAsk({ requestId: 'ask_abcdefgh01', user, usage: USAGE, status: 'answered', page: '/admin/media', createdAt: '2026-09-27T11:00:00Z' })
+    const doc = sanity.docs['aiUsage.ask_abcdefgh01']
+    assert.deepEqual([doc.feature, doc.status, doc.page, doc.createdAt], ['ask', 'answered', '/admin/media', '2026-09-27T11:00:00Z'])
+    sanity.failNext('create')
+    await recorder.recordAsk({ requestId: 'ask_abcdefgh02', user, usage: USAGE, status: 'refused', createdAt: '2026-09-27T11:01:00Z' })
+    assert.equal(await journal.pendingCount(), 1, 'jamais perdu : gardé pour le rejeu')
   })
 })
 

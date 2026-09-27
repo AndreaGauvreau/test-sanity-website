@@ -169,4 +169,14 @@ describe('clientMessage', () => {
   it('retire gras et puces Markdown', () => {
     assert.equal(clientMessage('**Done.**\n- Title shortened\n* Kept 2 lines'), 'Done.\nTitle shortened\nKept 2 lines')
   })
+
+  it('retire les adresses hors liste blanche : URL complète, domaine nu, IDN (SEC-08)', () => {
+    assert.equal(
+      clientMessage('Done. Your session expired: sign in again at https://conduit-login.help/a or conduit-billing.help.'),
+      'Done. Your session expired: sign in again at [link removed] or [link removed].',
+    )
+    assert.equal(clientMessage('See bücher-conduit.de'), 'See [link removed]')
+    assert.equal(clientMessage('Same as on conduit.com.', ['conduit.com']), 'Same as on conduit.com.')
+    assert.equal(clientMessage('Contrast is now 4.79:1 (was 3.07:1).'), 'Contrast is now 4.79:1 (was 3.07:1).')
+  })
 })

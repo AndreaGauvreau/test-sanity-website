@@ -4,8 +4,9 @@ import type { PatchOps, SanityAction, SanityDoc, SanityPort } from './sanity'
 
 /**
  * Faux Sanity en mémoire (tests du moteur et d'engine-publish) : même port que le client réel, sans réseau. Révisions
- * (`_rev`) renouvelées à chaque écriture, verrou `ifRevisionId` / `ifDraftRevisionId`, publication et abandon par
- * l'API Actions. Une requête GROQ n'est pas interprétée : `fetch` répond aux seules requêtes enregistrées par `onFetch`.
+ * (`_rev`) renouvelées à chaque écriture, verrou `ifRevisionId` / `ifDraftRevisionId`, publication, abandon,
+ * dépublication et suppression par l'API Actions (tout ou rien). Une requête GROQ n'est pas interprétée : `fetch`
+ * répond aux seules requêtes enregistrées par `onFetch`.
  */
 export type FakeSanity = SanityPort & {
   /** Documents actuels, par id (copie). */
@@ -73,21 +74,57 @@ export function createFakeSanity(initial: SanityDoc[] = []): FakeSanity {
       maybeFail('action')
       // Tout ou rien, comme l'API Actions : on vérifie avant d'appliquer.
       for (const action of actions) {
-        const draft = docs.get(action.draftId)
-        if (!draft) throw new Error(`Fake Sanity: draft ${action.draftId} not found`)
-        if (action.actionType === 'sanity.action.document.publish') {
-          if (action.ifDraftRevisionId && action.ifDraftRevisionId !== draft._rev) throw new Error('Fake Sanity: draft revision mismatch')
-          const published = docs.get(action.publishedId)
-          if (action.ifPublishedRevisionId && action.ifPublishedRevisionId !== published?._rev) {
-            throw new Error('Fake Sanity: published revision mismatch')
+        switch (action.actionType) {
+          case 'sanity.action.document.publish':
+          case 'sanity.action.document.discard': {
+            const draft = docs.get(action.draftId)
+            if (!draft) throw new Error(`Fake Sanity: draft ${action.draftId} not found`)
+            if (action.actionType !== 'sanity.action.document.publish') break
+            if (action.ifDraftRevisionId && action.ifDraftRevisionId !== draft._rev) throw new Error('Fake Sanity: draft revision mismatch')
+            const published = docs.get(action.publishedId)
+            if (action.ifPublishedRevisionId && action.ifPublishedRevisionId !== published?._rev) {
+              throw new Error('Fake Sanity: published revision mismatch')
+            }
+            break
+          }
+          case 'sanity.action.document.unpublish':
+            if (!docs.has(action.publishedId)) throw new Error(`Fake Sanity: ${action.publishedId} is not published`)
+            break
+          case 'sanity.action.document.delete': {
+            if (!docs.has(action.publishedId)) throw new Error(`Fake Sanity: ${action.publishedId} not found`)
+            const draft = `drafts.${action.publishedId}`
+            if (docs.has(draft) && !action.includeDrafts.includes(draft)) throw new Error('Fake Sanity: a draft exists that is not specified for deletion')
+            break
           }
         }
       }
       for (const action of actions) {
-        log.push(`${action.actionType} ${action.draftId}`)
-        const draft = docs.get(action.draftId)!
-        if (action.actionType === 'sanity.action.document.publish') docs.set(action.publishedId, stamp({ ...draft, _id: action.publishedId }))
-        docs.delete(action.draftId)
+        switch (action.actionType) {
+          case 'sanity.action.document.publish': {
+            log.push(`${action.actionType} ${action.draftId}`)
+            const draft = docs.get(action.draftId)!
+            docs.set(action.publishedId, stamp({ ...draft, _id: action.publishedId }))
+            docs.delete(action.draftId)
+            break
+          }
+          case 'sanity.action.document.discard':
+            log.push(`${action.actionType} ${action.draftId}`)
+            docs.delete(action.draftId)
+            break
+          case 'sanity.action.document.unpublish': {
+            // Comme Sanity : le contenu publié reste en brouillon (le brouillon existant, sinon une copie du publié).
+            log.push(`${action.actionType} ${action.publishedId}`)
+            const published = docs.get(action.publishedId)!
+            if (!docs.has(action.draftId)) docs.set(action.draftId, stamp({ ...structuredClone(published), _id: action.draftId }))
+            docs.delete(action.publishedId)
+            break
+          }
+          case 'sanity.action.document.delete':
+            log.push(`${action.actionType} ${action.publishedId}`)
+            for (const draft of action.includeDrafts) docs.delete(draft)
+            docs.delete(action.publishedId)
+            break
+        }
       }
     },
     async fetch<T>(query: string, params?: Record<string, unknown>) {

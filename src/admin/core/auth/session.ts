@@ -17,7 +17,8 @@ import {
   SESSION_TTL_SECONDS,
 } from './constants'
 import { openSession, sealSession } from './crypto'
-import { buildDevSession, decideDevAutologin, warnIfDevAutologinRefused } from './dev'
+import { buildDevSession, decideDevAutologin, isAdminClosed, warnIfDevAutologinRefused } from './dev'
+import { kuartzAllowlistFromEnv, reconcileSessionRole } from './roles'
 import { loginUrlFor } from './next-path'
 import { requestOrigin, shouldUseSecureCookies } from './request'
 import { buildProviderLoginUrl, fetchProviders, revokeSanityToken, type SanityProvider } from './sanity-auth'
@@ -25,8 +26,8 @@ import { buildProviderLoginUrl, fetchProviders, revokeSanityToken, type SanityPr
 /**
  * Session de l'admin côté serveur (pages, server actions, route handlers). SERVEUR SEULEMENT.
  *
- * - `getSession()` : session du cookie `kz_admin` (déchiffrée, non expirée), sinon session de dev si
- *   ADMIN_DEV_AUTOLOGIN est permis (voir dev.ts), sinon null.
+ * - `getSession()` : session du cookie `kz_admin` (déchiffrée, non expirée, rôle RECALCULÉ d'après ses rôles Sanity et
+ *   KUARTZ_ALLOWLIST : constat SEC-05), sinon session de dev si ADMIN_DEV_AUTOLOGIN est permis (voir dev.ts), sinon null.
  * - `requireSession(ctx)` / `requireCapability(cap, ctx)` : à appeler EN PREMIER dans chaque page serveur, server action
  *   et route handler. `ctx` décide de la réaction : 'page' → redirection vers A1 (ou 404 si le droit manque) ;
  *   'action' | 'route' → `AdminAuthError` (401/403) ; en route handler, `authErrorResponse(err)` la convertit.
@@ -51,8 +52,12 @@ function secret(): string | undefined {
 
 /** Session courante (mise en cache le temps d'un rendu). */
 export const getSession = cache(async (): Promise<Session | null> => {
+  // Serveur d'aperçu de l'éditeur (4042) : l'admin y est fermé. Le proxy renvoie 404 sur /admin, mais les route
+  // handlers d'envoi sont hors de son matcher (QA-1) : ils doivent eux aussi trouver « pas de session ».
+  if (isAdminClosed({ KZ_EDITOR_PREVIEW: process.env.KZ_EDITOR_PREVIEW })) return null
   const [jar, h] = await Promise.all([cookies(), headers()])
-  const real = await openSession(jar.get(SESSION_COOKIE)?.value, secret())
+  const opened = await openSession(jar.get(SESSION_COOKIE)?.value, secret())
+  const real = opened ? reconcileSessionRole(opened, kuartzAllowlistFromEnv()) : null
   if (real) return real
 
   const decision = decideDevAutologin({

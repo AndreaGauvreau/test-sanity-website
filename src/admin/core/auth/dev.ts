@@ -14,21 +14,33 @@ import { DEV_ROLE_OFF } from './constants'
 
 export type DevEnv = { NODE_ENV?: string; ADMIN_DEV_AUTOLOGIN?: string }
 
-const LOCAL_HOSTNAMES = new Set(['127.0.0.1', 'localhost', '[::1]', '::1'])
+/**
+ * Hôte local accepté, en entier (constat SEC-03) : « 127.0.0.1 », « localhost » ou « [::1] », suivi au plus d'un port
+ * numérique. Comparé après passage en minuscules. Jamais un préfixe : « [::1]evil.com » est refusé.
+ */
+const LOCAL_HOST_PATTERN = /^(127\.0\.0\.1|localhost|\[::1\])(:\d{1,5})?$/
 
-/** « 127.0.0.1:4040 » → « 127.0.0.1 » ; « [::1]:4040 » → « [::1] ». */
+/** « 127.0.0.1:4040 » → « 127.0.0.1 » ; « [::1]:4040 » → « [::1] » ; forme invalide entre crochets → « ». */
 export function hostnameOf(host: string | null | undefined): string {
   if (!host) return ''
   const value = host.trim().toLowerCase()
   if (value.startsWith('[')) {
     const end = value.indexOf(']')
-    return end === -1 ? value : value.slice(0, end + 1)
+    if (end === -1) return ''
+    const rest = value.slice(end + 1)
+    return rest === '' || /^:\d{1,5}$/.test(rest) ? value.slice(0, end + 1) : ''
   }
   return value.split(':')[0]
 }
 
 export function isLocalHost(host: string | null | undefined): boolean {
-  return LOCAL_HOSTNAMES.has(hostnameOf(host))
+  if (!host) return false
+  return LOCAL_HOST_PATTERN.test(host.trim().toLowerCase())
+}
+
+/** Serveur d'aperçu de l'éditeur (KZ_EDITOR_PREVIEW=1) : aucune session d'admin n'y est jamais ouverte. */
+export function isAdminClosed(env: { KZ_EDITOR_PREVIEW?: string }): boolean {
+  return env.KZ_EDITOR_PREVIEW === '1'
 }
 
 export function parseAdminRole(value: string | null | undefined): AdminRole | null {

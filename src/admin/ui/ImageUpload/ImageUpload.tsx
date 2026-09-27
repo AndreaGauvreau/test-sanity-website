@@ -35,6 +35,12 @@ export type ImageUploadProps = {
   onReject?: (rejection: ImageUploadRejection) => void
   /** Suppression (bouton corbeille de l'état filled). */
   onRemove?: () => void
+  /**
+   * Actions de la feature (FOLLOWUPS #38), ex. `<Button variant="ghost" size="small">Choose from Media</Button>`.
+   * Rempli : dans la ligne fichier, avant Replace. Vide / envoi : ligne d'actions sous la zone.
+   * La feature gère leur état (désactivées pendant l'envoi si besoin).
+   */
+  actions?: ReactNode
   /** Types acceptés (défaut PNG, JPG, WebP). */
   accept?: string
   /** Taille max en octets (défaut 5 Mo). */
@@ -64,6 +70,7 @@ function matchesAccept(file: File, accept: string): boolean {
  * Envoi d'image (Figma « Image upload » 330:408) : empty (pointillés border/strong), dragover (bg/tint/info,
  * pointillés border/focus, « Drop to upload »), uploading (Progress bar + message), filled (aperçu + ligne
  * fichier : Replace, corbeille). Glisser-déposer ou clic (Entrée / Espace) pour parcourir.
+ * `actions` : emplacement pour les actions de la feature (« Choose from Media »), dans la ligne fichier ou sous la zone.
  */
 export function ImageUpload({
   label = 'Image',
@@ -74,6 +81,7 @@ export function ImageUpload({
   onFile,
   onReject,
   onRemove,
+  actions,
   accept = 'image/png,image/jpeg,image/webp',
   maxSize = 5 * 1024 * 1024,
   formats = 'PNG, JPG or WebP · 5 MB max',
@@ -214,11 +222,14 @@ export function ImageUpload({
             {value.name}
             {value.size != null ? ` · ${formatBytes(value.size)}` : ''}
           </span>
+          {actions}
           <Button variant="secondary" size="small" onClick={browse} disabled={disabled} aria-describedby={labelId}>
             Replace
           </Button>
           {onRemove ? <IconButton icon="trash" label={`Remove ${value.name}`} onClick={onRemove} disabled={disabled} /> : null}
         </div>
+      ) : actions != null && actions !== false ? (
+        <div className={styles.actionRow}>{actions}</div>
       ) : null}
       {message ? (
         <p id={errorId} className={styles.error} role="alert">

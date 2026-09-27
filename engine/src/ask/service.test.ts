@@ -1,10 +1,15 @@
+import { generateKeyPairSync } from 'node:crypto'
+import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import type { AddressInfo } from 'node:net'
+import { tmpdir } from 'node:os'
+import path from 'node:path'
 import type { Server } from 'node:http'
 import { afterEach, describe, expect, it } from 'vitest'
 import type { AskResponse, EngineUser } from '../../../src/admin/core/contracts'
-import { signEngineUser } from '../../../src/admin/core/engine/signature'
+import { engineIdentityHeaders, signEngineUser } from '../../../src/admin/core/engine/signature'
 import { CompleteError } from '../claude'
 import { EngineError } from '../server/errors'
+import { createUsageModule, getUsageJournal, PENDING_FILE } from '../usage'
 import { createEngineServer, createRouter } from '../server/http'
 import { REFUSAL_TEXT } from './answer'
 import { ASK_MAX_TOKENS, ASK_SYSTEM } from './prompt'
@@ -197,6 +202,10 @@ describe('journal aiUsage (feature ask)', () => {
 
 describe('route POST /ask (serveur réel, identité signée)', () => {
   const SECRET = 'engine-secret-for-tests-0123456789'
+  // Identité Ed25519 (contrat engine.ts) : l'admin signe avec la clé privée, le moteur vérifie avec la clé publique.
+  const pair = generateKeyPairSync('ed25519')
+  const IDENTITY_PRIVATE = pair.privateKey.export({ format: 'der', type: 'pkcs8' }).toString('base64')
+  const IDENTITY_PUBLIC = pair.publicKey.export({ format: 'der', type: 'spki' }).toString('base64')
   let server: Server | null = null
   afterEach(async () => {
     await new Promise<void>((resolve) => (server ? server.close(() => resolve()) : resolve()))
@@ -206,11 +215,11 @@ describe('route POST /ask (serveur réel, identité signée)', () => {
   async function boot() {
     const router = createRouter()
     registerAskRoutes(router, { config: CONFIG, complete: fakeComplete(ANSWER), model: MODEL, reader: fakeReader(), usage: null })
-    server = createEngineServer({ router, secret: SECRET, log: () => {} })
+    server = createEngineServer({ router, secret: SECRET, identityPublicKey: IDENTITY_PUBLIC, log: () => {} })
     await new Promise<void>((resolve) => server!.listen(0, '127.0.0.1', resolve))
     const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`
     return async (user: EngineUser, body: unknown, method = 'POST') => {
-      const headers = { authorization: `Bearer ${SECRET}`, 'content-type': 'application/json', ...(await signEngineUser(user, SECRET)) }
+      const headers = { authorization: `Bearer ${SECRET}`, 'content-type': 'application/json', ...engineIdentityHeaders(await signEngineUser(user, IDENTITY_PRIVATE)) }
       const response = await fetch(`${base}/ask`, { method, headers, body: method === 'POST' ? JSON.stringify(body) : undefined })
       return { status: response.status, json: (await response.json()) as AskResponse & { error?: { code: string; message: string } } }
     }
@@ -227,7 +236,15 @@ describe('route POST /ask (serveur réel, identité signée)', () => {
   })
 })
 
-describe('askModule (EngineModule à ajouter à MODULES)', () => {
+describe('SEC-08 dans le service', () => {
+  it('la réponse du modèle passe par le filtre commun : domaine tiers retiré, domaine du manifeste gardé', async () => {
+    const { service } = makeService('ANSWER: Log in again at conduit-billing.help/login, then visit conduit.com.\nLINKS: none\nCHANGE: no')
+    const res = await service.ask(CLIENT, { question: 'Why am I logged out?', history: [] })
+    expect(res.answer).toBe('Log in again at [link removed], then visit conduit.com.')
+  })
+})
+
+describe('askModule (EngineModule de MODULES)', () => {
   it('enregistre POST /ask (droit ai.ask) avec le modèle ASK_MODEL de la config', async () => {
     const router = createRouter()
     const complete = fakeComplete(ANSWER)
@@ -260,5 +277,35 @@ describe('askModule (EngineModule à ajouter à MODULES)', () => {
     await askModule({ config: CONFIG, reader: null, usage: null }).register(context)
     const error = await reason(Promise.resolve(router.match('POST', '/ask')!.route.handler({ user: CLIENT, params: {}, query: new URLSearchParams(), body: { question: 'x' }, signal: new AbortController().signal })))
     expect([error.status, error.message]).toEqual([503, ASK_MESSAGES.noAccess])
+  })
+
+  it('FOLLOWUPS #34 : sans `usage` explicite, la consommation passe par le journal commun (usageModule enregistré avant)', async () => {
+    const dataDir = await mkdtemp(path.join(tmpdir(), 'kz-ask-usage-'))
+    try {
+      const router = createRouter()
+      const context = {
+        router,
+        access: { ok: false, error: 'no key' },
+        // Sans jeton d'écriture : le journal commun garde le document dans son fichier local (jamais perdu).
+        sanity: null,
+        ports: {},
+        config: {
+          models: { ask: MODEL },
+          sanity: { projectId: 'p', dataset: 'development', apiVersion: '2026-09-01', readToken: 'read', writeToken: null },
+          paths: { claude: path.join(dataDir, 'claude'), data: dataDir },
+        },
+      } as unknown as EngineContext
+      await createUsageModule({ log: () => {} }).register(context)
+      await askModule({ config: CONFIG, complete: fakeComplete(ANSWER), reader: fakeReader() }).register(context)
+      await router.match('POST', '/ask')!.route.handler({ user: CLIENT, params: {}, query: new URLSearchParams(), body: { question: 'Where?' }, signal: new AbortController().signal })
+      const journal = getUsageJournal(context)!
+      expect(await journal.pendingCount()).toBe(1)
+      const doc = JSON.parse((await readFile(path.join(dataDir, PENDING_FILE), 'utf8')).trim())
+      expect(doc).toMatchObject({ _type: 'aiUsage', feature: 'ask', status: 'answered', user: { id: CLIENT.id, role: 'client' } })
+      expect(doc._id).toMatch(/^aiUsage\.ask_[0-9a-f]{16}$/)
+      expect(JSON.stringify(doc)).not.toContain(CLIENT.email)
+    } finally {
+      await rm(dataDir, { recursive: true, force: true })
+    }
   })
 })

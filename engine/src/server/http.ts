@@ -7,8 +7,9 @@ import { EngineError, forbidden, notFound } from './errors'
 /**
  * Serveur HTTP du moteur (node:http, 127.0.0.1 seulement) et routeur extensible.
  *
- * Chaque requête : Bearer ENGINE_SECRET (temps constant) puis identité signée X-Kz-User / X-Kz-User-Sig
- * (`verifyEngineBearer` + `verifyEngineUser` d'auth-core, même fichier que l'admin) → sinon 401 ; route de la table →
+ * Chaque requête : Bearer ENGINE_SECRET (temps constant, transport) puis identité signée X-Kz-User / X-Kz-User-Sig
+ * (Ed25519, iat/exp : `verifyEngineUser(headers, ENGINE_IDENTITY_PUBLIC_KEY)` d'auth-core, même fichier que l'admin ;
+ * clé DISTINCTE du Bearer, SEC-10) → sinon 401 ; route de la table →
  * sinon 404 ; droit du rôle signé revérifié (`can`, contracts/roles.ts) → sinon 403 ; corps JSON borné (64 Kio).
  * Réponses JSON `no-store` ; erreurs au format `EngineErrorBody` du contrat, messages anglais ; une exception imprévue
  * devient 500 `internal` sans détail (le détail reste dans le journal du moteur).
@@ -139,7 +140,10 @@ function sendError(res: ServerResponse, error: EngineError) {
 
 export type EngineServerOptions = {
   router: Router
+  /** ENGINE_SECRET : Bearer attendu (transport). */
   secret: string
+  /** ENGINE_IDENTITY_PUBLIC_KEY : clé publique Ed25519 (SPKI, base64) de l'identité signée. */
+  identityPublicKey: string
   log?: (line: string) => void
 }
 
@@ -157,8 +161,8 @@ export function createHandler(options: EngineServerOptions) {
       if (!verifyEngineBearer(req.headers.authorization, options.secret)) {
         throw new EngineError(401, 'unauthorized', 'Unauthorized.')
       }
-      const headers = { get: (name: string) => { const value = req.headers[name.toLowerCase()]; return Array.isArray(value) ? value[0] : value } }
-      const user = await verifyEngineUser(headers, options.secret)
+      // Signature Ed25519 + iat/exp (identité expirée, future ou d'une autre clé → 401).
+      const user = await verifyEngineUser(req.headers, options.identityPublicKey)
       if (!user) throw new EngineError(401, 'unauthorized', 'Unauthorized.')
 
       // 2. Route, puis droit du rôle signé.

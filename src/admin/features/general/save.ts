@@ -9,6 +9,7 @@ import {
   GENERAL_TEXT_FIELDS,
   IMAGE_MIME,
   UPLOAD_MAX_BYTES,
+  UPLOAD_TOO_LARGE,
   type GeneralImageSlot,
 } from './fields'
 import { imageFieldValue, isAllowedKind, safeFileName, sniffImageKind, toGeneralImage, type GeneralImage } from './images'
@@ -70,7 +71,7 @@ export async function removeGeneralImage(deps: GeneralDeps, input: unknown): Pro
 }
 
 /**
- * Envoi d'une image (FormData : `slot`, `file`). Contrôles : emplacement connu, fichier non vide, 1 Mo au plus,
+ * Envoi d'une image (FormData : `slot`, `file`). Contrôles : emplacement connu, fichier non vide, UPLOAD_MAX_BYTES (5 Mo) au plus,
  * format RÉEL (octets) permis pour l'emplacement. Puis asset Sanity, puis référence écrite dans le brouillon.
  */
 export async function uploadGeneralImage(deps: GeneralDeps, form: FormData): Promise<ActionResult<{ image: GeneralImage }>> {
@@ -78,7 +79,7 @@ export async function uploadGeneralImage(deps: GeneralDeps, form: FormData): Pro
   const file = form.get('file')
   if (!slot.success || !(file instanceof Blob)) return { ok: false, error: INVALID }
   if (file.size === 0) return { ok: false, error: 'This file is empty.' }
-  if (file.size > UPLOAD_MAX_BYTES) return { ok: false, error: 'This image is larger than 1 MB. Use a smaller file.' }
+  if (file.size > UPLOAD_MAX_BYTES) return { ok: false, error: UPLOAD_TOO_LARGE }
 
   const bytes = new Uint8Array(await file.arrayBuffer())
   const kind = sniffImageKind(bytes)

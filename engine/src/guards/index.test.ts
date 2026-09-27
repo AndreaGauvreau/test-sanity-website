@@ -10,6 +10,7 @@ describe('API publique des garde-fous', () => {
     for (const name of [
       'loadDesignSystem',
       'buildDesignSystem',
+      'customPropertyValues',
       'validateDesignSystem',
       'checkToolUse',
       'lintChanges',

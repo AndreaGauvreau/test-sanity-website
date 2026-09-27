@@ -1,6 +1,5 @@
 import { handleAsk } from './ask'
-import { handleEditor } from './editor'
-import { handleHealth } from './health'
+import { handleEditor, mockEditorHealth } from './editor'
 import { mockNotImplemented } from './not-implemented'
 import { handlePublish } from './publish'
 import type { MockEngineRequest, MockEngineResponse } from './types'
@@ -15,7 +14,9 @@ export type { MockEngineRequest, MockEngineResponse, MockHandler } from './types
 export async function handleMockEngineRequest(request: MockEngineRequest): Promise<MockEngineResponse> {
   switch (request.segments[0]) {
     case 'health':
-      return handleHealth(request)
+      // Même santé que EditorState.health de l'éditeur simulé : suit son scénario (FOLLOWUPS #39, editor-sidebar).
+      // Le gestionnaire est ici et non dans health.ts : editor.ts importe déjà MOCK_HEALTH de health.ts (pas de cycle).
+      return { status: 200, json: mockEditorHealth() }
     case 'editor':
       return handleEditor(request)
     case 'publish':

@@ -99,5 +99,5 @@ demande (dans son clone), par le pont (repérage `data-edit`) et par l'admin (li
 - Pas de réglage de police seule (`font-family`) : les styles de texte de Conduit sont des raccourcis `font`.
 
 ## Demandes de contrat
-- engine-guards : compter les zones marquées par `editAttrs('<zone>'` (et `edit={editAttrs(`) dans le lint TSX, les
-  attributs `data-edit` n'étant pas écrits en littéral.
+- ~~engine-guards : compter les zones marquées par `editAttrs('<zone>'` (et `edit={editAttrs(`) dans le lint TSX~~ —
+  **fait** (vérifié le 2026-09-27) : `tsx-lint.ts > EDIT_ATTRS` / `editAttrsZone`.

@@ -2,7 +2,8 @@
 
 import { revalidatePath, revalidateTag, updateTag } from 'next/cache'
 import { draftMode } from 'next/headers'
-import { parseTags } from 'next-sanity/live'
+
+import { knownLiveTags } from './live-tags'
 
 /**
  * Appelée par <SanityLive /> (layout du site) à chaque publication qui touche une
@@ -14,6 +15,9 @@ import { parseTags } from 'next-sanity/live'
  * `revalidateTag(tag, 'max')` : l'onglet ouvert reste sur l'ancienne version et le
  * rechargement suivant montre la nouvelle. En `npm run dev`, elle est instantanée
  * aussi : la différence ne se voit qu'en prod.
+ *
+ * SEC-02 : ces actions sont appelables par tout visiteur. Seuls les sync tags connus sont
+ * traités, en nombre borné (`knownLiveTags`, src/sanity/lib/live-tags.ts) ; le reste est ignoré.
  */
 export async function onContentChange(unsafeTags: unknown): Promise<void | 'refresh'> {
   const { isEnabled: isDraftMode } = await draftMode()
@@ -21,7 +25,8 @@ export async function onContentChange(unsafeTags: unknown): Promise<void | 'refr
   // En Draft Mode (Presentation), les pages ne sont pas en cache : un refresh suffit.
   if (isDraftMode) return 'refresh'
 
-  const { tags } = parseTags(unsafeTags)
+  const tags = knownLiveTags(unsafeTags)
+  if (tags.length === 0) return
   for (const tag of tags) updateTag(tag)
 
   console.log(`[sanity-live] updateTag → ${tags.join(', ')}`)
@@ -35,17 +40,25 @@ export async function onContentChange(unsafeTags: unknown): Promise<void | 'refr
  *
  * Limite à connaître : une publication faite ailleurs (Studio hébergé, API, scripts)
  * sans aucun onglet ouvert ne vide rien, sauf appel à POST /api/revalidate (webhook,
- * moteur de l'admin) ; sinon, bouton « Vider le cache » sur /bench.
+ * moteur de l'admin) ; sinon, en développement, bouton « Vider le cache » sur /bench.
  */
 export async function onPublishFromAdmin(unsafeTags: unknown): Promise<void> {
-  const { tags } = parseTags(unsafeTags)
+  const tags = knownLiveTags(unsafeTags)
+  if (tags.length === 0) return
   const profile = process.env.SANITY_LIVE_MODE === 'swr' ? 'max' : { expire: 0 }
   for (const tag of tags) revalidateTag(tag, profile)
   console.log(`[sanity-live] publication depuis l'admin → ${tags.join(', ')}`)
 }
 
-/** Vide tout le cache Next des pages du site (bouton sur /bench). */
+/**
+ * Vide tout le cache Next des pages du site (bouton sur /bench). DÉVELOPPEMENT SEULEMENT (SEC-02) :
+ * l'action reste joignable par son identifiant même quand /bench est introuvable, d'où la garde ici.
+ */
 export async function purgeSiteCache(): Promise<void> {
+  if (process.env.NODE_ENV !== 'development') {
+    console.warn('[sanity-live] purge du cache refusée hors développement')
+    return
+  }
   revalidatePath('/', 'layout')
   console.log('[sanity-live] cache du site vidé')
 }

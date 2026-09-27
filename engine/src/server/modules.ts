@@ -39,4 +39,9 @@ export type EngineContext = {
 export type EngineModule = {
   name: string
   register(context: EngineContext): void | Promise<void>
+  /**
+   * Arrêt du moteur (facultatif) : appelé après la fermeture du serveur et l'arrêt de la demande en cours, AVANT l'écriture
+   * finale du magasin ; ordre inverse de l'enregistrement ; 30 s au plus chacun. Pour finir proprement un travail en cours.
+   */
+  stop?(context: EngineContext): void | Promise<void>
 }

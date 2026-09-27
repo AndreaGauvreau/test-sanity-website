@@ -1,3 +1,4 @@
+import { createPublicKey } from 'node:crypto'
 import os from 'node:os'
 import path from 'node:path'
 import { z } from 'zod'
@@ -15,18 +16,33 @@ import { z } from 'zod'
 
 export type EngineMode = 'local' | 'hosted'
 
+/**
+ * Scénarios du faux Claude activable au démarrage (`ENGINE_FAKE_CLAUDE`, mode local ÉCRIT seulement), pour le parcours
+ * de bout en bout sans appel réel (FOLLOWUPS #12). Détail : `jobs/fake-claude.ts`.
+ */
+export const FAKE_CLAUDE_SCENARIOS = ['auto', 'css', 'text', 'ask', 'fail', 'budget'] as const
+export type FakeClaudeScenario = (typeof FAKE_CLAUDE_SCENARIOS)[number]
+
 export type EngineConfig = {
   mode: EngineMode
   /**
-   * ENGINE_MODE=local écrit explicitement : seul cas où le jeton d'abonnement Claude est accepté hors NODE_ENV=development
-   * (`resolveClaudeAccess(env, { localMode })`, engine-claude). Jamais vrai en mode hébergé.
+   * ENGINE_MODE=local écrit explicitement : SEUL cas où le jeton d'abonnement Claude est accepté
+   * (`resolveClaudeAccess(env, { localMode })`, engine-claude ; NODE_ENV n'y joue plus aucun rôle, AI-02) et où
+   * ENGINE_FAKE_CLAUDE est permis. Jamais vrai en mode hébergé.
    */
   explicitLocal: boolean
   /** Adresse d'écoute : toujours la boucle locale. */
   host: '127.0.0.1'
   port: number
-  /** ENGINE_SECRET : Bearer attendu de l'admin, clé HMAC de l'identité signée. */
+  /** ENGINE_SECRET : Bearer attendu de l'admin (transport seulement). */
   secret: string
+  /**
+   * ENGINE_IDENTITY_PUBLIC_KEY : clé publique Ed25519 (SPKI, base64) qui vérifie l'identité signée X-Kz-User (SEC-10).
+   * La clé privée reste côté admin : qui vole ENGINE_SECRET ne peut pas forger un rôle.
+   */
+  identityPublicKey: string
+  /** ENGINE_FAKE_CLAUDE : faux Claude à la place du vrai (mode local écrit seulement), null sinon. */
+  fakeClaude: FakeClaudeScenario | null
   paths: {
     /** Dépôt du site (celui du développeur) : on le clone, on n'y écrit jamais. */
     sourceRepo: string
@@ -47,7 +63,10 @@ export type EngineConfig = {
     port: number
     /** http://127.0.0.1:<port> (sans secret). */
     origin: string
-    /** ENGINE_PREVIEW_SECRET (≥ 16 caractères) : cookie `kz_preview` de l'aperçu. */
+    /**
+     * ENGINE_PREVIEW_SECRET (≥ 16 caractères), secret RACINE de l'aperçu : cookie `kz_preview` de la sonde et de Chrome
+     * (côté serveur seulement) et clé des jetons courts de l'iframe (`signPreviewToken`, SEC-09). Jamais au navigateur.
+     */
     secret: string
     /** Origine stricte de l'admin, autorisée à encadrer l'aperçu (frame-ancestors). */
     adminOrigin: string
@@ -117,6 +136,18 @@ const secret = (name: string, min: number) =>
     .min(min, `${name} must be at least ${min} characters long.`)
     .refine((value) => !/\s/.test(value), `${name} cannot contain spaces.`)
 
+/** Clé publique Ed25519 en base64 (SPKI DER ; une armure PEM et des retours à la ligne sont tolérés). */
+export function isEd25519PublicKey(value: string): boolean {
+  const body = value.replace(/-----(BEGIN|END)[^-]*-----/g, '').replace(/\s+/g, '')
+  if (!body || !/^[A-Za-z0-9+/]+={0,2}$/.test(body)) return false
+  try {
+    const key = createPublicKey({ key: Buffer.from(body, 'base64'), format: 'der', type: 'spki' })
+    return key.asymmetricKeyType === 'ed25519'
+  } catch {
+    return false
+  }
+}
+
 const optionalUrl = (name: string, protocols: readonly string[]) =>
   z
     .string()
@@ -144,6 +175,19 @@ const SCHEMA = z.object({
   ENGINE_PREVIEW_PORT: port('ENGINE_PREVIEW_PORT'),
   ENGINE_SECRET: secret('ENGINE_SECRET', 16),
   ENGINE_PREVIEW_SECRET: secret('ENGINE_PREVIEW_SECRET', 16),
+  ENGINE_IDENTITY_PUBLIC_KEY: z
+    .string({ error: 'ENGINE_IDENTITY_PUBLIC_KEY is missing (Ed25519 public key, SPKI in base64).' })
+    .trim()
+    .min(1, 'ENGINE_IDENTITY_PUBLIC_KEY is missing (Ed25519 public key, SPKI in base64).')
+    .refine(isEd25519PublicKey, 'ENGINE_IDENTITY_PUBLIC_KEY must be an Ed25519 public key (SPKI, base64).'),
+  ENGINE_FAKE_CLAUDE: z
+    .string()
+    .optional()
+    .transform((value) => trimmed(value) || null)
+    .refine(
+      (value) => value === null || (FAKE_CLAUDE_SCENARIOS as readonly string[]).includes(value),
+      `ENGINE_FAKE_CLAUDE must be one of: ${FAKE_CLAUDE_SCENARIOS.join(', ')} (or empty).`,
+    ),
   ADMIN_ORIGIN: z
     .string({ error: 'ADMIN_ORIGIN is missing.' })
     .trim()
@@ -243,6 +287,10 @@ export function readEngineConfig(env: EngineEnv, options: { home?: string } = {}
     const data = parsed.data
     if (data.ENGINE_PORT === data.ENGINE_PREVIEW_PORT) problems.push('ENGINE_PORT and ENGINE_PREVIEW_PORT must differ.')
     if (data.ENGINE_SECRET === data.ENGINE_PREVIEW_SECRET) problems.push('ENGINE_SECRET and ENGINE_PREVIEW_SECRET must differ.')
+    // Le faux Claude n'existe qu'en local ÉCRIT : jamais sur un moteur hébergé, même par oubli dans le fichier.
+    if (data.ENGINE_FAKE_CLAUDE && trimmed(env.ENGINE_MODE) !== 'local') {
+      problems.push('ENGINE_FAKE_CLAUDE is only allowed with ENGINE_MODE=local written explicitly.')
+    }
   }
 
   if (problems.length || !parsed.success) throw new EngineConfigError([...new Set(problems)])
@@ -256,6 +304,8 @@ export function readEngineConfig(env: EngineEnv, options: { home?: string } = {}
     host: '127.0.0.1',
     port: data.ENGINE_PORT,
     secret: data.ENGINE_SECRET,
+    identityPublicKey: data.ENGINE_IDENTITY_PUBLIC_KEY,
+    fakeClaude: (data.ENGINE_FAKE_CLAUDE as FakeClaudeScenario | null) ?? null,
     paths: {
       sourceRepo: path.resolve(sourceRepo),
       workspace: ws,

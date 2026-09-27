@@ -104,7 +104,8 @@ export const BENCH_QUERY = defineQuery(`*[_type == "post" && defined(slug.curren
   "imageSize": image.asset->size
 }`)
 
-// Réglages du site (B2, B3) : document unique « siteSettings ». Scripts actifs seulement.
+// Réglages du site (B2, B3) : document unique « siteSettings ». Scripts actifs seulement, avec `enabled` et
+// `signature` : le site n'injecte que les scripts signés par l'admin (src/lib/site-scripts.ts, SEC-04).
 export const SITE_SETTINGS_QUERY = defineQuery(`*[_type == "siteSettings" && _id == "siteSettings"][0]{
   title,
   description,
@@ -112,7 +113,7 @@ export const SITE_SETTINGS_QUERY = defineQuery(`*[_type == "siteSettings" && _id
   "faviconLight": faviconLight.asset->url,
   "faviconDark": faviconDark.asset->url,
   socialImage,
-  "scripts": scripts[enabled != false]{ _key, name, placement, page, run, code }
+  "scripts": scripts[enabled != false]{ _key, name, placement, page, run, code, enabled, signature }
 }`)
 
 // Page /blog : textes et SEO (document unique « blogPage »).

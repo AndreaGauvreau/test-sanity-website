@@ -9,9 +9,9 @@ import { useEditorStore } from '../state/context'
 import { isLocked, useEditorState } from '../state/store'
 import { connectPreview, type PreviewChannel } from './channel'
 import { EditorToolbar } from './EditorToolbar'
-import { resolvePreview, type PreviewTarget } from './preview-url'
+import { previewKey, previewTokenExpired, resolvePreview, type PreviewTarget } from './preview-url'
 import { ReviewBar } from './ReviewBar'
-import { computeFrame } from './scale'
+import { computeFrame, floatingMaxWidth } from './scale'
 import { bridgeViewFrom } from './view'
 import styles from './EditorCanvas.module.css'
 
@@ -40,14 +40,14 @@ const MESSAGES = {
   timeoutTitle: 'The draft preview isn’t responding',
   timeoutText: 'Nothing was changed. Check that the AI engine and its preview are running, then try again.',
   retry: 'Try again',
-  actionFailed: 'Couldn’t reach the AI engine. Try again.',
 } as const
 
 /**
  * Aperçu du brouillon de l'éditeur IA (D1-D3, G1) : iframe du site en brouillon, mise à l'échelle, dialogue avec le
  * pont (sélection, survol, reflet, cadre « modified by Claude »), barre d'outils flottante et barre de validation.
  * Tout l'état partagé passe par le magasin de l'éditeur (../state) ; le canvas n'écrit que mode, viewport,
- * sélection, bridgeReady et — après ✓ Validate / Cancel — pending.
+ * sélection, bridgeReady et preview (adresse relue au moteur). ✓ Validate / Cancel passent par les actions de la
+ * sidebar (`decisions`) : le canvas n'appelle jamais le moteur pour décider.
  */
 export function EditorCanvas({ pageLabel, labels, previewOverride }: EditorCanvasProps) {
   const store = useEditorStore()
@@ -61,39 +61,47 @@ export function EditorCanvas({ pageLabel, labels, previewOverride }: EditorCanva
   const previewNonce = useEditorState(store, (s) => s.previewNonce)
   const storePreview = useEditorState(store, (s) => s.preview)
   const deciding = useEditorState(store, (s) => s.deciding)
+  const canDecide = useEditorState(store, (s) => s.decisions !== null)
 
   const [preview, setPreview] = useState<Preview>({ kind: 'resolving' })
   const [attempt, setAttempt] = useState(0)
   const [frameKey, setFrameKey] = useState(0)
   const [timedOut, setTimedOut] = useState(false)
   const [size, setSize] = useState({ width: 0, height: 0 })
-  const [busy, setBusy] = useState<'validate' | 'cancel' | null>(null)
-  const [actionError, setActionError] = useState<string | null>(null)
 
   const stageRef = useRef<HTMLDivElement | null>(null)
   const iframeRef = useRef<HTMLIFrameElement | null>(null)
   const channelRef = useRef<PreviewChannel | null>(null)
   const lastSentRef = useRef('')
+  // Adresse chargée dans l'iframe (son jeton a posé le cookie de l'aperçu) et adresse la plus récente du moteur (jeton
+  // court renouvelé à chaque GET /editor/state) : l'iframe ne change d'adresse qu'au rechargement ou d'une page à l'autre.
+  const targetRef = useRef<PreviewTarget | null>(null)
+  const latestRef = useRef<PreviewTarget | null>(null)
   const layout = computeFrame(size, viewport)
   const scaleRef = useRef(layout.scale)
 
   // ─── Adresse de l'aperçu ───────────────────────────────────────────────────
   // Source : EditorState.preview, lu par la sidebar (magasin `preview`) ; si elle ne l'a pas encore, le canvas
   // interroge lui-même GET /editor/state (et le range dans le magasin) : il gère seul l'erreur et « Try again ».
+  // L'URL porte un jeton COURT (`?kz_preview=v1.<exp>…`, 15 min, SEC-09) renouvelé à chaque lecture de l'état : un
+  // nouveau jeton pour la même page ne recharge PAS l'iframe (le cookie posé au chargement vaut encore) ; il est gardé
+  // pour le prochain rechargement.
   useEffect(() => {
     if (previewOverride) {
       const target = resolvePreview(previewOverride, null, window.location.href)
+      latestRef.current = target
       setPreview(target ? { kind: 'frame', target } : { kind: 'error', message: MESSAGES.badUrl })
       return
     }
     if (storePreview) {
       const target = resolvePreview(storePreview.url, storePreview.origin, window.location.href)
+      if (!target) {
+        setPreview({ kind: 'error', message: MESSAGES.badUrl })
+        return
+      }
+      latestRef.current = target
       setPreview((current) =>
-        target
-          ? current.kind === 'frame' && current.target.url === target.url
-            ? current
-            : { kind: 'frame', target }
-          : { kind: 'error', message: MESSAGES.badUrl },
+        current.kind === 'frame' && previewKey(current.target.url) === previewKey(target.url) ? current : { kind: 'frame', target },
       )
       return
     }
@@ -137,12 +145,18 @@ export function EditorCanvas({ pageLabel, labels, previewOverride }: EditorCanva
   )
 
   const target = preview.kind === 'frame' ? preview.target : null
+  const targetUrl = target?.url ?? null
+  const targetOrigin = target?.origin ?? null
   useEffect(() => {
-    if (!target) return
+    targetRef.current = target
+  }, [target])
+
+  useEffect(() => {
+    if (!targetOrigin) return
     const channel = connectPreview({
       window,
       frame: () => iframeRef.current?.contentWindow,
-      origin: target.origin,
+      origin: targetOrigin,
       handlers: {
         onHello: () => sendView(true),
         onReady: () => {
@@ -161,7 +175,7 @@ export function EditorCanvas({ pageLabel, labels, previewOverride }: EditorCanva
       channel.dispose()
       channelRef.current = null
     }
-  }, [target, store, labels, sendView])
+  }, [targetOrigin, store, labels, sendView])
 
   // Chaque changement du magasin (mode, sélection, demande, modification à valider) est renvoyé au pont.
   useEffect(() => store.subscribe(() => sendView()), [store, sendView])
@@ -172,62 +186,76 @@ export function EditorCanvas({ pageLabel, labels, previewOverride }: EditorCanva
 
   // Le pont n'a jamais répondu : message d'erreur au bout de 15 s (remis à zéro à chaque rechargement).
   useEffect(() => {
-    if (!target || bridgeReady) return
+    if (!targetUrl || bridgeReady) return
     setTimedOut(false)
     const timer = window.setTimeout(() => setTimedOut(true), BRIDGE_TIMEOUT_MS)
     return () => window.clearTimeout(timer)
-  }, [target, frameKey, bridgeReady])
+  }, [targetUrl, frameKey, bridgeReady])
 
   useEffect(() => () => store.setBridgeReady(false), [store])
 
-  const reloadFrame = useCallback(() => {
-    store.setBridgeReady(false)
-    lastSentRef.current = ''
-    setFrameKey((k) => k + 1)
-  }, [store])
+  /** Rechargement complet de l'iframe, avec l'adresse (et donc le jeton) la plus récente. */
+  const reloadFrame = useCallback(
+    (next?: PreviewTarget | null) => {
+      const fresh = next ?? latestRef.current
+      store.setBridgeReady(false)
+      lastSentRef.current = ''
+      if (fresh && fresh.url !== targetRef.current?.url) setPreview({ kind: 'frame', target: fresh })
+      setFrameKey((k) => k + 1)
+    },
+    [store],
+  )
 
-  // Brouillon Sanity modifié (le HMR ne le voit pas) : refresh du pont s'il répond, sinon rechargement complet.
+  /**
+   * Rechargement qui redemande d'abord une adresse au moteur si le jeton le plus récent a expiré (sinon l'aperçu
+   * répondrait 403). Échec de la lecture : rechargement quand même (le pont muet mènera à « Try again »).
+   */
+  const renewAndReload = useCallback(() => {
+    const latest = latestRef.current
+    if (previewOverride || !latest || !previewTokenExpired(latest.url)) {
+      reloadFrame()
+      return
+    }
+    engineClient.editor
+      .state(path)
+      .then((state) => {
+        const next = state.preview ? resolvePreview(state.preview.url, state.preview.origin, window.location.href) : null
+        if (next && state.preview) {
+          latestRef.current = next
+          store.setPreview(state.preview)
+        }
+        reloadFrame(next)
+      })
+      .catch(() => reloadFrame())
+  }, [previewOverride, path, store, reloadFrame])
+
+  // Brouillon Sanity modifié (le HMR ne le voit pas) : refresh du pont s'il répond et que le cookie de l'aperçu vaut
+  // encore (jeton chargé non expiré) ; sinon rechargement complet avec un jeton valide.
   const nonceRef = useRef(previewNonce)
   useEffect(() => {
     if (nonceRef.current === previewNonce) return
     nonceRef.current = previewNonce
-    if (store.get().bridgeReady && channelRef.current) channelRef.current.refresh()
-    else reloadFrame()
-  }, [previewNonce, store, reloadFrame])
+    const loaded = targetRef.current
+    if (store.get().bridgeReady && channelRef.current && !(loaded && previewTokenExpired(loaded.url))) channelRef.current.refresh()
+    else renewAndReload()
+  }, [previewNonce, store, renewAndReload])
 
   const retry = () => {
     if (preview.kind === 'error') setAttempt((n) => n + 1)
-    else reloadFrame()
+    else renewAndReload()
   }
 
   // ─── ✓ Validate / Cancel (barre flottante) ─────────────────────────────────
-  // Un seul chemin vers le moteur : les actions enregistrées par la sidebar (magasin `decisions`), qui mettent à
-  // jour le fil et affichent l'erreur éventuelle. Sans sidebar (tests, écran isolé) : appel direct du moteur.
-  const pendingId = pending?.id
-  useEffect(() => setActionError(null), [pendingId])
-
-  const decide = async (action: 'validate' | 'cancel') => {
+  // Un seul chemin vers le moteur (FOLLOWUPS #29) : les actions enregistrées par la sidebar (magasin `decisions`), qui
+  // mettent à jour le fil, rechargent l'état et affichent l'erreur éventuelle ; `deciding` (magasin) met le bouton
+  // concerné en chargement des deux côtés. Sans ces actions, pas de barre.
+  const decide = (action: 'validate' | 'cancel') => {
     const { pending: change, decisions, deciding: current } = store.get()
-    if (!change || busy || current) return
-    if (decisions) {
-      await decisions[action]()
-      return
-    }
-    setBusy(action)
-    setActionError(null)
-    try {
-      await (action === 'validate' ? engineClient.editor.validate(change.id) : engineClient.editor.cancel(change.id))
-      store.setPending(null)
-      // Cancel remet le brouillon (Sanity + git) en l'état : l'aperçu doit le montrer.
-      if (action === 'cancel') store.refreshPreview()
-    } catch (err) {
-      setActionError(err instanceof EngineClientError ? err.message : MESSAGES.actionFailed)
-    } finally {
-      setBusy(null)
-    }
+    if (!change || !decisions || current) return
+    void decisions[action]()
   }
 
-  const showReview = pending?.status === 'to-validate' && !locked && preview.kind === 'frame'
+  const showReview = pending?.status === 'to-validate' && canDecide && !locked && preview.kind === 'frame'
   const status: 'loading' | 'error' | 'timeout' | null =
     preview.kind === 'error' ? 'error' : preview.kind === 'resolving' ? 'loading' : bridgeReady ? null : timedOut ? 'timeout' : 'loading'
 
@@ -295,8 +323,17 @@ export function EditorCanvas({ pageLabel, labels, previewOverride }: EditorCanva
       <div className={styles.top}>
         <AnimatePresence>
           {showReview ? (
-            <motion.div key="review" className={styles.floating} variants={barVariants} initial="initial" animate="animate" exit="exit">
-              <ReviewBar busy={deciding ?? busy} error={actionError} onValidate={() => decide('validate')} onCancel={() => decide('cancel')} />
+            <motion.div
+              key="review"
+              className={styles.floating}
+              // QA-5 : jamais plus large que le cadre (Mobile 375 → 351 px), le libellé passe alors sur deux lignes.
+              style={{ maxWidth: floatingMaxWidth(layout.width) }}
+              variants={barVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+            >
+              <ReviewBar busy={deciding} onValidate={() => decide('validate')} onCancel={() => decide('cancel')} />
             </motion.div>
           ) : null}
         </AnimatePresence>

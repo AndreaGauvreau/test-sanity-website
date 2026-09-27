@@ -180,6 +180,7 @@ export type AiUsage = {
   requestId: string;
   status: string;
   page?: string;
+  request?: string;
   user: {
     id: string;
     name: string;
@@ -405,6 +406,7 @@ export type SiteSettings = {
     run: "once" | "everyPageVisit";
     code: string;
     enabled?: boolean;
+    signature?: string;
     _type: "siteScript";
     _key: string;
   }>;
@@ -776,7 +778,7 @@ export type BENCH_QUERY_RESULT = Array<{
 
 // Source: src/sanity/lib/queries.ts
 // Variable: SITE_SETTINGS_QUERY
-// Query: *[_type == "siteSettings" && _id == "siteSettings"][0]{  title,  description,  allowIndexing,  "faviconLight": faviconLight.asset->url,  "faviconDark": faviconDark.asset->url,  socialImage,  "scripts": scripts[enabled != false]{ _key, name, placement, page, run, code }}
+// Query: *[_type == "siteSettings" && _id == "siteSettings"][0]{  title,  description,  allowIndexing,  "faviconLight": faviconLight.asset->url,  "faviconDark": faviconDark.asset->url,  socialImage,  "scripts": scripts[enabled != false]{ _key, name, placement, page, run, code, enabled, signature }}
 export type SITE_SETTINGS_QUERY_RESULT = {
   title: string;
   description: string | null;
@@ -797,6 +799,8 @@ export type SITE_SETTINGS_QUERY_RESULT = {
     page: "all" | "blog" | "blog/slug" | "home";
     run: "everyPageVisit" | "once";
     code: string;
+    enabled: boolean | null;
+    signature: string | null;
   }> | null;
 } | null;
 
@@ -839,7 +843,7 @@ declare global {
     '*[_type == "post" && slug.current == $slug][0]{\n  _id,\n  title,\n  "slug": slug.current,\n  category,\n  publishedAt,\n  excerpt,\n  author,\n  "readingTime": round(length(pt::text(content)) / 5 / 180),\n  image{\n    "alt": coalesce(alt, asset->altText),\n    crop,\n    hotspot,\n    asset->{ _id, metadata{ lqip, dimensions{ width, height } } }\n  },\n  content[]{\n    ...,\n    _type == "image" => {\n      ...,\n      "alt": coalesce(alt, asset->altText),\n      asset->{ _id, metadata{ lqip, dimensions{ width, height } } }\n    }\n  }\n}': POST_QUERY_RESULT;
     '*[_type == "post" && defined(slug.current)]{\n  "slug": slug.current\n}': POST_SLUGS_QUERY_RESULT;
     '*[_type == "post" && defined(slug.current)] | order(publishedAt desc){\n  _id,\n  title,\n  category,\n  "slug": slug.current,\n  "imageUrl": image.asset->url,\n  "imageSize": image.asset->size\n}': BENCH_QUERY_RESULT;
-    '*[_type == "siteSettings" && _id == "siteSettings"][0]{\n  title,\n  description,\n  allowIndexing,\n  "faviconLight": faviconLight.asset->url,\n  "faviconDark": faviconDark.asset->url,\n  socialImage,\n  "scripts": scripts[enabled != false]{ _key, name, placement, page, run, code }\n}': SITE_SETTINGS_QUERY_RESULT;
+    '*[_type == "siteSettings" && _id == "siteSettings"][0]{\n  title,\n  description,\n  allowIndexing,\n  "faviconLight": faviconLight.asset->url,\n  "faviconDark": faviconDark.asset->url,\n  socialImage,\n  "scripts": scripts[enabled != false]{ _key, name, placement, page, run, code, enabled, signature }\n}': SITE_SETTINGS_QUERY_RESULT;
     '*[_type == "blogPage" && _id == "blogPage"][0]{\n  _id,\n  content,\n  seo\n}': BLOG_PAGE_QUERY_RESULT;
     '*[_type == "articleSeoTemplate" && _id == $id][0]{\n  metaTitle,\n  metaDescription,\n  ogImageField,\n  ogImage,\n  allowIndexing\n}': ARTICLE_SEO_QUERY_RESULT;
   }

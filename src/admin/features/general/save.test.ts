@@ -95,8 +95,17 @@ describe('uploadGeneralImage', () => {
     await expect(uploadGeneralImage(deps, form('faviconLight', new Blob([]), 'x.png'))).resolves.toMatchObject({ ok: false, error: /empty/ })
     const big = new Uint8Array(UPLOAD_MAX_BYTES + 1)
     big.set(PNG)
-    await expect(uploadGeneralImage(deps, form('socialImage', new Blob([big]), 'x.png'))).resolves.toMatchObject({ ok: false, error: /1 MB/ })
+    await expect(uploadGeneralImage(deps, form('socialImage', new Blob([big]), 'x.png'))).resolves.toMatchObject({ ok: false, error: /5 MB/ })
     expect(uploadImage).not.toHaveBeenCalled()
+  })
+
+  it('DOC-20 : limite alignée sur bodySizeLimit (6mb) et sur les autres envois de l’admin — 5 Mo ; une image de 2 Mo passe', async () => {
+    expect(UPLOAD_MAX_BYTES).toBe(5 * 1024 * 1024)
+    const { deps, uploadImage } = fakeDeps()
+    const medium = new Uint8Array(2_000_000)
+    medium.set(PNG)
+    await expect(uploadGeneralImage(deps, form('socialImage', new Blob([medium]), 'og.png'))).resolves.toMatchObject({ ok: true })
+    expect(uploadImage).toHaveBeenCalledTimes(1)
   })
 
   it('refuse un emplacement inconnu ou l’absence de fichier', async () => {

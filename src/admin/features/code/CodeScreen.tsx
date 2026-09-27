@@ -5,6 +5,7 @@ import { useState, useTransition } from 'react'
 import { autosave } from '@/admin/core/autosave'
 import {
   Button,
+  Callout,
   ContentArea,
   EmptyState,
   IconButton,
@@ -12,7 +13,7 @@ import {
   MenuItem,
   MenuSeparator,
   Modal,
-  PageHeader,
+  SectionHeader,
   Table,
   TableCell,
   TableHeaderCell,
@@ -21,7 +22,7 @@ import {
   useToast,
 } from '@/admin/ui'
 
-import { deleteScriptAction, moveScriptAction, saveScriptAction, setScriptEnabledAction, type ScriptActionResult } from './actions'
+import { deleteScriptAction, moveScriptAction, resignScriptAction, saveScriptAction, setScriptEnabledAction, type ScriptActionResult } from './actions'
 import styles from './Code.module.css'
 import { ScriptDialog } from './ScriptDialog'
 import { DEFAULT_SCRIPT, pageLabel, placementLabel, scriptType, type PageOption, type ScriptItem, type ScriptValues } from './scripts'
@@ -29,6 +30,8 @@ import { DEFAULT_SCRIPT, pageLabel, placementLabel, scriptType, type PageOption,
 export type CodeScreenProps = {
   scripts: readonly ScriptItem[]
   pages: readonly PageOption[]
+  /** SEC-04 : le serveur a un SCRIPTS_SIGNING_SECRET valide (sinon aucun script ne tourne et rien ne s'enregistre). */
+  signingReady: boolean
 }
 
 /** Données gardées pendant l'animation de sortie (la fenêtre se ferme avec son contenu). */
@@ -36,20 +39,32 @@ type DialogState = { open: boolean; mode: 'new' | 'edit'; key?: string }
 
 const DESCRIPTION = 'Custom code added to every page, or to a selection of pages, of the published site.'
 
+/** SEC-04 : statut d'un script dont la signature est invalide (modifié dans le Studio ou par l'API). */
+export const MODIFIED_STATUS = 'Modified outside the admin — not running on the site'
+const SIGNING_MISSING_NOTE =
+  'Script signing isn’t set up on the server (SCRIPTS_SIGNING_SECRET): no script runs on the site, and scripts can’t be saved.'
+const EDIT_NOTICE =
+  'This script was modified outside the admin and doesn’t run on the site. Check its code: Saving signs it, and it runs when you publish.'
+
 /**
  * B3 · Site Settings › Code (Kuartz seulement) : tableau des scripts (Name · Placement · Type · Page · Status · ⋯),
  * ajout / modification dans le Script dialog (G6), activation, déplacement, suppression avec confirmation.
  * Chaque écriture passe par une server action qui revérifie `settings.code` ; le brouillon est relu par `refresh()`.
+ * SEC-04 : un script à la signature invalide est affiché « Modified outside the admin — not running on the site »,
+ * avec l'action « Re-sign » (confirmée) ; Enable lui est fermé, Edit prévient que Save le signe.
  */
-export function CodeScreen({ scripts, pages }: CodeScreenProps) {
+export function CodeScreen({ scripts, pages, signingReady }: CodeScreenProps) {
   const toast = useToast()
   const [dialog, setDialog] = useState<DialogState>({ open: false, mode: 'new' })
   const [confirm, setConfirm] = useState<{ open: boolean; key?: string }>({ open: false })
+  const [resign, setResign] = useState<{ open: boolean; key?: string }>({ open: false })
   const [busyKey, setBusyKey] = useState<string | null>(null)
   const [, startTransition] = useTransition()
 
   const editing = dialog.mode === 'edit' ? scripts.find((s) => s.key === dialog.key) : undefined
   const confirming = confirm.key ? scripts.find((s) => s.key === confirm.key) : undefined
+  const resigning = resign.key ? scripts.find((s) => s.key === resign.key) : undefined
+  const unsigned = scripts.filter((s) => !s.signed).length
   const openNew = () => setDialog({ open: true, mode: 'new' })
   const openEdit = (key: string) => setDialog({ open: true, mode: 'edit', key })
   const closeDialog = () => setDialog((d) => ({ ...d, open: false }))
@@ -97,7 +112,16 @@ export function CodeScreen({ scripts, pages }: CodeScreenProps) {
 
   return (
     <ContentArea gap={24}>
-      <PageHeader title="Code" description={DESCRIPTION} actions={addButton} className={styles.header} />
+      {/* Figma B3 : « Section header » en tête d'écran (pas de Page header) → titre h1 au rendu Heading 4. */}
+      <SectionHeader headingLevel={1} title="Code" description={DESCRIPTION} action={addButton} />
+
+      {!signingReady ? <Callout tone="error">{SIGNING_MISSING_NOTE}</Callout> : null}
+      {signingReady && unsigned > 0 ? (
+        <Callout tone="warning">
+          {unsigned === 1 ? '1 script was' : `${unsigned} scripts were`} modified outside the admin and {unsigned === 1 ? 'doesn’t' : 'don’t'} run on
+          the site. Check the code with Edit, then choose Re-sign in the ⋯ menu.
+        </Callout>
+      ) : null}
 
       {scripts.length === 0 ? (
         <EmptyState
@@ -147,7 +171,11 @@ export function CodeScreen({ scripts, pages }: CodeScreenProps) {
                   <TableCell>{scriptType(script.code)}</TableCell>
                   <TableCell>{pageLabel(pages, script.page)}</TableCell>
                   <TableCell type="tag">
-                    {script.enabled ? (
+                    {!script.signed ? (
+                      <Tag tone="warning" dot title={MODIFIED_STATUS}>
+                        Modified outside<span className="kz-visually-hidden">{MODIFIED_STATUS.slice('Modified outside'.length)}</span>
+                      </Tag>
+                    ) : script.enabled ? (
                       <Tag tone="success" dot>
                         Active
                       </Tag>
@@ -165,8 +193,15 @@ export function CodeScreen({ scripts, pages }: CodeScreenProps) {
                       <MenuItem icon="edit" onSelect={() => openEdit(script.key)}>
                         Edit
                       </MenuItem>
+                      {!script.signed ? (
+                        <MenuItem icon="check" disabled={!signingReady} onSelect={() => setResign({ open: true, key: script.key })}>
+                          Re-sign
+                        </MenuItem>
+                      ) : null}
                       <MenuItem
                         icon={script.enabled ? 'eye-off' : 'eye'}
+                        // Enable d'un script non signé : refusé par le serveur (revoir puis Re-sign) ; fermé ici aussi.
+                        disabled={!script.enabled && (!script.signed || !signingReady)}
                         onSelect={() =>
                           rowAction(
                             script.key,
@@ -207,6 +242,36 @@ export function CodeScreen({ scripts, pages }: CodeScreenProps) {
         pages={pages}
         onSave={onSave}
         onClose={closeDialog}
+        notice={editing && !editing.signed ? EDIT_NOTICE : undefined}
+      />
+
+      <Modal
+        open={resign.open && !!resigning}
+        onClose={() => setResign((r) => ({ ...r, open: false }))}
+        title="Re-sign this script?"
+        description={
+          resigning
+            ? `“${resigning.name}” was modified outside the admin. Re-signing approves its current code: ${
+                resigning.enabled ? 'it runs on the site when you publish' : 'it can run again once you enable it'
+              }. Check the code with Edit first.`
+            : undefined
+        }
+        confirmLabel="Re-sign"
+        confirmDisabled={!signingReady}
+        confirmLoading={!!resigning && busyKey === resigning.key}
+        onConfirm={() => {
+          if (!resigning) return
+          const { key, placement, page, run, code, enabled } = resigning
+          startTransition(async () => {
+            const result = await write(
+              key,
+              () => resignScriptAction({ key, expected: { placement, page, run, code, enabled } }),
+              enabled ? 'Script re-signed. It runs on the site when you publish.' : 'Script re-signed.',
+            )
+            if (result.ok) setResign((r) => ({ ...r, open: false }))
+            else toast.show({ type: 'error', message: result.error })
+          })
+        }}
       />
 
       <Modal

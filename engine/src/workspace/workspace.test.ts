@@ -7,6 +7,7 @@ import path from 'node:path'
 import { afterEach, beforeEach, describe, it } from 'vitest'
 import { readEngineConfig, type EngineConfig } from '../config'
 import { pendingWork } from './setup'
+import { TEST_IDENTITY } from '../jobs/testing'
 import { checkWorkspace, dotenvValue, previewEnvFile, readMeta, setupWorkspace, syncWorkspace, WorkspaceError } from './workspace'
 
 /** Mise en place de l'espace de travail sur des dépôts git TEMPORAIRES (jamais le vrai dépôt source). */
@@ -27,6 +28,7 @@ const configFor = (extra: Record<string, string> = {}) =>
       ENGINE_PREVIEW_PORT: '4042',
       ENGINE_SECRET: 'engine-secret-0123456789',
       ENGINE_PREVIEW_SECRET: "preview-secret-with-'quote'#",
+      ENGINE_IDENTITY_PUBLIC_KEY: TEST_IDENTITY.publicKey,
       ADMIN_ORIGIN: 'http://127.0.0.1:4040',
       ENGINE_WORKSPACE: path.join(root, 'site-engine'),
       ENGINE_SOURCE_REPO: source,
@@ -77,6 +79,7 @@ describe('setupWorkspace', () => {
     assert.match(env, /^SANITY_API_READ_TOKEN=read-token-value$/m)
     assert.match(env, /^ENGINE_PREVIEW_SECRET="preview-secret-with-'quote'#"$/m)
     assert.match(env, /^ADMIN_ORIGIN=http:\/\/127\.0\.0\.1:4040$/m)
+    assert.match(env, /^REACT_EDITOR=none$/m, 'SEC-06 : éditeur inerte même pour un next dev lancé à la main')
     assert.doesNotMatch(env, /ENGINE_SECRET=engine|SANITY_API_WRITE_TOKEN|ANTHROPIC/)
     assert.equal((await stat(path.join(dir, '.env.local'))).mode & 0o777, 0o600)
     assert.equal(await repo.isClean(), true)
@@ -156,6 +159,6 @@ describe('.env.local de l’aperçu', () => {
     assert.equal(dotenvValue("it's"), '"it\'s"')
     assert.throws(() => dotenvValue('a\nb'), WorkspaceError)
     assert.throws(() => dotenvValue(`'"`), WorkspaceError)
-    assert.equal(previewEnvFile(config).split('\n').filter((line) => /^[A-Z_]+=/.test(line)).length, 7)
+    assert.equal(previewEnvFile(config).split('\n').filter((line) => /^[A-Z_]+=/.test(line)).length, 8)
   })
 })

@@ -1,10 +1,12 @@
 import { execFileSync } from 'node:child_process'
+import { generateKeyPairSync } from 'node:crypto'
 import { cp, mkdir, mkdtemp, readFile, realpath, rm, writeFile } from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import type { EditJob, EngineHealth, EngineUser } from '../../../src/admin/core/contracts'
-import { createFakeAgent, readAgentSettings, type AgentSettings, type FakeScript } from '../claude'
+import { engineIdentityHeaders, signEngineUser } from '../../../src/admin/core/engine/signature'
+import { createFakeAgent, readAgentSettings, type AgentResult, type AgentRun, type AgentSettings, type FakeScript } from '../claude'
 import { createFakeSanity, type FakeSanity } from '../content/fake'
 import { createTextStore } from '../content/texts'
 import type { PreviewSignal } from '../content/visible'
@@ -30,6 +32,31 @@ export const HERO_CSS = 'src/components/sections/Hero/Hero.module.css'
 export const HERO_TSX = 'src/components/sections/Hero/Hero.tsx'
 export const PAGE_DOC = 'dockSchedulingPage'
 export const TITLE_FIELD = `${PAGE_DOC}:hero.title`
+
+/**
+ * Couleur de la règle `.lede` du Hero de test, écrite de façon UNIQUE : `color: var(--color-text-muted);` seul apparaît
+ * deux fois dans le fichier, et l'outil Edit (comme le faux Claude et le hook) refuse un old_string ambigu.
+ */
+export const LEDE_MUTED = '  max-inline-size: 28.75rem; /* 460 */\n  color: var(--color-text-muted);'
+/** `LEDE_MUTED` avec une autre valeur de couleur (new_string d'un Edit). */
+export const ledeColor = (value: string) => LEDE_MUTED.replace('var(--color-text-muted)', value)
+
+/**
+ * Paire Ed25519 de TEST pour l'identité signée (SEC-10), générée à chaque lancement : `publicKey` va dans
+ * ENGINE_IDENTITY_PUBLIC_KEY (ou `identityPublicKey` de createEngineServer), `privateKey` signe comme l'admin.
+ */
+export const TEST_IDENTITY = (() => {
+  const { publicKey, privateKey } = generateKeyPairSync('ed25519')
+  return {
+    publicKey: publicKey.export({ format: 'der', type: 'spki' }).toString('base64'),
+    privateKey: privateKey.export({ format: 'der', type: 'pkcs8' }).toString('base64'),
+  }
+})()
+
+/** En-têtes X-Kz-User / X-Kz-User-Sig signés comme l'admin (clé privée de test, `nowSeconds` pour vieillir une identité). */
+export async function signedIdentity(user: EngineUser, nowSeconds?: number, privateKey = TEST_IDENTITY.privateKey): Promise<Record<string, string>> {
+  return engineIdentityHeaders(await signEngineUser(user, privateKey, nowSeconds))
+}
 
 export const CLIENT: EngineUser = { id: 'u-client', name: 'Marie Client', email: 'marie@conduit.test', role: 'client' }
 export const KUARTZ: EngineUser = { id: 'u-kz', name: 'Kuartz Dev', email: 'dev@kuartz.test', role: 'kuartz' }
@@ -168,6 +195,12 @@ export async function makeBench(
     typecheck?: EditorDeps['typecheck']
     access?: EditorDeps['access']
     previewReady?: () => boolean
+    /** Remplace le faux Claude scripté (ex. faux Claude du démarrage, ou enveloppe qui observe les outils). */
+    runAgent?: (run: AgentRun, agent: ReturnType<typeof createFakeAgent>) => Promise<AgentResult>
+    listPages?: EditorDeps['listPages']
+    fakeClaude?: string
+    /** Domaines du site (SEC-08) ; défaut : aucun. */
+    siteDomains?: readonly string[]
   } = {},
 ): Promise<Bench> {
   const ws = await makeWorkspace()
@@ -200,8 +233,11 @@ export async function makeBench(
     preview: preview.preview,
     signal,
     ...(options.previewReady ? { previewReady: options.previewReady } : {}),
-    previewUrl: (page) => ({ url: `http://127.0.0.1:4999${page}?kz_preview=test-secret`, origin: 'http://127.0.0.1:4999' }),
-    runAgent: (run, limits) => (budgets.push(limits.maxBudgetUsd), agent(run)),
+    previewUrl: async (page, user) => ({ url: `http://127.0.0.1:4999${page}?kz_preview=token-for-${user.id}`, origin: 'http://127.0.0.1:4999' }),
+    runAgent: (run, limits) => (budgets.push(limits.maxBudgetUsd), options.runAgent ? options.runAgent(run, agent) : agent(run)),
+    ...(options.listPages ? { listPages: options.listPages } : {}),
+    ...(options.fakeClaude ? { fakeClaude: options.fakeClaude } : {}),
+    ...(options.siteDomains ? { siteDomains: options.siteDomains } : {}),
     access: options.access ?? { ok: true, access: { kind: 'api-key', secret: 'sk-test' } },
     settings,
     maxRequestUsd: options.maxRequestUsd ?? 1.5,

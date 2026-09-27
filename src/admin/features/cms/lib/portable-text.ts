@@ -1,11 +1,12 @@
+import type { FieldDef } from '@/admin/core/contracts/manifest'
 import { isSafeHref } from '@/admin/core/sanity/validate'
 
 /**
  * Texte riche (Portable Text) des fiches CMS (C4 « Body »). Pur, partagé client / serveur.
  *
  * - `RichTextConfig` : ce que l'éditeur propose et ce que le serveur accepte pour un champ (styles, listes,
- *   décorateurs, liens, objets bloc). Le manifeste ne le décrit pas encore (demande de contrat) : défaut =
- *   schéma `post.content` (H2, H3, citation, puces, numéros, gras, italique, lien, images), surcharges par champ.
+ *   décorateurs, liens, objets bloc). Source : `FieldDef.richText` du manifeste (`richTextConfigFor`) ; un champ
+ *   qui ne le déclare pas reçoit `DEFAULT_RICH_TEXT` (options du corps d'article).
  * - `sanitizePortableText` : validation serveur avant écriture (l'API Sanity n'applique pas le schéma) —
  *   styles et listes hors liste ramenés à « normal », marques inconnues retirées, liens dangereux refusés,
  *   `_key` garanties et uniques, objets inconnus refusés.
@@ -29,16 +30,24 @@ export const DEFAULT_RICH_TEXT: RichTextConfig = {
   blockObjects: ['image'],
 }
 
-/**
- * Surcharges par `<type>.<champ>` : reflet du schéma Sanity tant que le FieldDef ne porte pas ces options
- * (voir « Demandes de contrat » du CLAUDE.md). `faq.answer` : paragraphes, gras, italique, lien.
- */
-const OVERRIDES: Readonly<Record<string, Partial<RichTextConfig>>> = {
-  'faq.answer': { styles: ['normal'], lists: [], blockObjects: [] },
-}
+/** Annotations que l'éditeur sait gérer (les autres noms du manifeste sont ignorés). */
+const SUPPORTED_ANNOTATIONS: readonly 'link'[] = ['link']
 
-export function richTextConfigFor(documentType: string, fieldName: string): RichTextConfig {
-  return { ...DEFAULT_RICH_TEXT, ...OVERRIDES[`${documentType}.${fieldName}`] }
+/**
+ * Options du texte riche d'un champ, lues dans `field.richText` (manifeste) : EXACTEMENT ce qu'il déclare — une
+ * clé absente = rien de ce genre (liste vide), « normal » toujours permis, annotations limitées à `link`,
+ * `blocks` → objets bloc. Champ sans `richText` : `DEFAULT_RICH_TEXT` (à éviter : déclarer `richText`).
+ */
+export function richTextConfigFor(field: Pick<FieldDef, 'richText'>): RichTextConfig {
+  const declared = field.richText
+  if (!declared) return DEFAULT_RICH_TEXT
+  return {
+    styles: ['normal', ...(declared.styles ?? []).filter((s) => s !== 'normal')],
+    lists: [...(declared.lists ?? [])],
+    decorators: [...(declared.decorators ?? [])],
+    annotations: SUPPORTED_ANNOTATIONS.filter((a) => (declared.annotations ?? []).includes(a)),
+    blockObjects: [...(declared.blocks ?? [])],
+  }
 }
 
 export type PtSpan = { _type: 'span'; _key: string; text: string; marks: string[] }

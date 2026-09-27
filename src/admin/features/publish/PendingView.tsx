@@ -21,12 +21,12 @@ import {
   type IconName,
 } from '@/admin/ui'
 
-import { discardChangeAction } from './actions'
+import { discardChangeAction, unstageChangeAction } from './actions'
 import { AfterPublishCard } from './AfterPublishCard'
 import { DiffModal } from './DiffModal'
 import { ErrorLogModal } from './ErrorLogModal'
 import { contentItemMeta, designItemMeta, publishButtonLabel } from './format'
-import { contentItemIcon, DESIGN_ITEM_ICON, DESIGN_VIEW_HREF, viewUrl, type ItemKinds } from './items'
+import { contentItemAction, contentItemIcon, DESIGN_ITEM_ICON, designViewHref, viewUrl, type ItemKinds } from './items'
 import { afterPublishSteps } from './steps'
 import { useNow } from './use-now'
 import { usePublishActions } from './use-publish-actions'
@@ -61,6 +61,8 @@ export function PendingView({ initialStatus, initialError, canDiff, siteUrl, dom
   const [discardOpen, setDiscardOpen] = useState(false)
   const [discardError, setDiscardError] = useState<string | null>(null)
   const [discarding, startDiscard] = useTransition()
+  const [unstageError, setUnstageError] = useState<string | null>(null)
+  const [unstaging, startUnstage] = useTransition()
   const [diff, setDiff] = useState<{ changeId: string; title: string } | null>(null)
   const [diffOpen, setDiffOpen] = useState(false)
   const [logOpen, setLogOpen] = useState(false)
@@ -96,6 +98,19 @@ export function PendingView({ initialStatus, initialError, canDiff, siteUrl, dom
     })
   }
 
+  // Annuler un dépublier / supprimer programmé : rien n'est détruit, donc pas de confirmation.
+  const unstage = (id: string) => {
+    setUnstageError(null)
+    startUnstage(async () => {
+      const result = await unstageChangeAction({ id })
+      if (result.ok) publishStatusStore.set(result.data)
+      else {
+        setUnstageError(result.message)
+        void publishStatusStore.refresh()
+      }
+    })
+  }
+
   // Rangées : sortie en fondu, les voisines glissent à leur place (layout, transform) ; rien en mouvement réduit.
   const rowMotion = reduced
     ? {}
@@ -123,10 +138,13 @@ export function PendingView({ initialStatus, initialError, canDiff, siteUrl, dom
 
   const contentRow = (item: PendingContentItem) => {
     const href = viewUrl(siteUrl, item.viewPath)
+    // Dépublier / supprimer programmé depuis le CMS : tag de l'action, et le bouton l'annule au lieu de Discard.
+    const staged = contentItemAction(item)
     return (
       <motion.li key={`c-${item.id}`} {...rowMotion}>
         <ListItem
           className={styles.row}
+          textGap={2}
           icon={contentItemIcon(item, kinds)}
           title={item.path}
           subtitle={
@@ -134,18 +152,31 @@ export function PendingView({ initialStatus, initialError, canDiff, siteUrl, dom
               {contentItemMeta(item, now)}
             </span>
           }
+          tag={staged ? <Tag tone={staged.tone}>{staged.tag}</Tag> : undefined}
           action={
             <span className={styles.rowActions}>
               {href ? <ViewLink href={href} label={item.path} /> : null}
-              <Button
-                variant="ghost"
-                size="small"
-                disabled={locked}
-                aria-label={`Discard ${item.path}`}
-                onClick={() => openDiscard({ kind: 'content', id: item.id, label: item.path })}
-              >
-                Discard
-              </Button>
+              {staged ? (
+                <Button
+                  variant="ghost"
+                  size="small"
+                  disabled={locked || unstaging}
+                  aria-label={`${staged.undoLabel}: ${item.path}`}
+                  onClick={() => unstage(item.id)}
+                >
+                  {staged.undoLabel}
+                </Button>
+              ) : (
+                <Button
+                  variant="ghost"
+                  size="small"
+                  disabled={locked}
+                  aria-label={`Discard ${item.path}`}
+                  onClick={() => openDiscard({ kind: 'content', id: item.id, label: item.path })}
+                >
+                  Discard
+                </Button>
+              )}
             </span>
           }
         />
@@ -157,6 +188,7 @@ export function PendingView({ initialStatus, initialError, canDiff, siteUrl, dom
     <motion.li key={`d-${item.changeId}`} {...rowMotion}>
       <ListItem
         className={styles.row}
+        textGap={2}
         icon={DESIGN_ITEM_ICON as IconName}
         title={item.title}
         subtitle={
@@ -182,7 +214,7 @@ export function PendingView({ initialStatus, initialError, canDiff, siteUrl, dom
                 Diff
               </Button>
             ) : null}
-            <ViewLink href={DESIGN_VIEW_HREF} label={item.title} internal />
+            <ViewLink href={designViewHref(item)} label={item.title} internal />
             <Button
               variant="ghost"
               size="small"
@@ -227,6 +259,11 @@ export function PendingView({ initialStatus, initialError, canDiff, siteUrl, dom
             }
           >
             {loadError}
+          </Callout>
+        ) : null}
+        {unstageError ? (
+          <Callout tone="error" role="alert">
+            {unstageError}
           </Callout>
         ) : null}
         {!status ? null : total === 0 ? (

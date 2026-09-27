@@ -5,7 +5,7 @@ import { can, type AdminRole, type Capability } from '@/admin/core/contracts/rol
 import type { Session } from '@/admin/core/contracts/session'
 import { EngineRequestError } from '@/admin/core/engine/errors'
 
-import { diffCore, discardCore, publishCore, PUBLISH_MESSAGES, retryCore, rollbackCore, type ActionDeps } from './actions-core'
+import { diffCore, discardCore, publishCore, PUBLISH_MESSAGES, retryCore, rollbackCore, unstageCore, type ActionDeps } from './actions-core'
 
 /** Même forme que AdminAuthError (core/auth/session.ts, server-only). */
 class FakeAuthError extends Error {
@@ -118,6 +118,26 @@ describe('retry et discard', () => {
   it('discard d’un élément disparu : 404 relayé', async () => {
     const { d } = deps('client', () => new EngineRequestError(404, 'not_found', 'This draft no longer exists.'))
     expect(await discardCore(d, { kind: 'content', id: 'x' })).toMatchObject({ ok: false, status: 404, message: 'This draft no longer exists.' })
+  })
+})
+
+describe('unstageCore (annuler un dépublier / supprimer programmé)', () => {
+  it('droit EN PREMIER, id validé, puis POST publish/unstage', async () => {
+    const { d, calls } = deps('editor')
+    expect(await unstageCore(d, { id: 'post-old' })).toMatchObject({ ok: true })
+    expect(calls).toEqual(['auth:publish.run', 'engine:POST publish/unstage'])
+    expect(d.engineFetch).toHaveBeenLastCalledWith(expect.anything(), 'POST', 'publish/unstage', { body: { id: 'post-old' } })
+    expect(await unstageCore(d, { id: 'drafts.post-old' })).toMatchObject({ ok: false, code: 'bad_request' })
+    expect(await unstageCore(d, { id: '../x' })).toMatchObject({ ok: false, code: 'bad_request' })
+    expect(await unstageCore(d, { id: 'a', extra: 1 })).toMatchObject({ ok: false, code: 'bad_request' })
+  })
+
+  it('sans session : 401 avant tout appel au moteur ; 404 du moteur relayé', async () => {
+    const anon = deps(null)
+    expect(await unstageCore(anon.d, { id: 'post-old' })).toMatchObject({ ok: false, status: 401 })
+    expect(anon.calls).toEqual(['auth:publish.run'])
+    const gone = deps('client', () => new EngineRequestError(404, 'not_found', 'Nothing is scheduled for this item anymore.'))
+    expect(await unstageCore(gone.d, { id: 'post-old' })).toMatchObject({ ok: false, status: 404, message: 'Nothing is scheduled for this item anymore.' })
   })
 })
 

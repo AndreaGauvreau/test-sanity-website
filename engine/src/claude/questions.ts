@@ -1,6 +1,7 @@
 import { randomBytes } from 'node:crypto'
 import type { Answer, Question, QuestionOption, QuestionTone } from '../../../src/admin/core/contracts'
 import * as cssPolicy from '../guards/css-policy'
+import { containsAddress, sanitizeClientText } from './sanitize'
 
 /**
  * Questions de Claude au client (outil ask_client), portées de `batterie-tests:cms/src/editor/questions.ts` :
@@ -84,9 +85,14 @@ const UNMEASURABLE_PROBLEM =
  * Premier problème des questions de Claude, ou null : l'effet `longer-text` reste un choix que le client peut refuser
  * (effectProblem, vérifié d'abord) ; une option 🔴 ne propose jamais ce que le contrôle CSS refuserait, même accordé ;
  * AUCUN texte lu par le client (question, sujet, libellé, description) ne contient de ressource externe (mineur #21 du
- * POC : la question et son sujet n'étaient pas contrôlés).
+ * POC : la question et son sujet n'étaient pas contrôlés) ni d'adresse hors de `allowedDomains` — domaine nu, IDN et
+ * punycode compris (SEC-08, filtre commun `sanitizeClientText`).
  */
-export function questionProblems(drafts: QuestionDraft[], policy: HardcodedPolicy = CSS_POLICY): string | null {
+export function questionProblems(
+  drafts: QuestionDraft[],
+  policy: HardcodedPolicy = CSS_POLICY,
+  allowedDomains: readonly string[] = [],
+): string | null {
   const effect = effectProblem(drafts)
   if (effect) return effect
   const options = drafts.flatMap((draft) => draft.options)
@@ -118,7 +124,7 @@ export function questionProblems(drafts: QuestionDraft[], policy: HardcodedPolic
     ...drafts.map((draft) => `${draft.question} ${draft.topic ?? ''}`),
     ...options.map((option) => `${option.label} ${option.description ?? ''}`),
   ]
-  if (texts.some((text) => TEXT_EXTERNAL_RESOURCE.test(text))) return EXTERNAL_PROBLEM
+  if (texts.some((text) => TEXT_EXTERNAL_RESOURCE.test(text) || containsAddress(text, allowedDomains))) return EXTERNAL_PROBLEM
   return null
 }
 
@@ -149,21 +155,28 @@ export function effectProblem(drafts: QuestionDraft[]): string | null {
 
 /**
  * Questions prêtes à montrer (types du contrat). Les ids sont propres à ce lot (`<lot>-q1`, `<lot>-q1o2`) : une réponse
- * à une question précédente du même travail ne peut jamais valoir pour la nouvelle.
+ * à une question précédente du même travail ne peut jamais valoir pour la nouvelle. Tout texte montré passe par
+ * `sanitizeClientText` (défense en profondeur : questionProblems a déjà refusé toute adresse hors liste blanche).
  */
-export function prepareQuestions(drafts: QuestionDraft[], now = new Date(), batchId?: string): AskedQuestions {
+export function prepareQuestions(
+  drafts: QuestionDraft[],
+  now = new Date(),
+  batchId?: string,
+  allowedDomains: readonly string[] = [],
+): AskedQuestions {
   const id = batchId ?? `a${now.getTime().toString(36)}${randomBytes(3).toString('hex')}`
+  const shown = (text: string) => sanitizeClientText(text, allowedDomains)
   return {
     id,
     askedAt: now.toISOString(),
     questions: drafts.map((draft, q) => ({
       id: `${id}-q${q + 1}`,
-      ...(draft.topic ? { topic: draft.topic } : {}),
-      question: draft.question,
+      ...(draft.topic ? { topic: shown(draft.topic) } : {}),
+      question: shown(draft.question),
       options: draft.options.map((option, o) => ({
         id: `${id}-q${q + 1}o${o + 1}`,
-        label: option.label,
-        ...(option.description ? { description: option.description } : {}),
+        label: shown(option.label),
+        ...(option.description ? { description: shown(option.description) } : {}),
         tone: option.tone,
         // Une valeur en dur n'est proposée que sur l'option déconseillée.
         ...(option.tone === 'discouraged' && option.hardcoded ? { hardcoded: { ...option.hardcoded } } : {}),
@@ -268,6 +281,11 @@ export type AskToolOptions = {
   /** Politique CSS (par défaut celle d'engine-guards). */
   policy?: HardcodedPolicy
   /**
+   * Domaines que les questions peuvent citer (domaine du site : `conduit.com` couvre ses sous-domaines). Absent ou vide :
+   * aucune adresse (SEC-08).
+   */
+  allowedDomains?: readonly string[]
+  /**
    * Montre les questions au client et attend sa réponse (engine-core : statut `waiting`, 15 min au plus, Stop). Rejette
    * en cas d'arrêt ou de délai dépassé : l'exception remonte et coupe le travail.
    */
@@ -280,12 +298,13 @@ export type AskToolOptions = {
 export function createAskTool(options: AskToolOptions): AskTool {
   return {
     ask: async (drafts) => {
-      const problem = questionProblems(drafts, options.policy)
+      const allowed = options.allowedDomains ?? []
+      const problem = questionProblems(drafts, options.policy, allowed)
       if (problem) {
         options.onEvent?.({ kind: 'warn', text: `Question refused: ${problem}` })
         return { error: problem }
       }
-      const asked = prepareQuestions(drafts, options.now?.() ?? new Date())
+      const asked = prepareQuestions(drafts, options.now?.() ?? new Date(), undefined, allowed)
       options.onEvent?.({
         kind: 'ask',
         text: asked.questions.length > 1 ? `Claude asks you ${asked.questions.length} questions.` : `Claude asks: ${asked.questions[0].question}`,

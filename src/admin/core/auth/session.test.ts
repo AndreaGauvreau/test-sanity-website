@@ -74,6 +74,20 @@ describe('requireSession', () => {
     const s = await session.requireSession('route')
     expect(s).toMatchObject({ role: 'client', sanityToken: 'user-token-abcdef', dev: false })
   })
+  it('régression SEC-05 : un cookie « kuartz » d’un Developer hors KUARTZ_ALLOWLIST est lu comme editor', async () => {
+    const { value } = await sealSession({ ...real, role: 'kuartz', sanityRoles: ['developer'], user: { ...real.user, email: 'dev@tiers.com' } }, SECRET)
+    state.jar.set('kz_admin', { value })
+    vi.stubEnv('KUARTZ_ALLOWLIST', '@kuartz.studio')
+    expect((await session.requireSession('route')).role).toBe('editor')
+    await expect(session.requireCapability('settings.code', 'route')).rejects.toMatchObject({ status: 403 })
+    vi.stubEnv('KUARTZ_ALLOWLIST', 'dev@tiers.com')
+    expect((await session.requireSession('route')).role).toBe('kuartz')
+  })
+  it('serveur d’aperçu (KZ_EDITOR_PREVIEW=1) : aucune session, même avec un cookie valide', async () => {
+    await withCookie()
+    vi.stubEnv('KZ_EDITOR_PREVIEW', '1')
+    await expect(session.requireSession('route')).rejects.toMatchObject({ status: 401 })
+  })
   it('getPublicSession ne contient jamais le jeton', async () => {
     await withCookie()
     const pub = await session.getPublicSession()

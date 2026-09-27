@@ -16,7 +16,8 @@ import type { VisualVerdict } from './visual'
  */
 
 const here = path.dirname(fileURLToPath(import.meta.url))
-const siteDir = path.join(here, 'fixtures/conduit')
+// Le vrai site du dépôt (AI-09) : tokens.json, zones.json et CSS Modules réels.
+const siteDir = path.resolve(here, '../../..')
 const HERO = 'src/components/sections/Hero/Hero.module.css'
 const HERO_TSX = 'src/components/sections/Hero/Hero.tsx'
 

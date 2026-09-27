@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'vitest'
-import { EngineConfigError, isInside, readEngineConfig } from './config'
+import { generateKeyPairSync } from 'node:crypto'
+import { EngineConfigError, isEd25519PublicKey, isInside, readEngineConfig } from './config'
+import { TEST_IDENTITY } from './jobs/testing'
 
 /** Configuration du moteur : chemins sûrs (piège 5 du POC), refus clairs, aucun secret dans les messages. */
 
@@ -14,6 +16,7 @@ const ENV = {
   ENGINE_PREVIEW_PORT: '4042',
   ENGINE_SECRET: SECRET,
   ENGINE_PREVIEW_SECRET: PREVIEW_SECRET,
+  ENGINE_IDENTITY_PUBLIC_KEY: TEST_IDENTITY.publicKey,
   ADMIN_ORIGIN: 'http://127.0.0.1:4040',
   ENGINE_WORKSPACE: '/work/site-engine',
   ENGINE_SOURCE_REPO: '/work/site',
@@ -59,6 +62,8 @@ describe('readEngineConfig', () => {
   it('ENGINE_MODE absent : local par défaut, mais pas « explicite » (abonnement Claude refusé)', () => {
     const config = readEngineConfig({ ...ENV, ENGINE_MODE: undefined }, { home: '/Users/me' })
     assert.deepEqual([config.mode, config.explicitLocal], ['local', false])
+    // AI-02 : NODE_ENV=development ne remplace jamais ENGINE_MODE=local écrit.
+    assert.equal(readEngineConfig({ ...ENV, ENGINE_MODE: undefined, NODE_ENV: 'development' }, { home: '/Users/me' }).explicitLocal, false)
     assert.equal(readEngineConfig({ ...ENV, ENGINE_MODE: 'hosted' }, { home: '/Users/me' }).explicitLocal, false)
     assert.ok(problemsOf({ ...ENV, ENGINE_MODE: 'cloud' }).some((p) => p.includes('ENGINE_MODE')))
   })
@@ -105,6 +110,30 @@ describe('readEngineConfig', () => {
     }
     assert.ok(message.includes('ENGINE_SECRET cannot contain spaces'))
     for (const value of [env.ENGINE_SECRET, env.SANITY_API_WRITE_TOKEN, 'BAD DATASET', PREVIEW_SECRET, READ_TOKEN]) assert.ok(!message.includes(value))
+  })
+
+  it('SEC-10 : ENGINE_IDENTITY_PUBLIC_KEY obligatoire, clé publique Ed25519 SPKI en base64 (PEM toléré)', () => {
+    assert.equal(readEngineConfig(ENV, { home: '/x' }).identityPublicKey, TEST_IDENTITY.publicKey)
+    assert.ok(problemsOf({ ...ENV, ENGINE_IDENTITY_PUBLIC_KEY: undefined }).some((p) => /ENGINE_IDENTITY_PUBLIC_KEY is missing/.test(p)))
+    assert.ok(problemsOf({ ...ENV, ENGINE_IDENTITY_PUBLIC_KEY: '' }).some((p) => /ENGINE_IDENTITY_PUBLIC_KEY is missing/.test(p)))
+    // Pas du base64, clé privée à la place de la publique, clé RSA : refusées, sans citer la valeur.
+    const rsa = generateKeyPairSync('rsa', { modulusLength: 1024 }).publicKey.export({ format: 'der', type: 'spki' }).toString('base64')
+    for (const bad of ['not base64!', TEST_IDENTITY.privateKey, rsa, ENV.ENGINE_SECRET]) {
+      const problems = problemsOf({ ...ENV, ENGINE_IDENTITY_PUBLIC_KEY: bad })
+      assert.ok(problems.some((p) => /ENGINE_IDENTITY_PUBLIC_KEY must be an Ed25519 public key/.test(p)), bad.slice(0, 10))
+      assert.ok(problems.every((p) => !p.includes(bad)))
+    }
+    const pem = `-----BEGIN PUBLIC KEY-----\n${TEST_IDENTITY.publicKey}\n-----END PUBLIC KEY-----`
+    assert.equal(isEd25519PublicKey(pem), true)
+  })
+
+  it('FOLLOWUPS #12 : ENGINE_FAKE_CLAUDE seulement avec ENGINE_MODE=local écrit, scénario connu', () => {
+    assert.equal(readEngineConfig(ENV, { home: '/x' }).fakeClaude, null)
+    assert.equal(readEngineConfig({ ...ENV, ENGINE_FAKE_CLAUDE: 'css' }, { home: '/x' }).fakeClaude, 'css')
+    assert.equal(readEngineConfig({ ...ENV, ENGINE_FAKE_CLAUDE: ' ' }, { home: '/x' }).fakeClaude, null)
+    assert.ok(problemsOf({ ...ENV, ENGINE_FAKE_CLAUDE: 'magic' }).some((p) => /ENGINE_FAKE_CLAUDE must be one of: auto, css, text, ask, fail, budget/.test(p)))
+    assert.ok(problemsOf({ ...ENV, ENGINE_MODE: 'hosted', ENGINE_FAKE_CLAUDE: 'css' }).some((p) => /only allowed with ENGINE_MODE=local/.test(p)))
+    assert.ok(problemsOf({ ...ENV, ENGINE_MODE: undefined, ENGINE_FAKE_CLAUDE: 'css' }).some((p) => /only allowed with ENGINE_MODE=local/.test(p)))
   })
 
   it('isInside', () => {

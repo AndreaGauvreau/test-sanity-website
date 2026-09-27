@@ -148,6 +148,27 @@ describe('saveFieldCore', () => {
     expect(await saveFieldCore(deps, { collectionId: 'blog', id: 'p1', field: 'content', value: [] })).toMatchObject({ ok: false, error: 'Body is required.' })
   })
 
+  it('#31 : le serveur applique FieldDef.richText du manifeste (titre refusé si le champ ne le déclare pas)', async () => {
+    const blog = adminConfig.collections.find((c) => c.id === 'blog')!
+    const config = {
+      ...adminConfig,
+      collections: adminConfig.collections.map((c) =>
+        c.id !== 'blog' ? c : { ...c, fields: c.fields.map((f) => (f.name === 'content' ? { ...f, richText: { styles: ['h3'], decorators: ['em'] } } : f)) },
+      ),
+    }
+    expect(blog.fields.some((f) => f.name === 'content')).toBe(true)
+    const { deps, docs } = makeDeps([post('p1')])
+    const body = [
+      { _type: 'block', _key: 'b1', style: 'h2', listItem: 'bullet', markDefs: [], children: [{ _type: 'span', _key: 's', text: 'Hi', marks: ['strong', 'em'] }] },
+      { _type: 'block', _key: 'b2', style: 'h3', markDefs: [], children: [{ _type: 'span', _key: 't', text: 'Yo', marks: [] }] },
+    ]
+    expect(await saveFieldCore({ ...deps, config }, { collectionId: 'blog', id: 'p1', field: 'content', value: body })).toMatchObject({ ok: true })
+    expect(docs.get('drafts.p1')?.content).toEqual([
+      { _type: 'block', _key: 'b1', style: 'normal', markDefs: [], children: [{ _type: 'span', _key: 's', text: 'Hi', marks: ['em'] }] },
+      { _type: 'block', _key: 'b2', style: 'h3', markDefs: [], children: [{ _type: 'span', _key: 't', text: 'Yo', marks: [] }] },
+    ])
+  })
+
   it('image : asset existant de la médiathèque seulement', async () => {
     const { deps, docs } = makeDeps([post('p1')], { assets: ['image-abc-10x10-jpg'] })
     expect(await saveFieldCore(deps, { collectionId: 'blog', id: 'p1', field: 'image', value: 'image-def-10x10-jpg' })).toMatchObject({ ok: false, error: 'This image no longer exists in Media.' })

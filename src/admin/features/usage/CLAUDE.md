@@ -12,22 +12,26 @@ de solde, de plafond ni d'alerte.
 - `UsageScreen.tsx` — Server Component : Page header, carte AI usage, carte Since launch (StatCard), carte Recent requests (Table).
 - `UsagePeriodCard.tsx` — client : `AIUsage` du kit, période → `?period=` (router.replace), chargement pendant la transition.
 - `UsageSkeleton.tsx` — état de chargement (route `loading.tsx`). `UsageLoadError.tsx` — journal illisible.
-- `format.ts` — `formatWhen` (Today 14:12 · Yesterday · Sep 24), `formatDay`, `requestText`, `statusNote`.
+- `format.ts` — `formatWhen` (Today 14:12 · Yesterday · Sep 24), `formatDay`, `sinceLaunchHint`, `requestText`, `statusNote`.
 - `Usage.module.css`. Tests : `format.test.ts`, `UsageScreen.test.tsx`.
 
 ## Contrats
-- Entrées : `getUsageOverview({ period, limit })` de core/usage (résumé de la période, résumé all-time, lignes).
+- Entrées : `getUsageOverview({ period, limit })` de core/usage (résumé de la période, résumé all-time, lignes) ;
+  `adminConfig.site.launchedAt` (contrat `AdminConfig.site`, facultatif, rempli par site-adapter) passé par la page à
+  `UsageScreen` (`launchedAt`).
   URL : `?period=month|3-months|all-time` (month par défaut, valeur inconnue → month), `?limit=1..500` (50).
 - Sorties : aucune écriture. Seules des données agrégées (nom et rôle de l'auteur, jamais d'e-mail ni de jeton) vont au client.
 
 ## Comportement
 - AI usage : totaux Input tokens / Output tokens / Cost, une ligne par fonctionnalité avec son modèle (ModelUsage),
   note « Billed on the site's own Claude API account. Kuartz doesn't resell AI. ». Vide : « No AI usage in this period. ».
-- Since launch : coût total, « 4.9M input · 560k output tokens · since Sep 2, 2026 » (date de la première demande) ;
-  sans demande : « $0.00 » et « No AI requests yet. ».
+- Since launch : coût total, « 4.9M input · 560k output tokens · online since Sep 2, 2026 » (date de mise en ligne du
+  manifeste, `launchedAt`) ; sans `launchedAt` (ou invalide) : « … · since Sep 10, 2026 » (première demande). Sans
+  demande : « $0.00 » et « No AI requests yet. » (« No AI requests yet · online since … » si la mise en ligne est connue).
+  Une date seule (« 2026-09-02 ») est lue en UTC (jamais décalée d'un jour par le fuseau du serveur).
 - Recent requests (période choisie, plus récente en haut) : When · Who (avatar bleu Kuartz / vert client) · Feature (Tag
-  info « AI editor », neutre « Ask AI ») · Request (texte, ou repli « Edit on / » / « Question », « · Failed » etc. si rien
-  n'a changé) · Model · Input · Output · Cost (« ~$0.50 » + « (estimated) » lu si le coût est estimé). Vide : « No AI usage in this period. ».
+  info « AI editor », neutre « Ask AI ») · Request (`AiUsageDoc.request`, ≤ 120 car., écrit par le moteur ; repli
+  « Edit on / » / « Question » pour les demandes journalisées sans ce champ ; « · Failed » etc. si rien n'a changé) · Model · Input · Output · Cost (« ~$0.50 » + « (estimated) » lu si le coût est estimé). Vide : « No AI usage in this period. ».
   Plus de lignes que la limite : « Showing 50 of N requests » + « Show more » (+50, 500 au plus).
 - Chargement : `loading.tsx` (cartes à « — ») ; changement de période : carte AI usage en chargement. Erreur Sanity : message dans l'écran.
 
@@ -37,7 +41,9 @@ de solde, de plafond ni d'alerte.
 - Une seule lecture du journal par affichage ; chiffres formatés par le contrat (mêmes qu'en B1, D, G4).
 
 ## Faiblesses et limites connues
-- Colonne Request : le journal ne porte pas le texte de la demande (voir core/usage, Demandes de contrat).
+- Colonne Request : vide (repli « Edit on … » / « Question ») tant que le moteur n'écrit pas `AiUsageDoc.request`
+  (FOLLOWUPS #16 / #27, engine-publish) et que le schéma `aiUsage` n'a pas le champ (#28, site-adapter).
+- « online since » absent tant que site-adapter n'a pas rempli `launchedAt` dans `admin.config.ts` (FOLLOWUPS #28).
 - Heures affichées dans le fuseau du serveur qui rend la page (local : celui de la machine).
 - Pagination simple par `?limit=` (pas de défilement infini).
 
@@ -49,19 +55,27 @@ de solde, de plafond ni d'alerte.
 - `searchParams` est une Promise (Next 16) ; `error.js` de Next 16 reçoit `retry` (pas `reset`) — ici les erreurs de
   lecture sont gérées dans la page (try/catch), sans error boundary.
 - `AIUsage` est un composant client : les valeurs de période viennent du Server Component, pas du Select.
+- `adminConfig.site` est typé par son littéral (sans `launchedAt` tant que site-adapter ne l'a pas écrit) : la page le lit
+  à travers le type du contrat (`const site: AdminConfig['site'] = adminConfig.site`).
 
 ## Comment modifier
 - Nouvelle colonne : `UsageRow` (core/usage/aggregate.ts, projection de `USAGE_QUERY`) puis `UsageScreen`.
 - Changer le pas de « Show more » : `nextLimit` dans `UsageScreen`.
+- Texte de la carte Since launch : `sinceLaunchHint` (format.ts) + `format.test.ts`.
 
 ## Tests
-`npx vitest run src/admin/features/usage src/admin/core/usage` — formats (fuseaux, années), rendu (cartes, tableau, statut,
-coût estimé, état vide, Show more, changement de période → URL). À la main : `/admin/settings/usage` en kuartz et client
+`npx vitest run src/admin/features/usage src/admin/core/usage` — formats (fuseaux, années, « online since » avec ou sans
+`launchedAt`), rendu (cartes, tableau, statut, coût estimé, état vide, Show more, changement de période → URL). À la main : `/admin/settings/usage` en kuartz et client
 (le dataset development n'a pas de `aiUsage` : état vide).
 
 ## Décisions et « À trancher »
 - Question 12 : journal = un document Sanity privé par demande (orchestrateur).
+- En-tête : `PageHeader` du kit (le Figma B5 utilise un « Page header », pas un Section header) — `SectionHeader
+  headingLevel={1}` ne s'applique qu'à B3 (FOLLOWUPS #40, vérifié le 2026-09-27).
 - Accès : toute session (Kuartz, client, editor) — aucun droit dédié dans `roles.ts`.
+- « Since launch » : le COÛT reste le cumul de toutes les demandes (y compris avant la mise en ligne) ; seule la date
+  affichée vient de `launchedAt` (FOLLOWUPS #33).
 
 ## Demandes de contrat
-- Voir `src/admin/core/usage/CLAUDE.md` (`AiUsageDoc.request`, `AdminConfig.site.launchedAt`).
+- Aucune (contrats `AiUsageDoc.request` et `AdminConfig.site.launchedAt` faits). Reste chez les autres : écriture de
+  `request` (engine-publish, #27), schéma `aiUsage.request` et valeur de `launchedAt` (site-adapter, #28).

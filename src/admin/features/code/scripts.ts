@@ -1,4 +1,5 @@
 import type { AdminConfig, FieldDef } from '@/admin/core/contracts/manifest'
+import type { SignableScript } from '@/lib/script-signature'
 import { parseScriptCode, scriptVariables } from '@/lib/site-scripts'
 
 /**
@@ -8,7 +9,8 @@ import { parseScriptCode, scriptVariables } from '@/lib/site-scripts'
  * L'ordre du tableau = l'ordre d'injection pour un même emplacement. Voir src/lib/site-scripts.ts (rendu du site).
  *
  * POINT SENSIBLE : le code est injecté TEL QUEL sur le site publié (XSS par conception). Seul Kuartz
- * (`settings.code`) le lit et l'écrit ; chaque server action le revérifie.
+ * (`settings.code`) le lit et l'écrit ; chaque server action le revérifie. SEC-04 : chaque écriture de l'admin
+ * SIGNE le script (champ `signature`, src/lib/script-signature.ts) et le site n'injecte que les scripts signés.
  */
 
 export type ScriptPlacement = 'headEnd' | 'bodyStart' | 'bodyEnd'
@@ -23,9 +25,14 @@ export type ScriptItem = {
   run: ScriptRun
   code: string
   enabled: boolean
+  /**
+   * SEC-04 : signature valide (vérifiée côté SERVEUR, data.ts). `false` = modifié hors de l'admin (Studio, API) ou
+   * jamais signé : le site ne l'injecte pas. La signature elle-même ne part jamais vers le navigateur.
+   */
+  signed: boolean
 }
 
-export type ScriptValues = Omit<ScriptItem, 'key' | 'enabled'>
+export type ScriptValues = Omit<ScriptItem, 'key' | 'enabled' | 'signed'>
 
 /** Emplacements, dans l'ordre du menu (Figma B3 : Start of <body> · End of <head> · End of <body>). */
 export const PLACEMENT_OPTIONS: readonly { value: ScriptPlacement; label: string }[] = [
@@ -183,7 +190,10 @@ export function isScriptValid(check: ScriptCheck): boolean {
   return Object.keys(check.errors).length === 0
 }
 
-/** Lecture défensive de `siteSettings.scripts` (API Sanity sans schéma) : éléments mal formés ignorés. */
+/**
+ * Lecture défensive de `siteSettings.scripts` (API Sanity sans schéma) : éléments mal formés ignorés.
+ * `signed` vaut toujours `false` ici (fonction PURE, sans secret) : le serveur le calcule ensuite (signing.ts).
+ */
 export function normalizeScripts(raw: unknown): ScriptItem[] {
   if (!Array.isArray(raw)) return []
   const out: ScriptItem[] = []
@@ -200,9 +210,35 @@ export function normalizeScripts(raw: unknown): ScriptItem[] {
       code: typeof s.code === 'string' ? s.code : '',
       // Schéma : initialValue true ; un champ absent vaut « actif » (comme le lit le site).
       enabled: s.enabled !== false,
+      signed: false,
     })
   }
   return out
+}
+
+/**
+ * Valeurs à VÉRIFIER d'un élément brut de `scripts` (SEC-04) : exactement celles du document, sans normalisation —
+ * le site vérifie ce qu'il lit. Un champ signé absent ou mal typé → null (non signé : l'admin écrit toujours les six).
+ */
+export function signableFromRaw(raw: unknown): (SignableScript & { signature: string | null }) | null {
+  if (!raw || typeof raw !== 'object') return null
+  const s = raw as Record<string, unknown>
+  const strings = [s._key, s.placement, s.page, s.run, s.code]
+  if (!strings.every((v) => typeof v === 'string') || typeof s.enabled !== 'boolean') return null
+  return {
+    _key: s._key as string,
+    placement: s.placement as string,
+    page: s.page as string,
+    run: s.run as string,
+    code: s.code as string,
+    enabled: s.enabled,
+    signature: typeof s.signature === 'string' ? s.signature : null,
+  }
+}
+
+/** Valeurs signées d'un script de l'admin (SEC-04) : clé, emplacement, page, exécution, état, code — pas le nom. */
+export function signableOf(item: Pick<ScriptItem, 'key' | 'placement' | 'page' | 'run' | 'code' | 'enabled'>): SignableScript {
+  return { _key: item.key, placement: item.placement, page: item.page, run: item.run, code: item.code, enabled: item.enabled }
 }
 
 /** FieldDef des champs d'un script (validation serveur par core/sanity, en plus du contrôle ci-dessus). */
@@ -230,7 +266,17 @@ export function newScriptKey(random: () => number = Math.random): string {
   return key
 }
 
-/** Élément Sanity d'un script (`_type` du schéma : siteScript). */
-export function toSanityScript(item: ScriptItem): Record<string, unknown> {
-  return { _key: item.key, _type: 'siteScript', name: item.name, placement: item.placement, page: item.page, run: item.run, code: item.code, enabled: item.enabled }
+/** Élément Sanity d'un script (`_type` du schéma : siteScript), avec sa signature (SEC-04). */
+export function toSanityScript(item: Omit<ScriptItem, 'signed'>, signature: string): Record<string, unknown> {
+  return {
+    _key: item.key,
+    _type: 'siteScript',
+    name: item.name,
+    placement: item.placement,
+    page: item.page,
+    run: item.run,
+    code: item.code,
+    enabled: item.enabled,
+    signature,
+  }
 }

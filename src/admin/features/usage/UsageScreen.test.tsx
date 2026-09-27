@@ -30,7 +30,7 @@ afterEach(() => {
   MotionGlobalConfig.skipAnimations = false
 })
 
-function renderScreen(docs = DOCS, limit = 50) {
+function renderScreen(docs = DOCS, limit = 50, launchedAt?: string) {
   render(
     <div data-kz-admin="">
       <UsageScreen
@@ -40,6 +40,7 @@ function renderScreen(docs = DOCS, limit = 50) {
         rows={usageRows(docs, 'month', NOW, limit)}
         limit={limit}
         now={NOW}
+        launchedAt={launchedAt}
       />
     </div>,
   )
@@ -55,6 +56,11 @@ describe('UsageScreen', () => {
     expect(within(card).getByRole('list', { name: 'Usage by feature' }).textContent).toContain('Sonnet 5')
     expect(document.body.textContent).toContain('4.9M input · 560k output tokens · since Sep 2, 2026')
     expect(document.body.textContent?.toLowerCase()).not.toContain('credit')
+  })
+
+  it('Since launch : date de mise en ligne du manifeste quand elle est connue', () => {
+    renderScreen(DOCS, 50, '2026-08-30')
+    expect(document.body.textContent).toContain('4.9M input · 560k output tokens · online since Aug 30, 2026')
   })
 
   it('tableau Recent requests : plus récent en haut, statut et coût estimé signalés', () => {

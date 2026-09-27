@@ -3,7 +3,9 @@ import { buildDesignSystem, type DesignSystem } from '../guards/design-system'
 
 /**
  * Données de TEST modelées sur Conduit (docs/admin/research/site-conduit.md). Ce n'est pas le vrai
- * `src/editor/zones.json` (site-adapter) : les tests du module ne dépendent pas de son contenu exact.
+ * `src/editor/zones.json` (site-adapter) : les tests du module ne dépendent pas de son contenu exact. Les groupes de
+ * tokens suivent le vrai `src/styles/tokens.json` (color, font, text, space, layout, breakpoint) ; ce que Claude lit du
+ * VRAI design system est testé à part (rules.test.ts, prompt.test.ts : loadDesignSystem sur le dépôt).
  */
 
 const PAGE = { type: 'dockSchedulingPage', id: 'dockSchedulingPage' } as const
@@ -137,6 +139,16 @@ export const TOKENS: TokensFile = {
       'text-body-tracking': { label: 'Body tracking', value: '-0.016em' },
     },
   },
+  space: {
+    label: 'Spacing',
+    tokens: {
+      'space-8': { label: '8 px', value: '0.5rem' },
+      'space-12': { label: '12 px', value: '0.75rem' },
+      'space-16': { label: '16 px', value: '1rem' },
+      'space-24': { label: '24 px', value: '1.5rem' },
+      'space-64': { label: '64 px', value: '4rem' },
+    },
+  },
   layout: {
     label: 'Layout',
     locked: true,
@@ -146,6 +158,17 @@ export const TOKENS: TokensFile = {
       'page-inset': { label: 'Page inset', value: 'max(var(--gutter), (100% - var(--page-max)) / 2)' },
       'section-space': { label: 'Section space', value: 'clamp(4rem, 3.25rem + 3.3333vw, 6.25rem)' },
       'section-space-lg': { label: 'Section space LG', value: 'clamp(4.5rem, 3.5rem + 4.4444vw, 7.5rem)' },
+      'header-height': { label: 'Header height', value: '4.125rem' },
+    },
+  },
+  breakpoint: {
+    label: 'Breakpoints',
+    locked: true,
+    tokens: {
+      'breakpoint-tablet': { label: 'Tablet (810 px)', value: '50.625rem' },
+      'breakpoint-desktop': { label: 'Desktop (1024 px)', value: '64rem' },
+      'breakpoint-wide': { label: 'Wide (1280 px)', value: '80rem' },
+      'breakpoint-max': { label: 'Max (1440 px)', value: '90rem' },
     },
   },
 }

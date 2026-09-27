@@ -47,6 +47,16 @@ describe('inviteMember', () => {
     expect(fetchImpl).not.toHaveBeenCalled()
   })
 
+  it('SEC-05 : refuse le rôle Developer (le rôle Kuartz vient de la liste blanche, pas de l’admin), sans appel', async () => {
+    const fetchImpl = okFetch()
+    await expect(inviteMember(base, { email: 'dev@evil.com', role: 'developer' }, { projectId: 'p', fetchImpl })).resolves.toEqual({
+      ok: false,
+      error: 'Choose a role.',
+      field: 'role',
+    })
+    expect(fetchImpl).not.toHaveBeenCalled()
+  })
+
   it('rend le message de Sanity en cas de refus', async () => {
     const fetchImpl = vi.fn(async () => new Response('{}', { status: 409 })) as unknown as typeof fetch
     await expect(inviteMember(base, { email: 'a@b.co', role: 'editor' }, { projectId: 'p', fetchImpl })).resolves.toEqual({

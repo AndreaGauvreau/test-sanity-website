@@ -18,6 +18,8 @@ describe('liste blanche du relais', () => {
       ['POST', 'publish'],
       ['POST', 'publish/retry'],
       ['POST', 'publish/discard'],
+      ['POST', 'publish/stage'],
+      ['POST', 'publish/unstage'],
       ['GET', 'publish/diff/chg-1'],
       ['GET', 'versions'],
       ['POST', 'versions/12/rollback'],
@@ -25,6 +27,11 @@ describe('liste blanche du relais', () => {
     ]
     for (const [method, path] of cases) expect(matchEngineRoute(method, path.split('/')), `${method} ${path}`).not.toBeNull()
     expect(ENGINE_ROUTES).toHaveLength(cases.length)
+  })
+  it('stage / unstage : POST seulement, droit publish.run', () => {
+    expect(matchEngineRoute('POST', ['publish', 'stage'])?.route.capability).toBe('publish.run')
+    expect(matchEngineRoute('POST', ['publish', 'unstage'])?.route.capability).toBe('publish.run')
+    expect(matchEngineRoute('GET', ['publish', 'stage'])).toBeNull()
   })
   it('refuse routes hors contrat, mauvaise méthode, segments dangereux', () => {
     for (const [method, path] of [

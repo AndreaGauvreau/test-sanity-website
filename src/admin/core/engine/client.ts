@@ -79,6 +79,10 @@ export const engineClient = {
     retry: (o?: Options) => call<PublishStatus>('POST', 'publish/retry', {}, o),
     discard: (item: { kind: 'content'; id: string } | { kind: 'design'; changeId: string }, o?: Options) =>
       call<PublishStatus>('POST', 'publish/discard', item, o),
+    /** Programme la dépublication ou la suppression d'un document au prochain Publish (POST /publish/stage). */
+    stage: (item: { kind: 'unpublish' | 'delete'; id: string }, o?: Options) => call<PublishStatus>('POST', 'publish/stage', item, o),
+    /** Annule une dépublication / suppression programmée (POST /publish/unstage). */
+    unstage: (id: string, o?: Options) => call<PublishStatus>('POST', 'publish/unstage', { id }, o),
     /** Kuartz seulement (publish.diff). */
     diff: (changeId: string, o?: Options) => call<{ diff: string }>('GET', `publish/diff/${seg(changeId)}`, undefined, o),
   },

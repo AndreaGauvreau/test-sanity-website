@@ -14,11 +14,11 @@ import { discardDraft, draftIdOf, type SanityPort } from '../content/sanity'
 import type { WorkRepo } from '../git/git'
 import type { EngineLock } from '../jobs/lock'
 import { ID_PATTERN } from '../jobs/request'
-import { badRequest, conflict, forbidden, notFound, unavailable } from '../server/errors'
+import { badRequest, conflict, forbidden, notFound, publishing, unavailable } from '../server/errors'
 import type { EngineStore } from '../store/store'
 import type { Catalog } from './catalog'
 import { computePending, expectedMismatch, isPublishableId, pendingContent, pendingDesign, snapshotContent, type Pending } from './pending'
-import { freshSteps, readExtra, writeExtra, type RunInternal } from './state'
+import { freshSteps, readExtra, readMarks, writeExtra, writeMarks, type ContentMarks, type RunInternal } from './state'
 import {
   branches,
   checkDraftAhead,
@@ -40,9 +40,11 @@ import {
 /**
  * Publication (E1, G3) : état PARTAGÉ entre utilisateurs (magasin du moteur), liste de ce qui attend, et la mise en
  * ligne en 4 étapes, dans l'ordre :
- *   1. contenu → Sanity (brouillons publiés en UNE requête de l'API Actions, `ifDraftRevisionId`) ;
- *   2. si du code a changé : typecheck du clone, main ← draft en avance rapide (update-ref, sans checkout), tag
- *      publication-N, push si ENGINE_GIT_PUSH=1 ;
+ *   1. si du code attend : typecheck du clone D'ABORD (un code qui ne compile pas ne publie rien) ; puis contenu →
+ *      Sanity en UNE requête de l'API Actions (brouillons publiés avec `ifDraftRevisionId`, dépublications et
+ *      suppressions programmées depuis le CMS par POST /publish/stage) ;
+ *   2. si du code a changé : main ← draft en avance rapide (update-ref, sans checkout ; typecheck refait seulement si
+ *      draft a bougé depuis l'étape 1), tag publication-N, push si ENGINE_GIT_PUSH=1 ;
  *   3. hook de déploiement Vercel si configuré, sinon « local mode » explicite ;
  *   4. revalidation du cache du site (POST SITE_REVALIDATE_URL, en-tête x-kz-revalidate).
  *
@@ -82,6 +84,10 @@ export type PublishService = {
   publish(user: EngineUser, body: unknown): Promise<PublishStatus>
   retry(user: EngineUser): Promise<PublishStatus>
   discard(user: EngineUser, body: unknown): Promise<PublishStatus>
+  /** Dépublier / supprimer un élément de collection au prochain Publish (CMS C3/C4). */
+  stage(user: EngineUser, body: unknown): Promise<PublishStatus>
+  /** Annule une action programmée, ou libère un brouillon retenu après une dépublication. */
+  unstage(user: EngineUser, body: unknown): Promise<PublishStatus>
   diff(user: EngineUser, changeId: string): Promise<{ diff: string }>
   /** N de « Validated — added to Publish (N changes) » (port de l'éditeur). */
   pendingTotal(): Promise<number>
@@ -100,6 +106,9 @@ const DISCARD = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('content'), id: z.string().min(1).max(128) }).strict(),
   z.object({ kind: z.literal('design'), changeId: z.string().regex(ID_PATTERN) }).strict(),
 ])
+
+const STAGE = z.object({ kind: z.enum(['unpublish', 'delete']), id: z.string().min(1).max(128) }).strict()
+const UNSTAGE = z.object({ id: z.string().min(1).max(128) }).strict()
 
 const newRunId = () => `pub_${Date.now().toString(36)}${randomBytes(5).toString('hex')}`
 
@@ -120,7 +129,14 @@ export function createPublishService(deps: PublishDeps): PublishService {
   let running: Promise<void> = Promise.resolve()
   let inflight: Promise<Pending> | null = null
 
-  const pendingDeps = () => ({ sanity: deps.sanity, catalog: deps.catalog, repo, editorStore: store.editor, validatedDesign: deps.validatedDesign })
+  const marks = (): ContentMarks => readMarks(store.publications.get())
+  const pendingDeps = () => ({ sanity: deps.sanity, catalog: deps.catalog, repo, editorStore: store.editor, validatedDesign: deps.validatedDesign, marks })
+  const updateMarks = (change: (marks: ContentMarks) => void) =>
+    store.publications.update((data) => {
+      const current = readMarks(data)
+      change(current)
+      writeMarks(data, current)
+    })
 
   /** Liste fraîche (POST) ; `shared` réunit les lectures simultanées (plusieurs Top bars qui interrogent). */
   async function readPending(shared = false): Promise<Pending> {
@@ -229,16 +245,60 @@ export function createPublishService(deps: PublishDeps): PublishService {
 
   type Outcome = { status: 'done' | 'skipped'; detail?: string }
 
+  /**
+   * Typecheck du clone AVANT de publier quoi que ce soit (du code attend) : un code qui ne compile pas laisse tout en
+   * l'état, contenu compris. Le sha compilé est noté : l'étape 2 ne recompile pas un draft inchangé.
+   */
+  async function compileFirst(run: RunInternal) {
+    if (!run.codeChanged) return
+    const state = await branches(repo)
+    if (state.main === state.draft || run.compiled === state.draft) return
+    await setStep(1, 'running', 'Checking that the new code compiles…')
+    await checkDraftAhead(repo, state, new Set(run.design.map((item) => item.commit)))
+    await prepareClone(repo, state)
+    const compileError = await deps.typecheck(repo.dir)
+    if (compileError) {
+      throw new StepFailure('The draft code doesn’t compile, so nothing was published. The previous version is still live.', cleanLog(compileError))
+    }
+    run.compiled = state.draft
+    await saveInternal(run)
+  }
+
+  /** Après l'étape 1 : actions programmées faites (ou devenues sans objet) retirées ; dépubliés retenus. */
+  async function settleMarks(run: RunInternal, result: { published: string[]; unpublished: string[]; deleted: string[]; skipped: string[] }) {
+    const heldRevs = new Map<string, string>()
+    if (result.unpublished.length && deps.sanity) {
+      const drafts = await deps.sanity.getDocuments(result.unpublished.map(draftIdOf)).catch(() => [])
+      result.unpublished.forEach((id, index) => {
+        const rev = drafts[index]?._rev
+        if (typeof rev === 'string') heldRevs.set(id, rev)
+      })
+    }
+    const staged = new Set(run.content.filter((item) => item.action).map((item) => item.id))
+    await updateMarks((current) => {
+      for (const id of staged) delete current.staged[id]
+      for (const id of [...result.published, ...result.deleted]) delete current.held[id]
+      for (const [id, rev] of heldRevs) current.held[id] = rev
+    })
+  }
+
   async function stepContent(run: RunInternal): Promise<Outcome> {
+    await compileFirst(run)
     if (!run.content.length) {
       await settleTextChanges(run.textChanges, 'published').catch((error) => log(`[publish] ${errorText(error)}`))
       return { status: 'skipped', detail: 'No content change.' }
     }
     if (!deps.sanity) throw new StepFailure('The AI engine has no Sanity write token: the content can’t be published.')
-    const { published, skipped } = await publishContent(deps.sanity, run.content)
+    const result = await publishContent(deps.sanity, run.content)
+    await settleMarks(run, result).catch((error) => log(`[publish] scheduled actions not settled: ${errorText(error)}`))
     await settleTextChanges(run.textChanges, 'published').catch((error) => log(`[publish] text changes not settled: ${errorText(error)}`))
-    const detail = `${published.length} document${published.length === 1 ? '' : 's'} published`
-    return { status: 'done', detail: skipped.length ? `${detail} (${skipped.length} no longer had a draft)` : detail }
+    const parts = [
+      `${result.published.length} document${result.published.length === 1 ? '' : 's'} published`,
+      ...(result.unpublished.length ? [`${result.unpublished.length} unpublished`] : []),
+      ...(result.deleted.length ? [`${result.deleted.length} deleted`] : []),
+    ]
+    const detail = parts.join(', ')
+    return { status: 'done', detail: result.skipped.length ? `${detail} (${result.skipped.length} no longer needed)` : detail }
   }
 
   async function stepCode(run: RunInternal): Promise<Outcome> {
@@ -248,9 +308,13 @@ export function createPublishService(deps: PublishDeps): PublishService {
       if (state.main === state.draft) return { status: 'skipped', detail: 'No code change left to publish.' }
       await checkDraftAhead(repo, state, new Set(run.design.map((item) => item.commit)))
       await prepareClone(repo, state)
-      const compileError = await deps.typecheck(repo.dir)
-      if (compileError) {
-        throw new StepFailure('The draft code doesn’t compile, so it wasn’t published. The previous code version is still live.', cleanLog(compileError))
+      // Déjà compilé à l'étape 1 (même sha) : pas de second typecheck.
+      if (run.compiled !== state.draft) {
+        const compileError = await deps.typecheck(repo.dir)
+        if (compileError) {
+          throw new StepFailure('The draft code doesn’t compile, so it wasn’t published. The previous code version is still live.', cleanLog(compileError))
+        }
+        run.compiled = state.draft
       }
       await fastForwardMain(repo, state, `${tagName(run.number)}: main <- draft`)
       run.merged = { from: state.main, to: state.draft }
@@ -379,6 +443,8 @@ export function createPublishService(deps: PublishDeps): PublishService {
   // ─── Abandon ───────────────────────────────────────────────────────────────
 
   async function discardContent(id: string) {
+    // Ligne d'une action programmée (« Will be unpublished ») : Discard l'annule, le document n'est pas touché.
+    if (Object.hasOwn(marks().staged, id)) return void (await updateMarks((current) => void delete current.staged[id]))
     if (!deps.sanity) throw unavailable(NO_SANITY_NOTE)
     if (!isPublishableId(id)) throw notFound('This draft no longer exists.')
     const items = await pendingContent(pendingDeps()).catch(() => {
@@ -541,6 +607,46 @@ export function createPublishService(deps: PublishDeps): PublishService {
       if (!parsed.success) throw badRequest('Expected { kind: "content", id } or { kind: "design", changeId }.')
       const item = parsed.data
       await lock.runPublish(() => (item.kind === 'content' ? discardContent(item.id) : discardDesign(item.changeId)))
+      return status()
+    },
+
+    async stage(user, body) {
+      const parsed = STAGE.safeParse(body)
+      if (!parsed.success) throw badRequest('Expected { kind: "unpublish" | "delete", id }.')
+      const { kind, id } = parsed.data
+      if (lock.isPublishing()) throw publishing()
+      if (!deps.sanity) throw unavailable(NO_SANITY_NOTE)
+      if (!isPublishableId(id)) throw notFound('This item no longer exists.')
+      const [draft, published] = await deps.sanity.getDocuments([draftIdOf(id), id]).catch((error: unknown) => {
+        log(`[publish] stage ${id}: ${errorText(error)}`)
+        throw unavailable('Sanity can’t be reached right now. Try again in a moment.')
+      })
+      const doc = published ?? draft
+      if (!doc) throw notFound('This item no longer exists.')
+      const entry = deps.catalog.types.has(doc._type) ? deps.catalog.resolve(doc._type, id) : null
+      if (entry?.kind !== 'collection') throw badRequest('Only collection items can be unpublished or deleted.')
+      if (kind === 'unpublish' && !published) throw conflict('This item isn’t published.')
+      // Pas d'await entre ce contrôle et l'écriture : une publication lancée entre-temps garde sa liste.
+      if (lock.isPublishing()) throw publishing()
+      await updateMarks((current) => {
+        current.staged[id] = { action: kind, type: doc._type, by: user.name, at: now().toISOString() }
+        delete current.held[id]
+      })
+      log(`[publish] ${kind} of ${id} scheduled by ${user.name}`)
+      return status()
+    },
+
+    async unstage(_user, body) {
+      const parsed = UNSTAGE.safeParse(body)
+      if (!parsed.success) throw badRequest('Expected { id }.')
+      const { id } = parsed.data
+      if (lock.isPublishing()) throw publishing()
+      const current = marks()
+      if (!Object.hasOwn(current.staged, id) && !Object.hasOwn(current.held, id)) throw notFound('Nothing is scheduled for this item.')
+      await updateMarks((draft) => {
+        delete draft.staged[id]
+        delete draft.held[id]
+      })
       return status()
     },
 

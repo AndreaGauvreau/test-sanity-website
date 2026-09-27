@@ -103,18 +103,38 @@ const scriptKind = (file: string) =>
 const tagOf = (node: ts.Node, sf: ts.SourceFile) =>
   ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node) ? node.tagName.getText(sf) : null
 
-/** Valeurs de data-edit (chaînes littérales) portées par un élément JSX ; aucune pour un autre nœud. */
+/**
+ * Fonction du site qui écrit le marquage d'une zone (`src/lib/editor/preview.ts`) : `{...editAttrs('hero.title')}` sur
+ * une balise, ou `edit={editAttrs('tour.cta')}` passé à un composant (Button, Eyebrow) qui l'étale sur sa racine.
+ */
+export const EDIT_ATTRS = 'editAttrs'
+
+/** Zone marquée par un appel `editAttrs('<zone>', …)` (premier argument littéral) ; null pour tout autre nœud ou `editAttrs(null, …)`. */
+function editAttrsZone(node: ts.Node): string | null {
+  if (!ts.isCallExpression(node) || !ts.isIdentifier(node.expression) || node.expression.text !== EDIT_ATTRS) return null
+  const [first] = node.arguments
+  return first && ts.isStringLiteralLike(first) ? first.text : null
+}
+
+/**
+ * Zones portées par un élément JSX ; aucune pour un autre nœud. Trois écritures : `data-edit="…"` (littéral),
+ * `{...editAttrs('…')}` (étalé sur la balise) et `edit={editAttrs('…')}` (quel que soit le nom de l'attribut : le
+ * composant étale le marquage sur sa racine, ses enfants sont dans la zone).
+ */
 function dataEditOf(node: ts.Node, sf: ts.SourceFile): string[] {
   const element = ts.isJsxElement(node) ? node.openingElement : ts.isJsxSelfClosingElement(node) ? node : null
   if (!element) return []
-  return element.attributes.properties.flatMap((property) =>
-    ts.isJsxAttribute(property) &&
-    property.name.getText(sf) === 'data-edit' &&
-    property.initializer &&
-    ts.isStringLiteral(property.initializer)
-      ? [property.initializer.text]
-      : [],
-  )
+  return element.attributes.properties.flatMap((property) => {
+    if (ts.isJsxSpreadAttribute(property)) {
+      const zone = editAttrsZone(property.expression)
+      return zone === null ? [] : [zone]
+    }
+    if (!ts.isJsxAttribute(property) || !property.initializer) return []
+    const value = property.initializer
+    if (property.name.getText(sf) === 'data-edit' && ts.isStringLiteral(value)) return [value.text]
+    const zone = ts.isJsxExpression(value) && value.expression ? editAttrsZone(value.expression) : null
+    return zone === null ? [] : [zone]
+  })
 }
 
 /**
@@ -214,6 +234,10 @@ export function tsxSnapshot(file: string, source: string): TsxSnapshot {
 
   const visit = (node: ts.Node, record: boolean) => {
     countRisks(node)
+    // Marquage par editAttrs('<zone>'…), où qu'il soit écrit (étalé, passé en attribut ou ailleurs) : compté comme un
+    // data-edit littéral (FOLLOWUPS #2, Conduit n'écrit plus de data-edit en dur).
+    const marked = editAttrsZone(node)
+    if (marked !== null) snapshot.dataEdit.push(marked)
     if (record) recordComments(node, skeleton)
     if (ts.isJsxText(node)) {
       // Blancs seuls entre deux balises : mise en forme, sans place dans le squelette.

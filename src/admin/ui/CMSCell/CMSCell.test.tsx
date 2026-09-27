@@ -70,4 +70,58 @@ describe('CMSCell', () => {
     expect(screen.queryByRole('textbox')).toBeNull()
     expect(screen.getByText('Carrier portals')).toBeTruthy()
   })
+
+  it('poignée focalisable (gripProps) : bouton nommé, dans l’ordre de tabulation, événements transmis', async () => {
+    const onKeyDown = vi.fn()
+    render(
+      <CMSTable aria-label="Blog posts">
+        <CMSRow>
+          <CMSCell
+            type="handle"
+            checkboxLabel="Select Carrier portals"
+            gripLabel="Reorder Carrier portals"
+            gripProps={{ onKeyDown, 'aria-pressed': false, 'data-grip': 'p1' }}
+          />
+        </CMSRow>
+      </CMSTable>,
+    )
+    const grip = screen.getByRole('button', { name: 'Reorder Carrier portals' })
+    expect(grip.getAttribute('type')).toBe('button')
+    expect(grip.getAttribute('data-grip')).toBe('p1')
+    expect(grip.getAttribute('aria-pressed')).toBe('false')
+    await userEvent.tab()
+    expect(document.activeElement).toBe(grip)
+    await userEvent.keyboard(' ')
+    expect(onKeyDown).toHaveBeenCalled()
+    // La case reste la suivante dans l'ordre de tabulation.
+    await userEvent.tab()
+    expect(document.activeElement).toBe(screen.getByRole('checkbox', { name: 'Select Carrier portals' }))
+  })
+
+  it('sans gripProps : poignée décorative (masquée, hors tabulation)', () => {
+    const { container } = render(
+      <CMSTable aria-label="Blog posts">
+        <CMSRow>
+          <CMSCell type="handle" checkboxLabel="Select Carrier portals" />
+        </CMSRow>
+      </CMSTable>,
+    )
+    expect(screen.queryByRole('button')).toBeNull()
+    expect(container.querySelector('[data-icon="grip"]')?.getAttribute('aria-hidden')).toBe('true')
+  })
+
+  it('Row open : précédé d’une cellule de remplissage extensible (bord droit même si les colonnes sont étroites)', () => {
+    render(
+      <CMSTable aria-label="FAQ">
+        <CMSRow onOpen={() => {}} openLabel="Open Question">
+          <CMSCell type="title">Question</CMSCell>
+        </CMSRow>
+      </CMSTable>,
+    )
+    const open = screen.getByRole('button', { name: 'Open Question' })
+    const rowOpen = open.parentElement as HTMLElement
+    const filler = rowOpen.previousElementSibling as HTMLElement
+    expect(filler.hasAttribute('data-row-filler')).toBe(true)
+    expect(filler.getAttribute('aria-hidden')).toBe('true')
+  })
 })

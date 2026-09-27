@@ -141,6 +141,35 @@ describe('PublishStatusBar (G3)', () => {
     expect(await screen.findByText('Publishing… step 3 / 4')).toBeTruthy()
   })
 
+  it('5 · FOLLOWUPS #41 : « See error » dans l’emplacement statusAction, annonce d’échec selon l’étape (failedStep)', async () => {
+    const { container } = renderBar(
+      status({ state: 'failed', pending: { content: [], design: [], total: 1 }, run: run({ step: 3, error: { message: 'Vercel build failed.', log: 'x' } }) }),
+    )
+    await screen.findByText('Publish failed — previous version still live')
+    const slot = container.querySelector('[data-status-action]')
+    expect(slot).not.toBeNull()
+    expect(within(slot as HTMLElement).getByRole('button', { name: 'See error' })).toBeTruthy()
+    // Ordre du G3 : état → See error → Publish (Retry) ; See error n'est plus dans l'emplacement du bouton.
+    const retry = screen.getByRole('button', { name: 'Retry' })
+    expect(slot!.contains(retry)).toBe(false)
+    expect(slot!.compareDocumentPosition(retry) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(screen.getByRole('status').textContent).toBe(
+      'Publish failed at step 3 of 4. Any content changes are already live. Retry to resume from this step.',
+    )
+  })
+
+  it('5 · échec à l’étape 1 : annonce « Nothing was published. »', async () => {
+    renderBar(status({ state: 'failed', pending: { content: [], design: [], total: 1 }, run: run({ step: 1, error: { message: 'Typecheck failed.' } }) }))
+    await screen.findByText('Publish failed — previous version still live')
+    expect(screen.getByRole('status').textContent).toBe('Publish failed at step 1 of 4. Nothing was published. Retry to try again.')
+  })
+
+  it('hors échec : aucun emplacement statusAction', async () => {
+    const { container } = renderBar(PENDING)
+    await screen.findByText('Unpublished changes: 3')
+    expect(container.querySelector('[data-status-action]')).toBeNull()
+  })
+
   it('erreur de lecture du moteur : affichée, jamais avalée', async () => {
     fetchStatus.mockRejectedValue(new Error("The AI engine isn't responding. Try again in a moment."))
     act(() => publishStatusStore.set(PENDING))

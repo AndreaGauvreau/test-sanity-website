@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest'
 
+import type { AdminConfig, FieldDef } from '@/admin/core/contracts/manifest'
+import adminConfig from '@/admin.config'
+
 import { DEFAULT_RICH_TEXT, isEmptyRichText, richTextConfigFor, RichTextError, sanitizePortableText, toPlainText } from './portable-text'
+
+const collections: AdminConfig['collections'] = adminConfig.collections
+const fieldOf = (collection: string, name: string): FieldDef => collections.find((c) => c.id === collection)!.fields.find((f) => f.name === name)!
+const faqAnswer = fieldOf('faq', 'answer')
+const postBody = fieldOf('blog', 'content')
 
 let n = 0
 const gen = () => `k${(n += 1)}`
@@ -40,11 +48,26 @@ describe('sanitizePortableText (conversion vers le schéma post.content)', () =>
   })
 
   it('FAQ : pas de titres ni de listes, pas d’images', () => {
-    const faq = richTextConfigFor('faq', 'answer')
+    const faq = richTextConfigFor(faqAnswer)
     const out = sanitizePortableText([block('Q', { style: 'h2', listItem: 'bullet' })], faq, gen)
     expect(out[0]).toMatchObject({ style: 'normal' })
     expect(out[0]).not.toHaveProperty('listItem')
     expect(() => sanitizePortableText([{ _type: 'image', _key: 'i', asset: { _ref: 'image-a-1x1-png' } }], faq, gen)).toThrow(RichTextError)
+  })
+
+  it('#31 : options lues dans FieldDef.richText', () => {
+    const declared = richTextConfigFor({
+      richText: { styles: ['h3'], lists: ['bullet'], decorators: ['strong'], annotations: ['link', 'internalLink'], blocks: [] },
+    })
+    expect(declared).toEqual({ styles: ['normal', 'h3'], lists: ['bullet'], decorators: ['strong'], annotations: ['link'], blockObjects: [] })
+    // Clés absentes = rien de ce genre ; « normal » toujours permis.
+    expect(richTextConfigFor({ richText: {} })).toEqual({ styles: ['normal'], lists: [], decorators: [], annotations: [], blockObjects: [] })
+    const out = sanitizePortableText([block('x', { style: 'h2', listItem: 'bullet' })], declared, gen)
+    expect(out[0]).toMatchObject({ style: 'normal', listItem: 'bullet' })
+    // Sans richText : défaut (options du corps d'article).
+    expect(richTextConfigFor({})).toEqual(DEFAULT_RICH_TEXT)
+    // Le corps d'article du manifeste déclare exactement le défaut.
+    expect(richTextConfigFor(postBody)).toEqual(DEFAULT_RICH_TEXT)
   })
 
   it('image du corps d’article gardée telle quelle', () => {

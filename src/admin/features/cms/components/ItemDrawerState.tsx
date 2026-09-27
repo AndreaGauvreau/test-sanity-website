@@ -6,7 +6,6 @@ import { useState } from 'react'
 import { Button, Drawer, EmptyState, ProgressBar, duration, useReducedMotion } from '@/admin/ui'
 
 import styles from './ItemDrawer.module.css'
-import { useDrawerFocus } from './useDrawerFocus'
 
 /**
  * États du panneau C4 hors fiche : chargement (loading.tsx), élément introuvable (not-found.tsx), erreur
@@ -18,7 +17,6 @@ export function ItemDrawerState({ kind, onRetry }: { kind: 'loading' | 'not-foun
   const reduced = useReducedMotion()
   const [open, setOpen] = useState(true)
   const listHref = `/admin/cms/${params?.collectionId ?? ''}`
-  const drawerRef = useDrawerFocus()
 
   const close = () => {
     setOpen(false)
@@ -26,7 +24,7 @@ export function ItemDrawerState({ kind, onRetry }: { kind: 'loading' | 'not-foun
   }
 
   return (
-    <Drawer ref={drawerRef} open={open} onClose={close} title={kind === 'loading' ? 'Loading…' : kind === 'not-found' ? 'Not found' : 'Something went wrong'}>
+    <Drawer open={open} onClose={close} title={kind === 'loading' ? 'Loading…' : kind === 'not-found' ? 'Not found' : 'Something went wrong'}>
       {kind === 'loading' ? (
         <div className={styles.loading} role="status" aria-live="polite">
           <ProgressBar label="Loading item" />

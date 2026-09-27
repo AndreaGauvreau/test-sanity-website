@@ -15,29 +15,27 @@
  * Les valeurs (duration, ease, spring, transition, variantes) vivent dans motion-presets.ts, sans directive,
  * pour rester importables par un Server Component ; ce fichier les réexporte avec les hooks.
  */
+import { useMemo } from 'react'
 import { useReducedMotion, type Transition, type Variants } from 'motion/react'
+import { noTransition, reducedVariants } from './motion-presets'
 
 export { AnimatePresence, motion, MotionConfig, useReducedMotion } from 'motion/react'
 export * from './motion-presets'
 
-/** Variantes « instantanées » : mêmes états finaux, aucune transition (mouvement réduit). */
-const instant: Variants = {
-  initial: { opacity: 0 },
-  animate: { opacity: 1, transition: { duration: 0 } },
-  exit: { opacity: 0, transition: { duration: 0 } },
-}
-
 /**
- * Renvoie les variantes voulues, ou des variantes sans mouvement si l'utilisateur a demandé
- * moins d'animations. À utiliser dans tout composant client animé par Motion.
+ * Renvoie les variantes voulues, ou, si l'utilisateur a demandé moins d'animations, les mêmes variantes sans
+ * transition (`reducedVariants`) : l'état `initial` reste celui de l'original, identique au rendu serveur
+ * (où `useReducedMotion()` vaut null) → pas d'écart d'hydratation (FOLLOWUPS #38). À utiliser dans tout
+ * composant client animé par Motion.
  */
 export function useMotionVariants(variants: Variants): Variants {
   const reduced = useReducedMotion()
-  return reduced ? instant : variants
+  const quiet = useMemo(() => reducedVariants(variants), [variants])
+  return reduced ? quiet : variants
 }
 
 /** Transition, ou transition nulle en mouvement réduit. */
 export function useMotionTransition(value: Transition): Transition {
   const reduced = useReducedMotion()
-  return reduced ? { duration: 0 } : value
+  return reduced ? noTransition : value
 }

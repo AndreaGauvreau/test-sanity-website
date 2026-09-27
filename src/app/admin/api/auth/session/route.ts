@@ -4,12 +4,14 @@ import { AUTH_MESSAGES } from '@/admin/core/auth/constants'
 import { signInWithSid } from '@/admin/core/auth/login'
 import { sanitizeNextPath } from '@/admin/core/auth/next-path'
 import { isSameOriginRequest } from '@/admin/core/auth/request'
+import { kuartzAllowlistFromEnv } from '@/admin/core/auth/roles'
 import { jsonError, writeSessionCookie } from '@/admin/core/auth/session'
 import { toPublicSession } from '@/admin/core/contracts/session'
 
 /**
  * POST /admin/api/auth/session { sid, next? } — fin de la connexion A1 (appelée par /admin/auth/callback).
- * Échange le sid contre le jeton Sanity, lit le rôle du projet, pose le cookie chiffré `kz_admin`.
+ * Échange le sid contre le jeton Sanity, lit le rôle du projet (+ liste blanche KUARTZ_ALLOWLIST pour « kuartz »,
+ * constat SEC-05), pose le cookie chiffré `kz_admin`.
  * Réponse : { ok: true, redirect, session: PublicSession } — jamais le jeton.
  */
 
@@ -27,7 +29,7 @@ export async function POST(request: Request) {
     return jsonError(500, 'internal', AUTH_MESSAGES.notConfigured)
   }
 
-  const result = await signInWithSid({ projectId, sid: parsed.data.sid })
+  const result = await signInWithSid({ projectId, sid: parsed.data.sid, allowlist: kuartzAllowlistFromEnv() })
   if (!result.ok) return jsonError(result.status, result.code, result.message)
 
   const session = await writeSessionCookie(result.session)

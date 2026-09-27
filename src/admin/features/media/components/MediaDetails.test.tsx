@@ -1,5 +1,5 @@
 /** @vitest-environment jsdom */
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import type { MediaAsset } from '../lib/assets'
@@ -73,5 +73,18 @@ describe('MediaDetails (C5, fiche à droite)', () => {
   it('pas de texte alternatif pour une vidéo', () => {
     render(<MediaDetails asset={asset({ kind: 'video', mimeType: 'video/mp4', extension: 'mp4', usages: [] })} onReplace={() => {}} onDelete={() => {}} onAltSaved={() => {}} replacing={false} />)
     expect(screen.queryByLabelText('Alt text')).toBeNull()
+  })
+
+  it('actions : ToolLinks du kit (groupe nommé, Download en lien, Delete au ton danger, raison du blocage) — FOLLOWUPS #40', () => {
+    const onReplace = vi.fn()
+    render(<MediaDetails asset={asset()} onReplace={onReplace} onDelete={() => {}} onAltSaved={() => {}} replacing />)
+    const group = screen.getByRole('group', { name: 'File actions' })
+    const replace = within(group).getByRole('button', { name: 'Replacing…' })
+    expect(replace.getAttribute('aria-disabled')).toBe('true')
+    const download = within(group).getByRole('link', { name: 'Download' })
+    expect(download.hasAttribute('download')).toBe(true)
+    const del = within(group).getByRole('button', { name: 'Delete' })
+    expect(del.getAttribute('data-tone')).toBe('danger')
+    expect(del.getAttribute('aria-disabled')).toBe('true')
   })
 })

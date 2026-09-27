@@ -9,8 +9,11 @@ export type SectionHeaderProps = Omit<HTMLAttributes<HTMLDivElement>, 'children'
   description?: ReactNode
   /** Action à droite (Figma : Button secondary small « + Add »). */
   action?: ReactNode
-  /** Niveau du titre (défaut 2 : sous le h1 du Page header). */
-  headingLevel?: 2 | 3 | 4
+  /**
+   * Niveau du titre (défaut 2 : sous le h1 du Page header). 1 : l'écran n'a pas de Page header et son en-tête
+   * Figma est un Section header (B3 Code, B5 Usage) — même rendu (Heading 4), sémantique h1.
+   */
+  headingLevel?: 1 | 2 | 3 | 4
   /** Id du titre (pour aria-labelledby de la section). */
   titleId?: string
   ref?: Ref<HTMLDivElement>
@@ -18,7 +21,7 @@ export type SectionHeaderProps = Omit<HTMLAttributes<HTMLDivElement>, 'children'
 
 /** Titre de section (Figma « Section header » 333:1433) : H gap 16 ; texte V gap 2 ; action alignée en haut. Composant pur. */
 export function SectionHeader({ title, description, action, headingLevel = 2, titleId, className, ref, ...rest }: SectionHeaderProps) {
-  const Heading = `h${headingLevel}` as 'h2' | 'h3' | 'h4'
+  const Heading = `h${headingLevel}` as 'h1' | 'h2' | 'h3' | 'h4'
   return (
     <div ref={ref} className={cx(styles.header, className)} {...rest}>
       <div className={styles.text}>

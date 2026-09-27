@@ -31,7 +31,14 @@ export function collectionByType(type: string, config: Config = DEFAULT_CONFIG):
 export const pageHref = (pageId: string) => `/admin/pages/${pageId}`
 export const pageSeoHref = (pageId: string) => `/admin/pages/${pageId}/seo`
 export const articleSeoHref = (pageId: string) => `/admin/pages/${pageId}/slug/seo`
-export const editorHref = (pageId: string) => `/admin/editor?page=${encodeURIComponent(pageId)}`
+/**
+ * « Open in AI editor » (G1). `back` = chemin de l'écran courant (`/admin/pages/home/seo`) : le « ‹ Admin » de
+ * l'éditeur y revient (même onglet). L'éditeur le renettoie (`sanitizeNextPath`, chemins `/admin…` seulement).
+ */
+export function editorHref(pageId: string, back?: string): string {
+  const href = `/admin/editor?page=${encodeURIComponent(pageId)}`
+  return back ? `${href}&back=${encodeURIComponent(back)}` : href
+}
 
 /** Collection de la page article d'une page listing (C6) et ses variables {{…}}. */
 export function articleOf(
@@ -83,18 +90,40 @@ export function resolveFieldAtPath(page: PageDef, path: string): FieldDef | null
 
 // ─── Sections (C1) ───────────────────────────────────────────────────────────
 
-export type SectionSource = { label: string; href: string }
+export type SectionSource = {
+  /** Section fermée : « From CMS › Testimonials » ou le libellé du manifeste (« 4 latest Blog posts »). */
+  label: string
+  /** Liste de la collection (C3). */
+  href: string
+  /** Lien de la section ouverte : « Open Testimonials ». */
+  linkLabel: string
+}
+
+function sourceOf(collection: CollectionDef, label?: string): SectionSource {
+  return {
+    label: label?.trim() || `From CMS › ${collection.label}`,
+    href: `/admin/cms/${collection.id}`,
+    linkLabel: `Open ${collection.label}`,
+  }
+}
 
 /**
- * Section alimentée par une collection (C1 « ⛁ From CMS › Testimonials ») : un champ `reference` vers un type de
- * collection, ou une section qui porte le nom d'une collection (FAQ). Le manifeste ne le dit pas explicitement
- * (voir « Demandes de contrat » du CLAUDE.md).
+ * Section alimentée par une collection (C1 « ⛁ From CMS › Testimonials », « 4 latest Blog posts »).
+ * `SectionDef.source` déclaré par le manifeste gagne : collection retrouvée par id de route (« blog ») puis par type
+ * Sanity (« post ») ; inconnue → null (rien de deviné, pas de lien cassé). Sans `source` (manifeste plus ancien),
+ * repli sur l'heuristique : un champ `reference` vers un type de collection, ou une section qui porte l'id d'une
+ * collection (FAQ).
  */
 export function sectionSource(section: SectionDef, config: Config = DEFAULT_CONFIG): SectionSource | null {
+  if (section.source) {
+    const declared =
+      config.collections.find((c) => c.id === section.source!.collection) ?? collectionByType(section.source.collection, config)
+    return declared ? sourceOf(declared, section.source.label) : null
+  }
   const reference = section.fields.find((f) => f.kind === 'reference' && f.to?.length)
   const collection =
     (reference?.to ? collectionByType(reference.to[0], config) : undefined) ?? config.collections.find((c) => c.id === section.name)
-  return collection ? { label: `From CMS › ${collection.label}`, href: `/admin/cms/${collection.id}` } : null
+  return collection ? sourceOf(collection) : null
 }
 
 function plural(word: string, count: number): string {

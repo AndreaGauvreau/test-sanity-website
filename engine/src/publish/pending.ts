@@ -2,12 +2,14 @@ import type { PendingContentItem, PendingDesignItem } from '../../../src/admin/c
 import { draftIdOf, listDrafts, publishedIdOf, type SanityDoc, type SanityPort } from '../content/sanity'
 import type { WorkRepo } from '../git/git'
 import type { EditorStore } from '../store/store'
-import { describeDraft, type Catalog } from './catalog'
-import type { ContentSnapshot } from './state'
+import { describeDraft, describeRemoval, type Catalog } from './catalog'
+import type { ContentMarks, ContentSnapshot } from './state'
 
 /**
  * Ce qui attend d'être mis en ligne (E1, compteur N de G3) :
- * - contenu : brouillons Sanity (`drafts.<id>`) des types gérés par l'admin, qui diffèrent vraiment du publié ;
+ * - contenu : brouillons Sanity (`drafts.<id>`) des types gérés par l'admin, qui diffèrent vraiment du publié, SAUF
+ *   les brouillons « retenus » (laissés par une dépublication, inchangés depuis) ; plus les actions programmées depuis
+ *   le CMS (dépublier / supprimer, `action`), qui remplacent l'éventuel brouillon du même document ;
  * - design : modifications IA VALIDÉES dont le commit (sur draft) n'est pas encore dans main.
  */
 
@@ -26,6 +28,8 @@ export type PendingDeps = {
   repo: WorkRepo
   editorStore: EditorStore
   validatedDesign: () => Promise<PendingDesignItem[]>
+  /** Actions programmées et brouillons retenus (`publications.json > extra.content`) ; absent = aucun. */
+  marks?: () => ContentMarks
 }
 
 /** Id publié sûr (même règle que content/sanity.ts) : on ne relaie jamais un id bizarre vers l'API Actions. */
@@ -66,17 +70,23 @@ export function aiAuthors(editorStore: EditorStore): Map<string, string> {
   return new Map([...authors].map(([id, entry]) => [id, entry.name]))
 }
 
-/** Brouillons de contenu à publier, du plus récent au plus ancien. */
-export async function pendingContent(deps: Pick<PendingDeps, 'sanity' | 'catalog' | 'editorStore'>): Promise<ContentPending[]> {
+/** Contenu à mettre en ligne (brouillons + actions programmées), du plus récent au plus ancien. */
+export async function pendingContent(deps: Pick<PendingDeps, 'sanity' | 'catalog' | 'editorStore' | 'marks'>): Promise<ContentPending[]> {
   const { sanity, catalog } = deps
   if (!sanity) return []
+  const marks = deps.marks?.() ?? { staged: {}, held: {} }
+  const staged = Object.entries(marks.staged).filter(([id]) => isPublishableId(id))
+  const stagedIds = new Set(staged.map(([id]) => id))
   const drafts = (await listDrafts(sanity)).filter((draft) => {
     const id = publishedIdOf(draft._id)
+    if (stagedIds.has(id)) return false
+    // Brouillon laissé par une dépublication et inchangé depuis : pas « à publier ».
+    if (Object.hasOwn(marks.held, id) && marks.held[id] === draft._rev) return false
     return catalog.types.has(draft._type) && isPublishableId(id) && catalog.resolve(draft._type, id) !== null
   })
-  if (!drafts.length) return []
-  const ids = drafts.flatMap((draft) => [draft._id, publishedIdOf(draft._id)])
-  const docs = await getDocuments(sanity, ids)
+  if (!drafts.length && !staged.length) return []
+  const ids = [...drafts.flatMap((draft) => [draft._id, publishedIdOf(draft._id)]), ...staged.flatMap(([id]) => [draftIdOf(id), id])]
+  const docs = await getDocuments(sanity, [...new Set(ids)])
   const authors = aiAuthors(deps.editorStore)
   const items: ContentPending[] = []
   for (const listed of drafts) {
@@ -98,17 +108,38 @@ export async function pendingContent(deps: Pick<PendingDeps, 'sanity' | 'catalog
       rev: typeof draft._rev === 'string' ? draft._rev : listed._rev,
     })
   }
+  for (const [id, mark] of staged) {
+    const published = docs.get(id) ?? null
+    const doc = published ?? docs.get(draftIdOf(id)) ?? null
+    // Document disparu, ou déjà dépublié ailleurs : plus rien à faire (l'entrée est nettoyée au prochain Publish).
+    if (!doc || (mark.action === 'unpublish' && !published)) continue
+    const entry = catalog.resolve(doc._type, id)
+    if (!entry || !catalog.types.has(doc._type)) continue
+    const description = describeRemoval(entry, doc, mark.action)
+    items.push({
+      id,
+      type: doc._type,
+      path: description.path,
+      summary: description.summary,
+      action: mark.action,
+      author: mark.by,
+      updatedAt: mark.at,
+      ...(description.viewPath ? { viewPath: description.viewPath } : {}),
+      rev: typeof doc._rev === 'string' ? doc._rev : '',
+    })
+  }
   return items.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
 }
 
-/** Modifications IA validées pas encore dans main. */
-export async function pendingDesign(deps: Pick<PendingDeps, 'repo' | 'validatedDesign'>): Promise<PendingDesignItem[]> {
+/** Modifications IA validées pas encore dans main ; `page` = page publique de la modification (View ↗ d'E1). */
+export async function pendingDesign(deps: Pick<PendingDeps, 'repo' | 'validatedDesign'> & { editorStore?: EditorStore }): Promise<PendingDesignItem[]> {
   const items = await deps.validatedDesign()
   const out: PendingDesignItem[] = []
   for (const item of items) {
     // Déjà dans main (publication interrompue entre l'avance rapide et l'écriture du statut) : plus en attente.
     if (await deps.repo.isAncestor(item.commit, 'refs/heads/main')) continue
-    out.push(item)
+    const page = item.page ?? deps.editorStore?.change(item.changeId)?.change.page
+    out.push(page ? { ...item, page } : item)
   }
   return out
 }
@@ -151,4 +182,10 @@ export function expectedMismatch(expected: readonly string[], pending: Pick<Pend
 }
 
 export const snapshotContent = (items: readonly ContentPending[]): ContentSnapshot[] =>
-  items.map((item) => ({ id: item.id, type: item.type, rev: item.rev, path: item.path }))
+  items.map((item) => ({
+    id: item.id,
+    type: item.type,
+    rev: item.rev,
+    path: item.path,
+    ...(item.action === 'unpublish' || item.action === 'delete' ? { action: item.action } : {}),
+  }))

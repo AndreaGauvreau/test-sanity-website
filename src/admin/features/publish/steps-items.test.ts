@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest'
 
 import type { PublishStatus } from '@/admin/core/contracts/engine'
 
-import { contentItemIcon, viewUrl } from './items'
-import { afterPublishSteps } from './steps'
+import { contentItemAction, contentItemIcon, DESIGN_VIEW_HREF, designViewHref, viewUrl } from './items'
+import { afterPublishSteps, LOCAL_MODE_STEP3 } from './steps'
 
 const kinds = { collectionTypes: ['post', 'testimonial', 'faq'], settingsType: 'siteSettings' }
 
@@ -56,7 +56,31 @@ describe('carte « After “Publish” »', () => {
   })
 })
 
+describe('carte « After “Publish” » en mode local (QA-4)', () => {
+  it('étape 3 : pas de déploiement promis quand deploy.mode = local ; texte du Figma avec Vercel', () => {
+    const base: Omit<PublishStatus, 'deploy'> = { state: 'pending', pending: { content: [], design: [], total: 1 } }
+    const local = afterPublishSteps({ ...base, deploy: { mode: 'local' } }, 'conduit.com')
+    expect(local[2]).toMatchObject({ title: 'Vercel builds and deploys', description: LOCAL_MODE_STEP3, state: 'todo' })
+    const vercel = afterPublishSteps({ ...base, deploy: { mode: 'vercel-hook' } }, 'conduit.com')
+    expect(vercel[2].description).toBe('About 1 minute.')
+  })
+})
+
 describe('lignes de E1', () => {
+  it('action programmée (unpublish / delete) : tag et bouton d’annulation ; rien pour une publication ordinaire', () => {
+    expect(contentItemAction({ action: 'unpublish' })).toEqual({ tag: 'Unpublish', tone: 'warning', undoLabel: 'Keep online' })
+    expect(contentItemAction({ action: 'delete' })).toEqual({ tag: 'Delete', tone: 'error', undoLabel: 'Don’t delete' })
+    expect(contentItemAction({ action: 'publish' })).toBeNull()
+    expect(contentItemAction({})).toBeNull()
+  })
+
+  it('View ↗ d’une modification de design : l’éditeur sur sa page, chemin relatif seulement', () => {
+    expect(designViewHref({ page: '/blog/a b' })).toBe('/admin/editor?page=%2Fblog%2Fa%20b')
+    expect(designViewHref({})).toBe(DESIGN_VIEW_HREF)
+    expect(designViewHref({ page: '//evil.test' })).toBe(DESIGN_VIEW_HREF)
+    expect(designViewHref({ page: 'https://evil.test/' })).toBe(DESIGN_VIEW_HREF)
+  })
+
   it('icône d’après le manifeste', () => {
     expect(contentItemIcon({ type: 'post' }, kinds)).toBe('database')
     expect(contentItemIcon({ type: 'siteSettings' }, kinds)).toBe('sliders')

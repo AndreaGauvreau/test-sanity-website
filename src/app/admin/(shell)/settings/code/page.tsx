@@ -20,5 +20,5 @@ export default async function CodePage() {
     console.error('[code] load failed', err)
     return <CodeLoadError />
   }
-  return <CodeScreen scripts={data.scripts} pages={data.pages} />
+  return <CodeScreen scripts={data.scripts} pages={data.pages} signingReady={data.signingReady} />
 }

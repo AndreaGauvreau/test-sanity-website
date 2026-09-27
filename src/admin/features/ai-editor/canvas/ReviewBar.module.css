@@ -1,9 +1,11 @@
-/* Figma D3 « to-validate » : H gap 10, pad 6 6 6 14, bg/elevated, border/strong 1, radius/md, Elevation/Popover. 388 × 43. */
+/* Figma D3 « to-validate » : H gap 10, pad 6 6 6 14, bg/elevated, border/strong 1, radius/md, Elevation/Popover. 388 × 43.
+   QA-5 : jamais plus large que son conteneur (borné au cadre d'aperçu par EditorCanvas) ; en Mobile le libellé passe
+   sur deux lignes, les boutons gardent leur taille. */
 .bar {
-  position: relative;
   display: inline-flex;
   align-items: center;
   gap: var(--k-space-10);
+  max-width: 100%;
   padding: var(--k-space-6) var(--k-space-6) var(--k-space-6) 14px;
   border: 1px solid var(--k-border-strong);
   border-radius: var(--k-radius-md);
@@ -11,28 +13,19 @@
   box-shadow: var(--k-elevation-popover);
 }
 
+.bar > * {
+  flex: none;
+}
+
+.bar > .label {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
 .label {
   margin: 0;
   color: var(--k-text-secondary);
   font: var(--k-text-body-small);
   letter-spacing: var(--k-text-body-small-tracking);
-  white-space: nowrap;
-}
-
-/* Erreur du moteur (conflit, moteur injoignable) : sous la barre, sans la déplacer. */
-.error {
-  position: absolute;
-  top: calc(100% + var(--k-space-6));
-  left: 50%;
-  transform: translateX(-50%);
-  width: max-content;
-  max-width: 480px;
-  margin: 0;
-  padding: var(--k-space-6) var(--k-space-10);
-  border: 1px solid var(--k-border-default);
-  border-radius: var(--k-radius-md);
-  background-color: var(--k-bg-elevated);
-  color: var(--k-interactive-danger);
-  font: var(--k-text-body-small);
-  letter-spacing: var(--k-text-body-small-tracking);
+  text-wrap: balance;
 }

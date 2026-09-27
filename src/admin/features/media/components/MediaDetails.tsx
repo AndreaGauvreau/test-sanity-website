@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useRef, useState } from 'react'
 
-import { Icon, Input, LockBadge, Tooltip, cx, type IconName } from '@/admin/ui'
+import { Icon, Input, LockBadge, ToolLink, ToolLinks, type IconName } from '@/admin/ui'
 import { useFieldSaver } from '@/admin/features/cms/components/useFieldSaver'
 
 import { assetMetaLine, isDeletable, lockReason, type MediaAsset } from '../lib/assets'
@@ -14,8 +14,8 @@ import styles from './MediaLibrary.module.css'
 /**
  * Fiche à droite de la médiathèque (C5) : aperçu (+ cadenas si le fichier est utilisé), nom, méta, texte
  * alternatif (sur l'asset : vaut pour toutes les utilisations, enregistré pendant la frappe), « Used in N places »
- * (lignes cliquables vers l'écran concerné), actions en icônes collées : Replace, Download, Delete (rouge,
- * désactivé si le fichier est utilisé, explication au survol).
+ * (lignes cliquables vers l'écran concerné), actions en icônes collées (`ToolLinks` du kit) : Replace, Download,
+ * Delete (rouge, désactivé si le fichier est utilisé, explication au survol).
  */
 export function MediaDetails({
   asset,
@@ -84,13 +84,11 @@ export function MediaDetails({
           ))}
         </ul>
       ) : null}
-      <div className={styles.tools} role="group" aria-label="File actions">
+      <ToolLinks aria-label="File actions">
         <ToolLink icon="replace" label={replacing ? 'Replacing…' : 'Replace'} disabled={replacing} onClick={() => fileInput.current?.click()} />
-        <span className={styles.toolDivider} aria-hidden="true" />
-        <ToolLink icon="download" label="Download" href={downloadUrl(asset) || undefined} />
-        <span className={styles.toolDivider} aria-hidden="true" />
-        <ToolLink icon="trash" label="Delete" danger disabled={!deletable} disabledReason={deletable ? undefined : lockReason(used)} onClick={onDelete} />
-      </div>
+        <ToolLink icon="download" label="Download" href={downloadUrl(asset) || undefined} download rel="noopener" />
+        <ToolLink icon="trash" label="Delete" tone="danger" disabled={!deletable} disabledReason={deletable ? undefined : lockReason(used)} onClick={onDelete} />
+      </ToolLinks>
       <input
         ref={fileInput}
         type="file"
@@ -105,47 +103,4 @@ export function MediaDetails({
       />
     </aside>
   )
-}
-
-/**
- * « Tool link » du Figma (C5, actions icônes collées 36 × 36) : absent du kit, composé ici (voir CLAUDE.md).
- * Bouton ou lien de téléchargement ; désactivé = aria-disabled (reste focalisable pour lire la raison).
- */
-function ToolLink({
-  icon,
-  label,
-  onClick,
-  href,
-  danger,
-  disabled,
-  disabledReason,
-}: {
-  icon: IconName
-  label: string
-  onClick?: () => void
-  href?: string
-  danger?: boolean
-  disabled?: boolean
-  disabledReason?: string
-}) {
-  const className = cx(styles.tool, danger && styles.toolDanger)
-  const content = <Icon name={icon} size={16} set={18} />
-  const node = href ? (
-    <a href={href} className={className} aria-label={label} download rel="noopener">
-      {content}
-    </a>
-  ) : (
-    <button
-      type="button"
-      className={className}
-      aria-label={label}
-      aria-disabled={disabled || undefined}
-      onClick={() => {
-        if (!disabled) onClick?.()
-      }}
-    >
-      {content}
-    </button>
-  )
-  return <Tooltip label={disabled && disabledReason ? disabledReason : label}>{node}</Tooltip>
 }

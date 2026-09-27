@@ -46,6 +46,9 @@ export const ENGINE_ROUTES: readonly EngineRouteDef[] = [
   { method: 'POST', pattern: ['publish'], capability: 'publish.run', timeoutMs: 30_000 },
   { method: 'POST', pattern: ['publish', 'retry'], capability: 'publish.run', timeoutMs: 30_000 },
   { method: 'POST', pattern: ['publish', 'discard'], capability: 'publish.run' },
+  // Dépublier / supprimer au prochain Publish (FOLLOWUPS #27) : même droit que discard.
+  { method: 'POST', pattern: ['publish', 'stage'], capability: 'publish.run' },
+  { method: 'POST', pattern: ['publish', 'unstage'], capability: 'publish.run' },
   { method: 'GET', pattern: ['publish', 'diff', ':id'], capability: 'publish.diff' },
   // Versions (E2)
   { method: 'GET', pattern: ['versions'], capability: 'publish.run' },

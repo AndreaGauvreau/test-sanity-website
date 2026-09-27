@@ -1,1 +1,1 @@
-export { PublishButton, type PublishButtonProps } from './PublishButton'
+export { PublishButton, failedAnnouncement, type PublishButtonProps } from './PublishButton'

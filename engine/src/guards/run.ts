@@ -1,7 +1,7 @@
 import type { Scope } from '../../../src/admin/core/contracts/engine'
 import { contrastCheck, coverWarning, frameCheck, linesCheck, reachCheck, unverifiableCheck, type CoverWarning, type RawCheck } from './checks'
 import type { DesignSystem } from './design-system'
-import { lintChanges, outOfScope } from './guards'
+import { lintChanges, lintContextFor, outOfScope } from './guards'
 import { scopeFlags, type ChangedFile, type Hardcoded, type ScopeFlags, type ToolAccess, type Violation } from './types'
 import type { VisualSession, VisualVerdict } from './visual'
 
@@ -71,14 +71,8 @@ export async function runStaticChecks(input: StaticCheckInput): Promise<StaticCh
     // Fichiers entiers : dernier commit contre copie de travail, CSS et composants, pour les zones de la demande (jamais
     // une donnée venue de Claude). Seules les valeurs en dur choisies par le client (option déconseillée) échappent au
     // contrôle, pour leur propriété et leur valeur exactes.
-    const zone = input.zones.length === 1 ? input.zones[0] : input.zones
-    const lint = lintChanges([...input.changes], {
-      scope,
-      policy: input.ds.policy,
-      hardcoded: [...input.hardcoded],
-      zone,
-      zones: input.ds.zones,
-    })
+    // Même contexte que le hook (ToolAccess.lint) : lintContextFor ; ici une copie figée des valeurs accordées.
+    const lint = lintChanges([...input.changes], lintContextFor({ ds: input.ds, scope, zones: input.zones, hardcoded: [...input.hardcoded] }))
     violations = lint.violations
     granted = lint.granted
     checks.push({

@@ -1,4 +1,5 @@
 /** @vitest-environment jsdom */
+import { useState } from 'react'
 import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MotionGlobalConfig } from 'motion/react'
@@ -114,5 +115,36 @@ describe('Menu', () => {
     await userEvent.click(screen.getByRole('menuitemradio', { name: 'Name' }))
     expect(onSelect).toHaveBeenCalledWith('name')
     await waitFor(() => expect(screen.queryByRole('menu')).toBeNull())
+  })
+
+  it('ouvert sans clic (contrôlé) alors que le panneau est encore masqué : le focus va au premier élément dès qu’il est visible', async () => {
+    // Le navigateur refuse le focus d'un élément sous `visibility: hidden` (Popover pas encore positionné) :
+    // jsdom ne le fait pas, on le simule.
+    const realFocus = HTMLElement.prototype.focus
+    const spy = vi.spyOn(HTMLElement.prototype, 'focus').mockImplementation(function (this: HTMLElement, options?: FocusOptions) {
+      const surface = this.closest<HTMLElement>('[data-kz-popover]')
+      if (surface && surface.style.visibility === 'hidden') return
+      realFocus.call(this, options)
+    })
+    try {
+      function Controlled() {
+        const [open, setOpen] = useState(false)
+        return (
+          <div data-kz-admin="">
+            <textarea aria-label="Code" onChange={(event) => setOpen(event.target.value.endsWith('{{'))} />
+            <Menu open={open} onOpenChange={setOpen} aria-label="Fields" trigger={<button type="button">Insert field</button>}>
+              <MenuItem>Title</MenuItem>
+              <MenuItem>Slug</MenuItem>
+            </Menu>
+          </div>
+        )
+      }
+      render(<Controlled />)
+      await userEvent.type(screen.getByRole('textbox', { name: 'Code' }), '{{{{')
+      await screen.findByRole('menu', { name: 'Fields' })
+      await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('menuitem', { name: 'Title' })))
+    } finally {
+      spy.mockRestore()
+    }
   })
 })

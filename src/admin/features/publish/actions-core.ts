@@ -50,6 +50,8 @@ export const discardInput = z.discriminatedUnion('kind', [
 
 export const diffInput = z.object({ changeId: itemId }).strict()
 
+export const unstageInput = z.object({ id: itemId }).strict()
+
 export const rollbackInput = z.object({ number: z.number().int().min(1).max(999_999) }).strict()
 
 // ─── Erreurs ────────────────────────────────────────────────────────────────
@@ -109,6 +111,22 @@ export async function discardCore(deps: ActionDeps, raw: unknown): Promise<Actio
     const parsed = discardInput.safeParse(raw)
     if (!parsed.success) return invalid()
     const data = await deps.engineFetch<PublishStatus>(session, 'POST', 'publish/discard', { body: parsed.data })
+    return { ok: true, data }
+  } catch (err) {
+    return toActionError(err, deps.log)
+  }
+}
+
+/**
+ * Annule un dépublier / supprimer programmé (ligne « Unpublish » / « Delete » de E1) : le document reste comme il est.
+ * Programmer vient du CMS (C3/C4, `POST /publish/stage`) ; E1 ne fait qu'annuler.
+ */
+export async function unstageCore(deps: ActionDeps, raw: unknown): Promise<ActionResult<PublishStatus>> {
+  try {
+    const session = await deps.requireCapability('publish.run', 'action')
+    const parsed = unstageInput.safeParse(raw)
+    if (!parsed.success) return invalid()
+    const data = await deps.engineFetch<PublishStatus>(session, 'POST', 'publish/unstage', { body: parsed.data })
     return { ok: true, data }
   } catch (err) {
     return toActionError(err, deps.log)

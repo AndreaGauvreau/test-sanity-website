@@ -60,4 +60,16 @@ describe('buildShellSidebarProps', () => {
     )
     expect(buildShellSidebarProps({ config: adminConfig, session: session('client', false, 'javascript:x'), counts }).user.imageUrl).toBeUndefined()
   })
+
+  it('session de dev : le nom « Dev · <rôle> » ne répète pas le rôle (ligne utilisateur non tronquée, FOLLOWUPS #25)', () => {
+    const dev = (role: AdminRole, name: string) => ({ user: { id: `dev-${role}`, name, email: `dev-${role}@localhost` }, role, dev: true })
+    expect(buildShellSidebarProps({ config: adminConfig, session: dev('client', 'Dev · Client admin'), counts }).user.name).toBe('Dev')
+    expect(buildShellSidebarProps({ config: adminConfig, session: dev('kuartz', 'Dev · Kuartz'), counts }).user.name).toBe('Dev')
+    expect(buildShellSidebarProps({ config: adminConfig, session: dev('editor', 'Dev · Editor'), counts }).user.name).toBe('Dev')
+    // Nom sans suffixe de rôle : inchangé.
+    expect(buildShellSidebarProps({ config: adminConfig, session: dev('editor', 'Dev'), counts }).user.name).toBe('Dev')
+    // Vraie session : le nom Sanity n'est jamais retouché, même s'il finit par le libellé du rôle.
+    const real = { user: { id: 'u2', name: 'Marie · Editor', email: 'm@x.com' }, role: 'editor' as const, dev: false }
+    expect(buildShellSidebarProps({ config: adminConfig, session: real, counts }).user.name).toBe('Marie · Editor')
+  })
 })

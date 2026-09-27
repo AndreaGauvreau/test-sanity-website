@@ -1,13 +1,15 @@
 import 'server-only'
 
 import { requireCapability } from '@/admin/core/auth/session'
+import type { Session } from '@/admin/core/contracts/session'
+import { uploadImageAsset } from '@/admin/core/sanity/assets'
 import { getReadClient, getWriteClient } from '@/admin/core/sanity/clients'
 import { setDraftFields } from '@/admin/core/sanity/drafts'
 import { readSanityEnv } from '@/admin/core/sanity/env'
 import { toWriteError, type SanityDoc } from '@/admin/core/sanity/store'
 import adminConfig from '@/admin.config'
 
-import type { AssetDoc, MediaDeps } from './actions-core'
+import type { AssetDoc, MediaDeps, UploadInput } from './actions-core'
 
 /**
  * Dépendances réelles de la médiathèque. Lecture d'affichage : jeton Viewer. Écritures ET relecture de
@@ -24,6 +26,35 @@ async function wrap<T>(run: () => Promise<T>): Promise<T> {
   } catch (err) {
     throw toWriteError(err)
   }
+}
+
+/**
+ * Envoi d'un asset. Image : aide partagée `uploadImageAsset` de core/sanity (FOLLOWUPS #20 / #40 : droit, type
+ * d'image en liste blanche, fichier non vide, nom nettoyé, erreurs traduites), puis relecture de l'asset complet
+ * (dimensions, taille) avec le jeton de l'utilisateur. Vidéo, PDF… : client Sanity de l'utilisateur (l'aide
+ * partagée ne couvre que les images). Taille et type de la médiathèque déjà vérifiés par `uploadCore`.
+ */
+export async function uploadAsset(session: Session, kind: 'image' | 'file', input: UploadInput): Promise<AssetDoc> {
+  const client = getWriteClient(session)
+  if (kind === 'file') {
+    const doc = await client.assets.upload('file', Buffer.from(input.data), { filename: input.name, contentType: input.type })
+    return doc as unknown as AssetDoc
+  }
+  const { _id, url } = await uploadImageAsset(session, input.data, { filename: input.name, contentType: input.type })
+  const doc = await client.fetch<AssetDoc | null>(`*[_id == $id][0]${ASSET_PROJECTION}`, { id: _id })
+  // Asset pas encore lisible (rare) : vue minimale tirée de l'envoi, complétée au prochain chargement.
+  return (
+    doc ?? {
+      _id,
+      _type: 'sanity.imageAsset',
+      _createdAt: new Date().toISOString(),
+      originalFilename: input.name,
+      mimeType: input.type,
+      extension: input.name.includes('.') ? input.name.split('.').pop()?.toLowerCase() : undefined,
+      size: input.size,
+      url,
+    }
+  )
 }
 
 export function mediaDeps(): MediaDeps & { listImages: () => Promise<AssetDoc[]> } {
@@ -51,14 +82,7 @@ export function mediaDeps(): MediaDeps & { listImages: () => Promise<AssetDoc[]>
         wrap(async () => {
           await getWriteClient(session).delete(id)
         }),
-      upload: (session, kind, input) =>
-        wrap(async () => {
-          const doc = await getWriteClient(session).assets.upload(kind, Buffer.from(input.data), {
-            filename: input.name,
-            contentType: input.type,
-          })
-          return doc as unknown as AssetDoc
-        }),
+      upload: (session, kind, input) => wrap(() => uploadAsset(session, kind, input)),
     },
     setDraftFields: (session, id, patch, options) => setDraftFields(session, id, patch, options),
     listImages: () =>

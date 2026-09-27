@@ -1,4 +1,4 @@
-import type { EditJob, EngineHealth, PendingChange } from '../../../src/admin/core/contracts'
+import type { EditJob, EngineHealth, EngineUser, PendingChange } from '../../../src/admin/core/contracts'
 import type { AccessResult, AgentResult, AgentRun, AgentSettings } from '../claude'
 import type { PreviewSignal } from '../content/visible'
 import type { TextStore } from '../content/texts'
@@ -32,8 +32,11 @@ export type EditorDeps = {
   signal: PreviewSignal
   /** État du processus d'aperçu : une demande est refusée (503) tant qu'il n'est pas prêt. Absent = toujours prêt. */
   previewReady?: () => boolean
-  /** URL et origine de l'aperçu pour l'iframe (EditorState.preview), secret compris dans l'URL initiale. */
-  previewUrl: (page: string) => { url: string; origin: string }
+  /**
+   * URL et origine de l'aperçu pour l'iframe (EditorState.preview), émise pour CET utilisateur : l'URL porte un jeton
+   * COURT (`signPreviewToken`, 15 min, SEC-09), jamais le secret racine ENGINE_PREVIEW_SECRET.
+   */
+  previewUrl: (page: string, user: EngineUser) => Promise<{ url: string; origin: string }>
   runAgent: JobRunAgent
   /** Résultat de resolveClaudeAccess (au démarrage). */
   access: AccessResult
@@ -49,6 +52,16 @@ export type EditorDeps = {
   typecheck?: (repoDir: string) => Promise<string | null>
   loadDesignSystem?: (repoDir: string) => Promise<DesignSystem>
   listPages?: (repoDir: string) => Promise<string[]>
+  /**
+   * Faux Claude actif (ENGINE_FAKE_CLAUDE, mode local) : son scénario, affiché dans le journal de chaque demande et dans
+   * le libellé du modèle de l'éditeur. null / absent : vrai Claude.
+   */
+  fakeClaude?: string | null
+  /**
+   * Domaines du site (`siteDomainsOf` de site.ts : `site.domain` + hôte de `site.url` du manifeste), seules adresses
+   * gardées dans les textes montrés au client (questions, message final, journal ; SEC-08). Absent / vide : aucune.
+   */
+  siteDomains?: readonly string[]
   now?: () => Date
   log?: (line: string) => void
 }

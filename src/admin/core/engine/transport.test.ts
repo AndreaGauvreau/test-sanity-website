@@ -1,5 +1,8 @@
+import { generateKeyPairSync } from 'node:crypto'
+
 import { describe, expect, it, vi } from 'vitest'
 
+import type { EngineHealth } from '../contracts/engine'
 import type { EngineUser } from '../contracts/session'
 
 import { handleMockEngineRequest } from './mock'
@@ -7,9 +10,13 @@ import { callEngine, readBodyCapped, useMockEngine, type EngineTransportDeps } f
 import { verifyEngineUser } from './signature'
 
 const SECRET = 'engine-secret-0123456789abcdef0123456789'
+// Paire de clés d'identité Ed25519 générée pour le test.
+const pair = generateKeyPairSync('ed25519')
+const IDENTITY_PRIVATE = pair.privateKey.export({ format: 'der', type: 'pkcs8' }).toString('base64')
+const IDENTITY_PUBLIC = pair.publicKey.export({ format: 'der', type: 'spki' }).toString('base64')
 const client: EngineUser = { id: 'u1', name: 'Marie', email: 'm@c.com', role: 'client' }
 const kuartz: EngineUser = { ...client, id: 'u2', role: 'kuartz' }
-const realEnv = { ENGINE_URL: 'http://127.0.0.1:4043', ENGINE_SECRET: SECRET, NODE_ENV: 'development' }
+const realEnv = { ENGINE_URL: 'http://127.0.0.1:4043', ENGINE_SECRET: SECRET, ENGINE_IDENTITY_PRIVATE_KEY: IDENTITY_PRIVATE, NODE_ENV: 'development' }
 
 function engine(handler: (url: string, init: RequestInit) => Response | Promise<Response>) {
   const fetchImpl = vi.fn(async (url: string, init?: RequestInit) => handler(url, init ?? {}))
@@ -23,7 +30,9 @@ describe('callEngine — moteur réel', () => {
       const headers = new Headers(init.headers)
       expect(url).toBe('http://127.0.0.1:4043/editor/state?page=%2F')
       expect(headers.get('authorization')).toBe(`Bearer ${SECRET}`)
-      expect(await verifyEngineUser(headers, SECRET)).toEqual(client)
+      expect(await verifyEngineUser(headers, IDENTITY_PUBLIC)).toEqual(client)
+      // SEC-10 : l'identité n'est PAS signée avec le Bearer.
+      expect(headers.get('x-kz-user-sig')).toMatch(/^[A-Za-z0-9_-]{86}$/)
       expect(headers.get('cookie')).toBeNull()
       expect(init.redirect).toBe('manual')
       return Response.json({ page: '/' }, { headers: { 'set-cookie': 'x=1', 'x-internal': 'y' } })
@@ -75,7 +84,7 @@ describe('callEngine — moteur réel', () => {
     const unauth = engine(() => Response.json({ error: { code: 'unauthorized', message: 'bad signature' } }, { status: 401 }))
     const r3 = await callEngine({ method: 'GET', segments: ['health'], user: client }, unauth.deps)
     expect(r3.status).toBe(503)
-    expect(unauth.deps.log).toHaveBeenCalledWith(expect.stringMatching(/ENGINE_SECRET differs/))
+    expect(unauth.deps.log).toHaveBeenCalledWith(expect.stringMatching(/ENGINE_SECRET differs.*ENGINE_IDENTITY_PRIVATE_KEY/))
 
     const redirect = engine(() => new Response(null, { status: 302, headers: { location: 'https://evil.com' } }))
     expect((await callEngine({ method: 'GET', segments: ['health'], user: client }, redirect.deps)).status).toBe(502)
@@ -104,20 +113,31 @@ describe('callEngine — moteur réel', () => {
     expect(res.status).toBe(503)
     expect(await res.json()).toEqual({ error: { code: 'unavailable', message: 'The AI engine is not configured.' } })
   })
+  it('régression SEC-10 : sans clé d’identité (ou clé invalide) → 503, jamais d’appel signé avec le Bearer', async () => {
+    const noKey = engine(() => Response.json({}))
+    const deps1 = { ...noKey.deps, env: { ...realEnv, ENGINE_IDENTITY_PRIVATE_KEY: undefined } }
+    expect((await callEngine({ method: 'GET', segments: ['health'], user: client }, deps1)).status).toBe(503)
+    const badKey = { ...noKey.deps, env: { ...realEnv, ENGINE_IDENTITY_PRIVATE_KEY: IDENTITY_PUBLIC } }
+    expect((await callEngine({ method: 'GET', segments: ['health'], user: client }, badKey)).status).toBe(503)
+    expect(noKey.fetchImpl).not.toHaveBeenCalled()
+  })
 })
 
 describe('moteur simulé (ENGINE_MOCK=1)', () => {
   const mockDeps: EngineTransportDeps = { env: { ENGINE_MOCK: '1', NODE_ENV: 'development' }, mock: handleMockEngineRequest, log: vi.fn() }
 
-  it('santé simulée, sans réseau', async () => {
+  it('santé simulée, sans réseau, cohérente avec la règle du vrai moteur (AI-06)', async () => {
     const res = await callEngine({ method: 'GET', segments: ['health'], user: client }, mockDeps)
     expect(res.status).toBe(200)
-    expect(await res.json()).toMatchObject({ ok: true, version: 'mock', mode: 'local' })
+    const health = (await res.json()) as EngineHealth
+    expect(health).toMatchObject({ ok: true, version: 'mock', mode: 'local' })
+    // engine/src/server/health.ts : ok = access !== 'none' && preview.ready && branch === 'draft'.
+    expect(health.ok).toBe(health.claude.access !== 'none' && health.preview.ready && health.git.branch === 'draft')
   })
-  it('zones non écrites → 501 not_implemented', async () => {
+  it('publication simulée implémentée par publish-ui (FOLLOWUPS #15) : état relayé tel quel', async () => {
     const res = await callEngine({ method: 'GET', segments: ['publish', 'status'], user: client }, mockDeps)
-    expect(res.status).toBe(501)
-    expect(await res.json()).toMatchObject({ error: { code: 'not_implemented' } })
+    expect(res.status).toBe(200)
+    expect(await res.json()).toMatchObject({ state: expect.any(String), pending: { total: expect.any(Number) } })
   })
   it('la liste blanche et les droits s’appliquent aussi au mock', async () => {
     const mock = vi.fn(handleMockEngineRequest)

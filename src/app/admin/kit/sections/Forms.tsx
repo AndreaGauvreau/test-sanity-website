@@ -2,9 +2,11 @@
 
 import { useEffect, useState } from 'react'
 import {
+  Button,
   Checkbox,
   CodeBlock,
   FaviconPreview,
+  IconButton,
   ImagePreview,
   ImageUpload,
   Input,
@@ -139,7 +141,7 @@ export function Forms() {
         <Select className={styles.w440} layout="inline" label="Label" options={PLACEMENTS} defaultValue="body-end" />
       </Item>
 
-      <Item id="search-field" title="Search field" figma="327:554" note="Press / anywhere to focus the first one. Escape clears, then leaves.">
+      <Item id="search-field" title="Search field" figma="327:554" note={'Press / anywhere to focus the first one. Escape clears, then leaves. size="small" (28 px) lines up with 28 px icon buttons in a toolbar.'}>
         <div className={styles.row}>
           <Cell label="empty">
             <SearchField />
@@ -152,6 +154,12 @@ export function Forms() {
           </Cell>
           <Cell label="disabled">
             <SearchField shortcut={false} disabled />
+          </Cell>
+          <Cell label="small · toolbar (28 px)">
+            <div className={styles.row} style={{ gap: 4, flexWrap: 'nowrap' }}>
+              <IconButton icon="filter" label="Filter" />
+              <SearchField size="small" shortcut={false} placeholder="Search items…" />
+            </div>
           </Cell>
         </div>
       </Item>
@@ -203,11 +211,31 @@ export function Forms() {
         </div>
       </Item>
 
-      <Item id="image-upload" title="Image upload" figma="330:408" note="empty · dragover (drag a file) · uploading · filled. The last one is interactive: pick or drop an image (upload is simulated).">
+      <Item id="image-upload" title="Image upload" figma="330:408" note="empty · dragover (drag a file) · uploading · filled · actions slot (e.g. Choose from Media: under the zone, or in the file row before Replace). The last one is interactive: pick or drop an image (upload is simulated).">
         <div className={styles.gridWide}>
           <ImageUpload label="Social preview" hint="1200 × 630 px" onFile={() => {}} />
           <ImageUpload label="Social preview" hint="1200 × 630 px" onFile={() => {}} uploading={{ name: 'og-home.jpg', progress: 50 }} />
           <ImageUpload label="Social preview" hint="1200 × 630 px" onFile={() => {}} value={{ name: 'og-home.jpg', size: 188_416 }} onRemove={() => {}} />
+          <ImageUpload
+            label="Cover image (with actions)"
+            onFile={() => {}}
+            actions={
+              <Button variant="ghost" size="small" iconLeft="image" onClick={() => toast.show({ message: 'The Media picker opens here.' })}>
+                Choose from Media
+              </Button>
+            }
+          />
+          <ImageUpload
+            label="Cover image (filled, with actions)"
+            onFile={() => {}}
+            value={{ name: 'cover.jpg', size: 430_080, src: SAMPLE_OG }}
+            onRemove={() => {}}
+            actions={
+              <Button variant="ghost" size="small" iconLeft="image" onClick={() => toast.show({ message: 'The Media picker opens here.' })}>
+                Choose from Media
+              </Button>
+            }
+          />
           <ImageUpload
             label="Social preview (interactive)"
             hint="1200 × 630 px"

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { askRoutes } from '../../../src/admin/features/ask-ai/links'
-import { ANSWER_MAX, cleanAnswer, finalizeAnswer, REFUSAL_ELSEWHERE_TEXT, REFUSAL_TEXT, splitModelOutput } from './answer'
+import { ANSWER_MAX, cleanAnswer, finalizeAnswer, REFUSAL_ELSEWHERE_TEXT, REFUSAL_TEXT, siteDomains, splitModelOutput } from './answer'
 import { CONFIG } from './testing'
 
 const ROUTES = askRoutes(CONFIG, 'client')
@@ -72,5 +72,46 @@ describe('refus des modifications', () => {
 
   it('réponse vide → phrase de repli', () => {
     expect(finalizeAnswer('LINKS: none\nCHANGE: no', ROUTES, OPTIONS).answer).toMatch(/I don’t know/)
+  })
+})
+
+describe('SEC-08 : filtre commun des adresses (sanitizeClientText) sur chaque réponse', () => {
+  const SITE = ['conduit.com']
+
+  it('domaine nu d’hameçonnage retiré, domaine du site gardé', () => {
+    const text = cleanAnswer('Your session expired. Log in again at conduit-billing.help/login. The site is conduit.com.', ROUTES, SITE)
+    expect(text).not.toMatch(/conduit-billing|help\/login/)
+    expect(text).toContain('[link removed]')
+    expect(text).toContain('conduit.com')
+  })
+
+  it('IDN, punycode, e-mail, IPv4, point désamorcé et adresse coupée par un caractère invisible : retirés', () => {
+    const text = cleanAnswer(
+      'Try bücher.de, xn--bcher-kva.de, billing@evil.help, 10.0.0.1/login, evil[.]help and evil\u200b.help now.',
+      ROUTES,
+      SITE,
+    )
+    for (const leak of ['bücher', 'xn--', 'evil', '10.0.0.1']) expect(text).not.toContain(leak)
+    expect(text.match(/\[link removed\]/g)?.length).toBe(6)
+  })
+
+  it('une adresse recollée par le retrait du markdown ou du HTML est filtrée', () => {
+    expect(cleanAnswer('Go to evil<b>.help</b> or evil**.**help', ROUTES, SITE)).not.toMatch(/evil\.help/)
+  })
+
+  it('sans liste blanche, même le domaine du site est retiré ; noms de fichiers techniques gardés', () => {
+    expect(cleanAnswer('See conduit.com.', ROUTES)).toBe('See [link removed].')
+    expect(cleanAnswer('Built with Next.js.', ROUTES)).toBe('Built with Next.js.')
+  })
+
+  it('finalizeAnswer transmet la liste blanche', () => {
+    const out = finalizeAnswer('ANSWER: Visit conduit.com or conduit-login.help.\nLINKS: none\nCHANGE: no', ROUTES, { ...OPTIONS, allowedDomains: SITE })
+    expect(out.answer).toBe('Visit conduit.com or [link removed].')
+  })
+
+  it('siteDomains : domaine du manifeste et hôte de l’URL publique, jamais une IP ni localhost', () => {
+    expect(siteDomains({ domain: 'conduit.com', url: 'http://127.0.0.1:4040' })).toEqual(['conduit.com'])
+    expect(siteDomains({ domain: 'conduit.com', url: 'https://www.conduit.io/' })).toEqual(['conduit.com', 'conduit.io'])
+    expect(siteDomains({ domain: '', url: 'http://localhost:4040' })).toEqual([])
   })
 })

@@ -8,6 +8,8 @@ import type { AdminConfig, FieldDef } from '@/admin/core/contracts'
  * vérifie que chaque champ déclaré ici existe dans le type Sanity, avec le même genre et les mêmes limites
  * (longueurs, bornes des tableaux, valeurs des listes). Libellés en anglais (interface de l'admin).
  * `zone` : zone de l'éditeur IA qui affiche le champ (src/editor/zones.json, lien « Open in AI editor »).
+ * `itemType` (tableaux) : `_type` des éléments à créer ; `richText` (Portable Text) : options de l'éditeur riche ;
+ * `source` (section) : id de la collection qui alimente la section (C1 « From CMS › … ») — tous vérifiés par le test.
  */
 
 // ─── Briques ────────────────────────────────────────────────────────────────────────────────
@@ -51,6 +53,29 @@ const STATUS_FILTER = {
   ],
 } as const
 
+/**
+ * Date de mise en ligne (B5 « online since … ») : NEXT_PUBLIC_SITE_LAUNCHED_AT au format AAAA-MM-JJ, posée au
+ * lancement du site. Absente ou invalide : pas de date (B5 compte alors depuis la première demande IA).
+ */
+export function siteLaunchedAt(raw: string | undefined): string | undefined {
+  const value = raw?.trim() ?? ''
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return undefined
+  const date = new Date(`${value}T00:00:00Z`)
+  return !Number.isNaN(date.getTime()) && date.toISOString().startsWith(value) ? value : undefined
+}
+
+const launchedAt = siteLaunchedAt(process.env.NEXT_PUBLIC_SITE_LAUNCHED_AT)
+
+/** Texte riche (FieldDef.richText) : reflet des options `block` du schéma (src/admin.config.test.ts le vérifie). */
+const POST_BODY_RICH_TEXT = {
+  styles: ['normal', 'h2', 'h3', 'blockquote'],
+  lists: ['bullet', 'number'],
+  decorators: ['strong', 'em'],
+  annotations: ['link'],
+  blocks: ['image'],
+}
+const FAQ_ANSWER_RICH_TEXT = { styles: ['normal'], lists: [], decorators: ['strong', 'em'], annotations: ['link'], blocks: [] }
+
 // ─── Manifeste ──────────────────────────────────────────────────────────────────────────────
 
 const adminConfig = {
@@ -59,6 +84,7 @@ const adminConfig = {
     domain: 'conduit.com',
     // URL publique (View site ↗). Variable publique : le manifeste est lu côté client aussi.
     url: process.env.NEXT_PUBLIC_SITE_URL || 'http://127.0.0.1:4040',
+    ...(launchedAt ? { launchedAt } : {}),
   },
   settings: { type: 'siteSettings', id: 'siteSettings' },
   pages: [
@@ -89,6 +115,7 @@ const adminConfig = {
               kind: 'array',
               max: 2,
               itemLabel: 'Rating',
+              itemType: 'rating',
               zone: 'hero.rating',
               fields: [
                 {
@@ -130,6 +157,7 @@ const adminConfig = {
               min: 3,
               max: 3,
               itemLabel: 'Card',
+              itemType: 'feature',
               zone: 'features.card',
               fields: [
                 { name: 'title', label: 'Title', kind: 'string', required: true, maxLength: 50, zone: 'features.card.title' },
@@ -155,6 +183,7 @@ const adminConfig = {
               min: 3,
               max: 3,
               itemLabel: 'Module',
+              itemType: 'module',
               zone: 'system.module',
               fields: [
                 { name: 'title', label: 'Title', kind: 'string', required: true, maxLength: 30, zone: 'system.module.title' },
@@ -179,6 +208,7 @@ const adminConfig = {
               min: 3,
               max: 3,
               itemLabel: 'Benefit',
+              itemType: 'benefit',
               zone: 'performance.benefit',
               fields: [
                 {
@@ -224,6 +254,7 @@ const adminConfig = {
               min: 1,
               max: 2,
               itemLabel: 'Figure',
+              itemType: 'stat',
               zone: 'customerStory.stat',
               fields: [
                 { name: 'value', label: 'Value', kind: 'string', required: true, maxLength: 8, placeholder: '80%', zone: 'customerStory.stat.value' },
@@ -238,6 +269,7 @@ const adminConfig = {
               min: 1,
               max: 5,
               itemLabel: 'Result',
+              itemType: 'result',
               zone: 'customerStory.result',
               fields: [{ name: 'label', label: 'Text', kind: 'string', required: true, maxLength: 60, zone: 'customerStory.result' }],
             },
@@ -247,6 +279,7 @@ const adminConfig = {
           name: 'testimonial',
           label: 'Testimonial',
           zone: 'testimonial',
+          source: { collection: 'testimonials', label: 'From CMS › Testimonials' },
           fields: [
             {
               name: 'item',
@@ -295,6 +328,7 @@ const adminConfig = {
           name: 'faq',
           label: 'FAQ',
           zone: 'faq',
+          source: { collection: 'faq', label: 'From CMS › FAQ' },
           fields: [
             eyebrow('faq.eyebrow', 40),
             { name: 'title', label: 'Title', kind: 'string', required: true, maxLength: 60, zone: 'faq.title' },
@@ -315,6 +349,7 @@ const adminConfig = {
           name: 'insights',
           label: 'Articles',
           zone: 'insights',
+          source: { collection: 'blog', label: '4 latest Blog posts' },
           fields: [
             eyebrow('insights.eyebrow'),
             { name: 'title', label: 'Title', kind: 'string', required: true, maxLength: 50, zone: 'insights.title' },
@@ -412,7 +447,7 @@ const adminConfig = {
         { name: 'author', label: 'Author', kind: 'string', maxLength: 60 },
         { name: 'excerpt', label: 'Excerpt', kind: 'text', required: true, maxLength: 160 },
         { name: 'image', label: 'Cover image', kind: 'image', required: true, help: 'Alt text is stored on the image, in Media.' },
-        { name: 'content', label: 'Body', kind: 'portableText', required: true },
+        { name: 'content', label: 'Body', kind: 'portableText', required: true, richText: POST_BODY_RICH_TEXT },
       ],
       orderable: true,
       defaultSort: { field: '_updatedAt', direction: 'desc' },
@@ -469,7 +504,14 @@ const adminConfig = {
       ],
       fields: [
         { name: 'question', label: 'Question', kind: 'string', required: true, maxLength: 100, zone: 'faq.item.question' },
-        { name: 'answer', label: 'Answer', kind: 'portableText', required: true, help: 'A question without an answer is not shown on the site.' },
+        {
+          name: 'answer',
+          label: 'Answer',
+          kind: 'portableText',
+          required: true,
+          help: 'A question without an answer is not shown on the site.',
+          richText: FAQ_ANSWER_RICH_TEXT,
+        },
       ],
       orderable: true,
       defaultSort: { field: 'orderRank', direction: 'asc' },

@@ -1,19 +1,24 @@
+import { isKuartzMember, type KuartzAllowlist } from '@/admin/core/contracts/roles'
+
 import type { AccessInvite, AccessUser } from './access-api'
 
 /**
  * Membres de B4 d'après l'API d'accès Sanity. PUR.
  *
  * Figma B4 : avatar, nom, e-mail ; à droite, tag KUARTZ s'il y a lieu, puis « rôle · invited by … »
- * (« Administrator · owner », « Editor · invited by Marie »). Kuartz = membres Developer ou e-mail @kuartz.studio.
+ * (« Administrator · owner », « Editor · invited by Marie »). Kuartz = membre de la liste blanche KUARTZ_ALLOWLIST
+ * (`isKuartzMember`, la même règle que le rôle `kuartz` de l'admin) : ni le rôle Sanity Developer ni l'e-mail ne suffisent.
  */
 
-export const KUARTZ_EMAIL_DOMAIN = 'kuartz.studio'
-
-/** Rôles invitables depuis l'admin (Figma B4 « RÈGLES ») : Administrator (client), Developer (Kuartz), Editor, Viewer. */
+/**
+ * Rôles invitables depuis l'admin : Editor, Administrator (client), Viewer.
+ * PAS Developer (constat SEC-05) : le rôle Kuartz de l'admin se donne par la liste blanche KUARTZ_ALLOWLIST côté
+ * serveur (core/contracts/roles.ts), et Kuartz ajoute ses propres membres dans Sanity. Un client n'a aucune raison
+ * d'inviter un Developer depuis l'admin ; le Figma B4 le proposait, cette liste l'emporte sur le Figma.
+ */
 export const INVITE_ROLES = [
   { value: 'editor', label: 'Editor' },
   { value: 'administrator', label: 'Administrator' },
-  { value: 'developer', label: 'Developer' },
   { value: 'viewer', label: 'Viewer' },
 ] as const
 
@@ -64,10 +69,6 @@ function rank(role: string): number {
   return i === -1 ? ROLE_ORDER.length : i
 }
 
-export function isKuartzEmail(email: string | null | undefined): boolean {
-  return typeof email === 'string' && email.trim().toLowerCase().endsWith(`@${KUARTZ_EMAIL_DOMAIN}`)
-}
-
 /** Prénom affiché dans « invited by Marie » : le premier mot du nom, sinon la partie locale de l'e-mail. */
 export function firstName(name: string | null | undefined, email?: string | null): string {
   const first = (name ?? '').trim().split(/\s+/)[0]
@@ -84,15 +85,17 @@ function membershipOf(user: AccessUser, projectId: string) {
  * - seuls les UTILISATEURS membres du projet (les robots / jetons, sans e-mail ni membership « project », sont écartés) ;
  * - « invited by X » : invitation acceptée dont `inviteeId` est ce membre, `inviterId` → nom du membre qui a invité ;
  * - « owner » : sans invitation connue, l'Administrator arrivé le premier (création du projet) — heuristique documentée ;
- * - Kuartz : rôle Developer ou e-mail @kuartz.studio ;
+ * - Kuartz : `isKuartzMember` d'après la liste blanche du SERVEUR (id Sanity ou e-mail ; invitation : e-mail seul) —
+ *   un Developer ajouté par le client hors liste n'est PAS Kuartz (l'admin le traite en editor) ;
  * - ordre : Administrators, puis membres du client, puis Kuartz ; à rôle égal, date d'arrivée puis nom.
  */
 export function buildTeam(
   users: readonly AccessUser[],
   invites: readonly AccessInvite[],
   projectId: string,
-  currentUserId?: string,
+  options: { allowlist: KuartzAllowlist; currentUserId?: string },
 ): { members: TeamMember[]; pending: PendingInvite[]; summary: TeamSummary } {
+  const { allowlist, currentUserId } = options
   const inProject = users
     .map((user) => ({ user, membership: membershipOf(user, projectId) }))
     .filter(({ user, membership }) => membership && membership.roleNames.length > 0 && !!user.profile?.email)
@@ -122,7 +125,7 @@ export function buildTeam(
       imageUrl: user.profile?.imageUrl && /^https:\/\//.test(user.profile.imageUrl) ? user.profile.imageUrl : undefined,
       role,
       meta: `${roleTitle(role)}${suffix}`,
-      kuartz: role === 'developer' || isKuartzEmail(email),
+      kuartz: isKuartzMember({ id: user.sanityUserId, email }, allowlist),
       isCurrentUser: currentUserId === user.sanityUserId,
       addedAt: membership!.addedAt ?? '',
     }
@@ -140,7 +143,7 @@ export function buildTeam(
         email: invite.email!,
         role,
         meta: `${roleTitle(role)}${inviterName ? ` · invited by ${inviterName}` : ''}`,
-        kuartz: role === 'developer' || isKuartzEmail(invite.email),
+        kuartz: isKuartzMember({ id: '', email: invite.email! }, allowlist),
       }
     })
 

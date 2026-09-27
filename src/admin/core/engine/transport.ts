@@ -10,17 +10,20 @@ import {
   MAX_ENGINE_BODY_BYTES,
   type EngineMethod,
 } from './routes'
-import { signEngineUser } from './signature'
+import { engineIdentityHeaders, signEngineUser } from './signature'
 
 /**
  * Transport admin → moteur, sans dépendance Next (dépendances injectées) : testable. `server.ts` le lie à
  * l'environnement réel. Toute requête passe par : liste blanche → droit du rôle → corps JSON borné → moteur simulé
- * ou réseau (Bearer ENGINE_SECRET + identité signée) → réponse normalisée (JSON ou image PNG, `no-store`).
+ * ou réseau (Bearer ENGINE_SECRET + identité signée Ed25519 avec ENGINE_IDENTITY_PRIVATE_KEY, clé distincte du Bearer)
+ * → réponse normalisée (JSON ou image PNG, `no-store`).
  */
 
 export type EngineTransportEnv = {
   ENGINE_URL?: string
   ENGINE_SECRET?: string
+  /** Clé privée Ed25519 d'identité (PKCS#8 base64), constat SEC-10. Le moteur n'a que la clé publique. */
+  ENGINE_IDENTITY_PRIVATE_KEY?: string
   ENGINE_MOCK?: string
   NODE_ENV?: string
 }
@@ -143,8 +146,16 @@ export async function callEngine(call: EngineCall, deps: EngineTransportDeps): P
   // ─ Moteur réel ─
   const base = engineBaseUrl(deps.env.ENGINE_URL)
   const secret = deps.env.ENGINE_SECRET
-  if (!base || !secret) {
-    log('[admin/engine] ENGINE_URL or ENGINE_SECRET is missing or invalid.')
+  const identityKey = deps.env.ENGINE_IDENTITY_PRIVATE_KEY
+  if (!base || !secret || !identityKey) {
+    log('[admin/engine] ENGINE_URL, ENGINE_SECRET or ENGINE_IDENTITY_PRIVATE_KEY is missing or invalid.')
+    return engineErrorResponse(503, 'unavailable', ENGINE_MESSAGES.notConfigured)
+  }
+  let identity: Record<string, string>
+  try {
+    identity = engineIdentityHeaders(await signEngineUser(call.user, identityKey))
+  } catch {
+    log('[admin/engine] ENGINE_IDENTITY_PRIVATE_KEY is not a valid Ed25519 PKCS#8 key (base64).')
     return engineErrorResponse(503, 'unavailable', ENGINE_MESSAGES.notConfigured)
   }
   const qs = query.toString()
@@ -152,7 +163,7 @@ export async function callEngine(call: EngineCall, deps: EngineTransportDeps): P
   const headers: Record<string, string> = {
     authorization: `Bearer ${secret}`,
     accept: route.kind === 'image' ? 'image/png' : 'application/json',
-    ...(await signEngineUser(call.user, secret)),
+    ...identity,
   }
   if (body !== undefined) headers['content-type'] = 'application/json'
 
@@ -171,10 +182,14 @@ export async function callEngine(call: EngineCall, deps: EngineTransportDeps): P
     return engineErrorResponse(timeout ? 504 : 502, 'unavailable', timeout ? ENGINE_MESSAGES.timeout : ENGINE_MESSAGES.unavailable)
   }
 
-  // 401 du moteur = Bearer ou signature refusés, donc ENGINE_SECRET différent des deux côtés : c'est une erreur de
-  // configuration, pas une session expirée. Ne jamais renvoyer 401 au navigateur (l'interface enverrait vers A1).
+  // 401 du moteur = Bearer ou identité refusés : ENGINE_SECRET différent des deux côtés, clés d'identité qui ne vont
+  // pas ensemble, ou horloges décalées de plus de 30 s. Erreur de configuration, pas une session expirée : ne jamais
+  // renvoyer 401 au navigateur (l'interface enverrait vers A1).
   if (res.status === 401) {
-    log('[admin/engine] The engine rejected the admin credentials (401): ENGINE_SECRET differs between .env.local and engine/.env.local.')
+    log(
+      '[admin/engine] The engine rejected the admin credentials (401): ENGINE_SECRET differs between .env.local and engine/.env.local, ' +
+        'or ENGINE_IDENTITY_PRIVATE_KEY does not match the engine ENGINE_IDENTITY_PUBLIC_KEY, or the clocks differ.',
+    )
     await res.body?.cancel().catch(() => {})
     return engineErrorResponse(503, 'unavailable', ENGINE_MESSAGES.notConfigured)
   }

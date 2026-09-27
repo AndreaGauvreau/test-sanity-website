@@ -11,6 +11,11 @@ export type TopBarProps = Omit<HTMLAttributes<HTMLElement>, 'children'> & {
   pendingCount?: number
   /** Texte d'état sur mesure (remplace le texte par défaut de l'état). */
   statusText?: ReactNode
+  /**
+   * Action liée à l'état, posée juste après le texte d'état (et Review) : « See error » en échec (G3 état 5),
+   * Button ghost small. Absente : rien n'est rendu.
+   */
+  statusAction?: ReactNode
   /** Lien « Review › » (page Publish) ; ou `onReview`. Absents : masqué. */
   reviewHref?: string
   onReview?: MouseEventHandler<HTMLElement>
@@ -44,7 +49,7 @@ export function topBarStatusText(state: PublishState, count = 0): string {
 
 /**
  * Barre du haut (Figma « Top bar » 333:1407) : 48 px, bg/primary, trait bas border/subtle, pad 0 12 0 16, gap 12.
- * À gauche : point de couleur + état de publication + « Review › » ; à droite : « Draft saved automatically »,
+ * À gauche : point de couleur + état de publication + « Review › » + `statusAction` (« See error ») ; à droite : « Draft saved automatically »,
  * « View site ↗ » et l'emplacement du Publish button. Présentationnelle (composant pur) : l'état vient de la
  * feature publish. Le texte d'état n'est pas une zone live : PublishButton annonce déjà les changements.
  */
@@ -52,6 +57,7 @@ export function TopBar({
   state,
   pendingCount = 0,
   statusText,
+  statusAction,
   reviewHref,
   onReview,
   autosaveText = 'Draft saved automatically',
@@ -78,6 +84,11 @@ export function TopBar({
           <Button variant="ghost" size="small" iconRight="chevron-right" onClick={onReview}>
             Review
           </Button>
+        ) : null}
+        {statusAction != null ? (
+          <span className={styles.statusAction} data-status-action="">
+            {statusAction}
+          </span>
         ) : null}
       </div>
       {autosaveText != null ? <span className={styles.autosave}>{autosaveText}</span> : null}

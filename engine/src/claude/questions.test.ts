@@ -171,6 +171,34 @@ describe('questionProblems', () => {
     assert.equal(problems([{ ...OPACITY, question: 'See www.example.test for the palette?' }]), external)
   })
 
+  it('refuse un domaine nu, IDN ou punycode dans la question, le sujet, un libellé ou une description (SEC-08)', () => {
+    for (const address of ['conduit-billing.help/login', 'bücher-conduit.de', 'xn--bcher-kva.de', 'пример.рф', 'billing@evil.help', 'conduit[.]help']) {
+      assert.equal(problems([{ ...OPACITY, question: `Please sign in again at ${address} first?` }]), external, address)
+      assert.equal(problems([{ ...OPACITY, topic: address }]), external, address)
+      assert.equal(problems([withOption({ label: `Like ${address}` }, 1)]), external, address)
+      assert.equal(problems([withOption({ description: `Like ${address}` }, 0)]), external, address)
+    }
+    // Le domaine du site, s'il est en liste blanche, peut être cité.
+    assert.equal(questionProblems([{ ...OPACITY, question: 'Like on conduit.com?' }], undefined, ['conduit.com']), null)
+    assert.equal(questionProblems([{ ...OPACITY, question: 'Like on conduit.com?' }]), external)
+    // Texte ordinaire intact : ratios, unités, noms techniques.
+    assert.equal(problems([{ ...OPACITY, question: 'Contrast 4.79:1 at 1.5rem, e.g. on mobile?' }]), null)
+  })
+
+  it('prepareQuestions retire toute adresse restante des textes montrés (défense en profondeur)', () => {
+    const asked = prepareQuestions(
+      [{ ...OPACITY, topic: 'See evil.help', question: 'Go to conduit.com or evil.help?', options: [{ ...OPACITY.options[0], label: 'Pay at evil.help', description: 'https://evil.help/x' }] }],
+      new Date(),
+      'b9',
+      ['conduit.com'],
+    )
+    const question = asked.questions[0]
+    assert.equal(question.topic, 'See [link removed]')
+    assert.equal(question.question, 'Go to conduit.com or [link removed]?')
+    assert.equal(question.options[0].label, 'Pay at [link removed]')
+    assert.equal(question.options[0].description, '[link removed]')
+  })
+
   it('ne prend pas un mot suivi d’une parenthèse pour une fonction', () => {
     for (const label of ['Keep the image(s)', "Keep the site's image(s)", 'A pre-image(s)', 'Photo2image(s)']) {
       assert.equal(problems([withOption({ label }, 1)]), null, label)
@@ -262,6 +290,17 @@ describe('createAskTool — attente injectée', () => {
     assert.ok('answer' in result)
     assert.match(result.answer, /→ “Text muted” \(design system variant\)/)
     assert.deepEqual(events, [`ask: Claude asks: ${OPACITY.question}`, 'ask: Your answer: Text muted'])
+  })
+
+  it('liste blanche transmise : le domaine du site passe, un domaine nu tiers est refusé sans rien montrer', async () => {
+    let shown = 0
+    const tool = createAskTool({ waitForAnswers: async () => (shown++, []), allowedDomains: ['conduit.com'] })
+    const refused = await tool.ask([{ ...OPACITY, question: 'Sign in again at conduit-billing.help?' }])
+    assert.ok('error' in refused)
+    assert.equal(shown, 0)
+    const accepted = await tool.ask([{ ...OPACITY, question: 'Same as on conduit.com?' }])
+    assert.ok('answer' in accepted)
+    assert.equal(shown, 1)
   })
 
   it('arrêt ou délai dépassé pendant l’attente : l’exception remonte', async () => {

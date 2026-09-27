@@ -16,6 +16,7 @@ import { repoPath } from '../guards/guards'
 import { createGuardHook, type ToolAccess } from './hook'
 import { ALLOWED_TOOLS, ASK_TOOL, BUILTIN_TOOLS, MCP_SERVER_NAME, MEASURE_TOOL, TEXT_TOOL } from './names'
 import type { AskTool } from './questions'
+import { sanitizeClientText } from './sanitize'
 import type { TextTool } from './text'
 import { kuartzTools, type MeasureTool } from './tools'
 
@@ -47,6 +48,11 @@ export type AgentRun = {
   resume?: string
   signal: AbortSignal
   onEvent: (event: AgentEvent) => void
+  /**
+   * Domaines que le journal peut citer (domaine du site). Les textes intermédiaires de Claude et les motifs d'outils
+   * affichés au client passent par `sanitizeClientText` (SEC-08) ; absent = aucune adresse.
+   */
+  allowedDomains?: readonly string[]
 }
 
 export type AgentResult = {
@@ -124,10 +130,16 @@ const fileLabel = (cwd: string, file: unknown) => {
   return relative.split('/').slice(-2).join('/')
 }
 
-/** Étape d'activité pour un appel d'outil de Claude (textes en anglais : l'admin les affiche). */
-export function describeTool(cwd: string, name: string, input: unknown): AgentEvent | null {
+/** Forme d'un id de champ de set_text (`dockSchedulingPage:hero.title`, `post-1:features.items[_key=="k"].title`). */
+const FIELD_ID = /^[A-Za-z0-9_.-]+:[A-Za-z_][\w.[\]="$-]*$/
+
+/**
+ * Étape d'activité pour un appel d'outil de Claude (textes en anglais : l'admin les affiche). Les arguments cités
+ * (motifs, champ) passent par le filtre d'adresses (SEC-08).
+ */
+export function describeTool(cwd: string, name: string, input: unknown, allowedDomains: readonly string[] = []): AgentEvent | null {
   const args = (input ?? {}) as Record<string, unknown>
-  const clip = (value: unknown) => String(value ?? '').slice(0, 80)
+  const clip = (value: unknown) => sanitizeClientText(String(value ?? '').slice(0, 80), allowedDomains)
   switch (name) {
     case MEASURE_TOOL:
     case ASK_TOOL:
@@ -141,8 +153,12 @@ export function describeTool(cwd: string, name: string, input: unknown): AgentEv
       return { kind: 'read', label: `Searching “${clip(args.pattern)}”` }
     case 'Glob':
       return { kind: 'read', label: `Looking for files ${clip(args.pattern)}` }
-    case TEXT_TOOL:
-      return { kind: 'text', label: `New text for ${clip(args.field) || '?'}` }
+    case TEXT_TOOL: {
+      // Id de champ donné à Claude (`<document>:<chemin Sanity>`, sans espace) : ses points ne sont pas un domaine.
+      // Tout autre contenu passe par le filtre d'adresses.
+      const field = String(args.field ?? '').slice(0, 80)
+      return { kind: 'text', label: `New text for ${FIELD_ID.test(field) ? field : clip(field) || '?'}` }
+    }
     default:
       return { kind: 'warn', label: `Tool requested: ${clip(name)}` }
   }
@@ -283,7 +299,7 @@ export function createAgentRunner(settings: AgentSettings, deps: { query?: Query
     // Réponses du modèle reçues pendant cet appel : de quoi estimer son coût s'il est interrompu.
     const seen: { id: string; usage: UsageLike }[] = []
     const flushText = () => {
-      if (pendingText) onEvent({ kind: 'info', label: clip(pendingText) })
+      if (pendingText) onEvent({ kind: 'info', label: clip(sanitizeClientText(pendingText, run.allowedDomains ?? [])) })
       pendingText = ''
     }
     // Sans résultat du SDK, ni coût ni jetons : on les estime d'après les réponses reçues pendant cet appel.
@@ -322,7 +338,7 @@ export function createAgentRunner(settings: AgentSettings, deps: { query?: Query
               pendingText = block.text.trim()
             } else if (block.type === 'tool_use') {
               flushText()
-              const event = describeTool(cwd, block.name, block.input)
+              const event = describeTool(cwd, block.name, block.input, run.allowedDomains)
               if (event) onEvent(event)
             }
           }

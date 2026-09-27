@@ -102,6 +102,7 @@ export function ListTools<F extends string, D extends string>({ add, sort, filte
       {searchOpen ? (
         <SearchField
           className={styles.search}
+          size="small"
           value={search.value}
           onValueChange={search.onChange}
           label={search.label}

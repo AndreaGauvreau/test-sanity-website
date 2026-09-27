@@ -1,6 +1,7 @@
 /*
  * Coque de l'admin (Figma B1 359:696) : Sidebar 240 px à gauche (pleine hauteur), colonne « main » à droite :
  * Top bar 48 px puis zone de contenu qui défile seule. La page ne défile jamais : seule `.content` défile.
+ * Largeur et hauteur : --kz-sidebar-width / --kz-topbar-height (AdminRoot.module.css), égales aux composants du kit.
  */
 .frame {
   display: flex;
@@ -12,7 +13,7 @@
 }
 
 .sidebar {
-  flex: 0 0 240px;
+  flex: 0 0 var(--kz-sidebar-width);
 }
 
 .main {

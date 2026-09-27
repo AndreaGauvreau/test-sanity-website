@@ -75,7 +75,7 @@ describe('drafts.ts', () => {
 describe('toWriteError', () => {
   it('traduit les statuts HTTP de Sanity en messages anglais', () => {
     expect(toWriteError({ statusCode: 403 })).toMatchObject({ code: 'forbidden' })
-    expect(toWriteError({ statusCode: 409 })).toMatchObject({ code: 'bad_request', message: expect.stringMatching(/same time/) })
+    expect(toWriteError({ statusCode: 409 })).toMatchObject({ code: 'bad_request', message: expect.stringMatching(/same time/), httpStatus: 409 })
     expect(toWriteError(new Error('ECONNRESET'))).toMatchObject({ code: 'unavailable' })
   })
 })

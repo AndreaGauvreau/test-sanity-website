@@ -10,6 +10,9 @@ import { useShortcut, useShortcutLabel, type Shortcut } from '../utils/shortcut'
 import { useControllableState } from '../utils/useControllableState'
 import styles from './SearchField.module.css'
 
+/** medium = 30 px (Figma) ; small = 28 px, à la hauteur des Icon buttons d'une barre d'outils (FOLLOWUPS #38). */
+export type SearchFieldSize = 'medium' | 'small'
+
 export type SearchFieldProps = Omit<InputHTMLAttributes<HTMLInputElement>, 'size' | 'value' | 'defaultValue' | 'onChange' | 'type'> & {
   value?: string
   defaultValue?: string
@@ -20,6 +23,8 @@ export type SearchFieldProps = Omit<InputHTMLAttributes<HTMLInputElement>, 'size
   shortcut?: Shortcut | false
   /** Appelé à l'effacement (✕ ou Échap). */
   onClear?: () => void
+  /** Hauteur : `medium` 30 px (défaut), `small` 28 px pour une barre d'outils (Icon buttons de 28). */
+  size?: SearchFieldSize
   className?: string
   ref?: Ref<HTMLInputElement>
 }
@@ -27,7 +32,7 @@ export type SearchFieldProps = Omit<InputHTMLAttributes<HTMLInputElement>, 'size
 /**
  * Recherche (Figma « Search field » 327:554) : 240 px, bg/input, border/default, radius/md, loupe 16,
  * Kbd du raccourci quand il est vide ; focused = border/focus ; filled = ✕ pour effacer (Icon button xsmall).
- * Échap efface, puis quitte le champ s'il est déjà vide.
+ * Échap efface, puis quitte le champ s'il est déjà vide. `size="small"` : 28 px pour une barre d'outils.
  */
 export function SearchField({
   value: valueProp,
@@ -37,6 +42,7 @@ export function SearchField({
   placeholder = 'Search…',
   shortcut = { key: '/' },
   onClear,
+  size = 'medium',
   className,
   id: idProp,
   disabled,
@@ -63,7 +69,8 @@ export function SearchField({
 
   return (
     <div
-      className={cx(styles.search, value && styles.filled, disabled && styles.disabled, className)}
+      data-size={size}
+      className={cx(styles.search, size === 'small' && styles.small, value && styles.filled, disabled && styles.disabled, className)}
       onPointerDown={(event) => {
         if (event.target === event.currentTarget && !disabled) {
           event.preventDefault()

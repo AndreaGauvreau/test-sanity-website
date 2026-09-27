@@ -20,6 +20,8 @@ export const aiUsage = defineType({
     defineField({ name: 'requestId', type: 'string', validation: (rule) => rule.required() }),
     defineField({ name: 'status', type: 'string', validation: (rule) => rule.required() }),
     defineField({ name: 'page', type: 'string' }),
+    // Demande du client (colonne « Request » de B5), tronquée à 120 caractères par le moteur (AiUsageDoc.request).
+    defineField({ name: 'request', type: 'string', validation: (rule) => rule.max(120) }),
     defineField({
       name: 'user',
       type: 'object',

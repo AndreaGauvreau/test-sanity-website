@@ -32,6 +32,7 @@ import {
   type MediaQuery,
   type MediaSort,
 } from '../lib/assets'
+import { UPLOAD_ACCEPT } from '../lib/upload-limits'
 import { deleteAssetsAction } from '../server/actions'
 import { MediaDetails } from './MediaDetails'
 import { downloadAll, uploadFile } from './upload'
@@ -44,7 +45,6 @@ import styles from './MediaLibrary.module.css'
  */
 
 const STORAGE_KEY = 'kz-admin:media'
-const UPLOAD_ACCEPT = 'image/*,video/mp4,video/webm,video/quicktime,application/pdf,text/plain,text/csv,application/zip'
 
 export function MediaLibrary({ assets: initialAssets }: { assets: MediaAsset[] }) {
   const toast = useToast()

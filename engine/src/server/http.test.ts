@@ -3,9 +3,9 @@ import type { AddressInfo } from 'node:net'
 import type { Server } from 'node:http'
 import { afterEach, describe, it } from 'vitest'
 import type { EditJob, EditorState, EngineUser } from '../../../src/admin/core/contracts'
-import { signEngineUser } from '../../../src/admin/core/engine/signature'
+import { generateKeyPairSync } from 'node:crypto'
 import { fakeScenarios } from '../claude'
-import { CLIENT, editRequest, HERO_CSS, makeBench, type Bench } from '../jobs/testing'
+import { CLIENT, editRequest, HERO_CSS, LEDE_MUTED, ledeColor, makeBench, signedIdentity, TEST_IDENTITY, type Bench } from '../jobs/testing'
 import { registerEditorRoutes } from './editor-routes'
 import { createEngineServer, createRouter, MAX_BODY_BYTES } from './http'
 
@@ -26,10 +26,10 @@ afterEach(async () => {
   bench = null
 })
 
-async function boot(script = [fakeScenarios.editCss(HERO_CSS, 'color: var(--color-text-muted);', 'color: var(--color-text);', 'Darker.')]) {
+async function boot(script = [fakeScenarios.editCss(HERO_CSS, LEDE_MUTED, ledeColor('var(--color-text)'), 'Darker.')]) {
   bench = await makeBench(script)
   const router = createRouter()
-  registerEditorRoutes(router, bench.service, async () => (await bench!.service.state('/')).health)
+  registerEditorRoutes(router, bench.service, async () => (await bench!.service.state('/', CLIENT)).health)
   // Route d'extension (engine-publish) : droit réservé à Kuartz.
   router.add({ method: 'GET', path: '/publish/diff/:id', capability: 'publish.diff', handler: ({ params }) => ({ json: { diff: params.id } }) })
   router.add({
@@ -40,13 +40,13 @@ async function boot(script = [fakeScenarios.editCss(HERO_CSS, 'color: var(--colo
       throw new Error('secret detail')
     },
   })
-  server = createEngineServer({ router, secret: SECRET, log: () => {} })
+  server = createEngineServer({ router, secret: SECRET, identityPublicKey: TEST_IDENTITY.publicKey, log: () => {} })
   await new Promise<void>((resolve) => server!.listen(0, '127.0.0.1', resolve))
   const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`
   const call = async (method: string, path: string, options: { user?: EngineUser | null; body?: string | object; bearer?: string; headers?: Record<string, string> } = {}) => {
     const headers: Record<string, string> = { ...options.headers }
     if (options.bearer !== '') headers.authorization = `Bearer ${options.bearer ?? SECRET}`
-    if (options.user !== null) Object.assign(headers, await signEngineUser(options.user ?? CLIENT, SECRET))
+    if (options.user !== null) Object.assign(headers, await signedIdentity(options.user ?? CLIENT))
     let body: string | undefined
     if (options.body !== undefined) {
       body = typeof options.body === 'string' ? options.body : JSON.stringify(options.body)
@@ -65,13 +65,32 @@ describe('authentification et erreurs', () => {
     assert.equal((await call('GET', '/health', { bearer: '' })).status, 401)
     assert.equal((await call('GET', '/health', { bearer: 'wrong-secret' })).status, 401)
     assert.equal((await call('GET', '/health', { user: null })).status, 401)
-    const signed = await signEngineUser(CLIENT, SECRET)
-    const forged = Buffer.from(JSON.stringify({ ...CLIENT, role: 'kuartz' })).toString('base64url')
+    const signed = await signedIdentity(CLIENT)
+    const now = Math.floor(Date.now() / 1000)
+    const forged = Buffer.from(JSON.stringify({ ...CLIENT, role: 'kuartz', iat: now, exp: now + 60 })).toString('base64url')
     const tampered = await call('GET', '/health', { user: null, headers: { 'x-kz-user': forged, 'x-kz-user-sig': signed['x-kz-user-sig'] } })
     assert.deepEqual([tampered.status, tampered.json], [401, { error: { code: 'unauthorized', message: 'Unauthorized.' } }])
     // Route inconnue : 404 seulement APRÈS l'authentification.
     assert.equal((await call('GET', '/nope', { bearer: '' })).status, 401)
     assert.equal((await call('GET', '/nope')).status, 404)
+  })
+
+  it('SEC-10 : le Bearer seul ne suffit pas à forger un rôle ; identité d’une autre clé, expirée ou future → 401', async () => {
+    const call = await boot()
+    // Clé Ed25519 d'un attaquant qui détient ENGINE_SECRET (Bearer) mais pas la clé privée de l'admin.
+    const other = generateKeyPairSync('ed25519').privateKey.export({ format: 'der', type: 'pkcs8' }).toString('base64')
+    const kuartz: EngineUser = { ...CLIENT, role: 'kuartz' }
+    const foreign = await call('GET', '/publish/diff/chg_x', { user: null, headers: await signedIdentity(kuartz, undefined, other) })
+    assert.equal(foreign.status, 401)
+    const now = Math.floor(Date.now() / 1000)
+    assert.equal((await call('GET', '/health', { user: null, headers: await signedIdentity(CLIENT, now - 3_600) })).status, 401)
+    assert.equal((await call('GET', '/health', { user: null, headers: await signedIdentity(CLIENT, now + 3_600) })).status, 401)
+    // L'ancienne forme (HMAC hex du Bearer) n'est plus acceptée.
+    const { createHmac } = await import('node:crypto')
+    const legacy = Buffer.from(JSON.stringify(kuartz)).toString('base64url')
+    const legacySig = createHmac('sha256', SECRET).update(legacy).digest('hex')
+    assert.equal((await call('GET', '/health', { user: null, headers: { 'x-kz-user': legacy, 'x-kz-user-sig': legacySig } })).status, 401)
+    assert.equal((await call('GET', '/health')).status, 200)
   })
 
   it('droits revérifiés d’après le rôle signé ; 500 sans détail', async () => {

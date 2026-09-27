@@ -2,11 +2,11 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { describe, it } from 'vitest'
-import { checkValue, isExemptable } from '../guards/css-policy'
-import { RULES_FILE } from '../guards/design-system'
+import { beforeAll, describe, it } from 'vitest'
+import { checkValue, isExemptable, type TokenRole } from '../guards/css-policy'
+import { loadDesignSystem, RULES_FILE, type DesignSystem } from '../guards/design-system'
 import { designSystem } from './fixtures'
-import { systemAppend } from './prompt'
+import { buildPrompt, systemAppend } from './prompt'
 
 /**
  * `src/editor/RULES.md` (engine-claude) : les règles données à Claude, EN ANGLAIS, injectées dans le prompt système.
@@ -95,11 +95,17 @@ describe('RULES.md — contenu et injection dans le prompt système', () => {
   })
 })
 
-describe('RULES.md — ne promet que ce que le contrôle CSS d’engine-guards accepte', () => {
-  const ds = designSystem(rules)
+const REAL = 'vrai design system du dépôt (src/styles/tokens.json, tokens.css, src/editor/zones.json)'
+
+describe.each([['fixtures modelées sur Conduit'], [REAL]])('RULES.md — ne promet que ce que le contrôle CSS d’engine-guards accepte (%s)', (source) => {
+  let ds: DesignSystem = designSystem(rules)
+  // AI-01 : le test tourne AUSSI sur le vrai design system, lu comme le moteur le lit (loadDesignSystem).
+  beforeAll(async () => {
+    if (source === REAL) ds = await loadDesignSystem(repo)
+  })
   const problem = (property: string, value: string, hover = false) => checkValue(property, value, ds.policy, { hover })
 
-  it('chaque valeur donnée comme permise passe (tokens modelés sur Conduit)', () => {
+  it('chaque valeur donnée comme permise passe', () => {
     const permitted: [string, string][] = [
       ['color', 'var(--color-text)'], ['color', 'transparent'], ['color', 'inherit'], ['color', 'currentColor'],
       ['border-left-color', 'var(--color-accent)'], ['outline-color', 'transparent'], ['text-decoration-color', 'currentColor'],
@@ -110,11 +116,14 @@ describe('RULES.md — ne promet que ce que le contrôle CSS d’engine-guards a
       ['text-wrap', 'balance'], ['text-align', 'end'], ['text-decoration', 'underline'], ['text-decoration-line', 'none'],
       ['margin', 'auto'], ['margin-inline', 'var(--page-inset) auto'], ['padding', 'var(--section-space)'],
       ['padding-block', 'var(--section-space-lg) 0'], ['padding-inline-start', 'var(--gutter)'],
+      ['padding', 'var(--space-16)'], ['padding', 'var(--space-8) var(--gutter)'], ['margin', 'var(--space-64) auto'],
       ['gap', '0'], ['row-gap', '0'], ['column-gap', '0'],
+      ['gap', 'var(--space-16)'], ['gap', 'var(--space-8) var(--space-64)'], ['row-gap', 'var(--space-12)'], ['column-gap', 'var(--space-24)'],
+      ['font-family', 'var(--font-sans)'], ['font-family', 'inherit'],
       ['inset', '0'], ['inset', 'auto'], ['top', '0'], ['right', 'auto'], ['bottom', '0'], ['left', 'auto'],
       ['border-radius', '0'], ['box-shadow', 'none'],
       ['border', 'none'], ['border', '0'], ['border-top', '1px solid var(--color-accent)'], ['outline', '1px solid currentColor'],
-      ['border-width', '1px'], ['border-style', 'solid'], ['outline-offset', '0'],
+      ['border-width', '1px'], ['border-style', 'solid'], ['outline-offset', '0'], ['outline-offset', 'var(--space-8)'],
       ['transition', 'none'], ['transition', 'color 200ms ease-out, transform 0.2s'], ['transform', 'none'],
       ['display', 'inline-flex'], ['display', 'grid'], ['flex-direction', 'column'], ['justify-content', 'space-between'],
       ['flex', '1 1 0'], ['flex', '0 0 auto'], ['flex-grow', '9'], ['flex-shrink', '0'], ['order', '-9'], ['order', '9'],
@@ -135,6 +144,11 @@ describe('RULES.md — ne promet que ce que le contrôle CSS d’engine-guards a
       ['opacity', '0.8', false],
       ['gap', '1rem', false],
       ['max-width', '60%', false],
+      // Les tokens d'espacement ne valent ni pour un décalage, ni pour une largeur, ni pour un arrondi.
+      ['top', 'var(--space-8)', false],
+      ['max-width', 'var(--space-64)', false],
+      ['border-radius', 'var(--space-8)', false],
+      ['padding', 'var(--header-height)', false],
       // Conduit ne déclare aucun soulèvement : transform: none seulement, même au survol.
       ['transform', 'translateY(calc(var(--gutter) * -1))', true],
     ] as const) {
@@ -153,3 +167,83 @@ describe('RULES.md — ne promet que ce que le contrôle CSS d’engine-guards a
     assert.ok(properties.length > 30, `${properties.length} propriétés citées`)
   })
 })
+
+describe('RULES.md — décrit le VRAI design system de Conduit (AI-01, piège 16 du POC)', () => {
+  let ds: DesignSystem
+  beforeAll(async () => {
+    ds = await loadDesignSystem(repo)
+  })
+  const roles = () => ds.policy.roles as Record<TokenRole, Set<string>>
+
+  it('le design system chargé est bien celui des fichiers du dépôt (aucune fixture)', () => {
+    const tokens = JSON.parse(readFileSync(path.join(repo, 'src/styles/tokens.json'), 'utf8')) as Record<string, unknown>
+    const zones = JSON.parse(readFileSync(path.join(repo, 'src/editor/zones.json'), 'utf8')) as { zones: Record<string, unknown> }
+    assert.deepEqual(Object.keys(ds.tokens), Object.keys(tokens))
+    assert.deepEqual(Object.keys(ds.zones), Object.keys(zones.zones))
+    assert.equal(ds.rules, rules)
+    assert.deepEqual(ds.warnings, [])
+  })
+
+  it('chaque rôle NON vide de la politique est cité dans RULES.md par au moins un de ses tokens', () => {
+    const present = Object.entries(roles()).filter(([, set]) => set.size > 0)
+    assert.ok(present.length >= 6)
+    for (const [role, set] of present) {
+      assert.ok([...set].some((reference) => rules.includes(reference)), `rôle « ${role} » (${[...set].join(', ')}) absent de RULES.md`)
+    }
+    // L'échelle d'espacement entière est annoncée (premier et dernier token).
+    const space = [...roles().space]
+    assert.ok(space.length > 0, 'Conduit a des tokens d’espacement')
+    assert.ok(rules.includes(space[0]) && rules.includes(space[space.length - 1]), 'bornes de l’échelle d’espacement')
+  })
+
+  it('les rôles vides sont exactement ceux que RULES.md dit absents, et rien ne dit « no spacing »', () => {
+    const empty = Object.entries(roles()).filter(([, set]) => set.size === 0).map(([role]) => role).sort()
+    // Si Conduit gagne un token d'arrondi, d'ombre, de graisse ou de taille, ce test force la mise à jour de RULES.md.
+    assert.deepEqual(empty, ['fontSize', 'radius', 'shadow', 'weight'])
+    assert.ok(rules.includes('There is no radius, shadow or weight token'))
+    assert.ok(!/no (generic )?spacing/i.test(rules), 'RULES.md nie les tokens d’espacement')
+    assert.ok(!/`gap`[^\n]*?: `0`;/.test(rules), 'gap limité à 0')
+  })
+
+  it('points de rupture : exactement ceux du groupe breakpoint de tokens.json', () => {
+    assert.equal(ds.breakpointSource, 'tokens')
+    assert.deepEqual(ds.breakpoints, ['50.625rem', '64rem', '80rem', '90rem'])
+    const cited = [...rules.matchAll(/@media \(min-width: ([^)]+)\)/g)].map((match) => match[1])
+    assert.deepEqual([...new Set(cited)], ds.breakpoints)
+  })
+
+  it('styles de texte : chaque raccourci a son tracking, et la paire est une consigne', () => {
+    for (const reference of roles().textStyle) assert.ok(ds.policy.trackingOf.has(reference), `${reference} sans tracking`)
+    assert.ok(rules.includes('always goes with `letter-spacing: var(--text-title-xl-tracking)`'))
+    assert.equal(problemOf(ds, 'font', 'var(--text-title-xl)'), null)
+  })
+
+  it('chaque réglage de zones.json lié à un groupe est permis par la politique ET par la ligne de RULES.md', () => {
+    const phrase: Record<string, string> = { space: 'a spacing token', color: 'a color T', text: 'a text style T' }
+    const accepted = rules.slice(rules.indexOf('The automatic check only accepts'), rules.indexOf('## Design system gap'))
+    const bullets = accepted.split('\n')
+    const controls = Object.values(ds.controls).filter((control) => 'group' in control && control.group)
+    assert.ok(controls.length >= 5)
+    for (const control of controls) {
+      const { property, group } = control as { property: string; group: string }
+      // Le groupe text porte aussi les trackings, qui vont dans letter-spacing (pas dans font).
+      for (const reference of [...ds.policy.byGroup[group]].filter((ref) => !roles().tracking.has(ref))) {
+        assert.equal(problemOf(ds, property, reference), null, `${property}: ${reference}`)
+      }
+      const bullet = bullets.find((line) => line.includes(`\`${property}\``))
+      assert.ok(bullet, `« ${property} » absent de la liste des valeurs permises`)
+      assert.ok(Object.hasOwn(phrase, group), `groupe « ${group} » sans phrase attendue`)
+      // Pour padding / margin, la ligne commune cite « their variants » ; gap a sa propre mention.
+      assert.ok(bullet.includes(phrase[group]), `« ${property} » : la ligne de RULES.md ne permet pas ${phrase[group]}`)
+    }
+  })
+
+  it('le prompt de la demande et le prompt système disent la même chose des espacements', () => {
+    const zone = Object.keys(ds.zones)[0]
+    const prompt = buildPrompt(ds, { page: '/', targets: [{ zone, index: 0, label: 'x' }], scope: ['style'], note: 'n', viewport: 375 })
+    assert.match(prompt, /- Spacing: var\(--space-8\) \(8 px\)/)
+    assert.ok(rules.includes('`var(--space-8)`'))
+  })
+})
+
+const problemOf = (ds: DesignSystem, property: string, value: string) => checkValue(property, value, ds.policy, { hover: false })

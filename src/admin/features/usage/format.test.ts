@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { formatDay, formatWhen, requestText, statusNote } from './format'
+import { formatDay, formatWhen, requestText, sinceLaunchHint, statusNote } from './format'
 
 const NOW = new Date('2026-09-27T16:00:00Z')
 
@@ -39,5 +39,27 @@ describe('requestText et statusNote', () => {
     expect(statusNote('failed')).toBe('Failed')
     expect(statusNote('rejected')).toBe('Nothing changed')
     expect(statusNote('done')).toBeUndefined()
+  })
+})
+
+describe('sinceLaunchHint (carte Since launch, FOLLOWUPS #33)', () => {
+  const allTime = { requests: 3, totals: { inputTokens: 4_900_000, outputTokens: 560_000, costUsd: 18.9 }, since: '2026-09-10T09:00:00Z' }
+
+  it('date de mise en ligne du manifeste (adminConfig.site.launchedAt) : « online since »', () => {
+    expect(sinceLaunchHint(allTime, '2026-09-02')).toBe('4.9M input · 560k output tokens · online since Sep 2, 2026')
+    // Date seule : lue en UTC, jamais décalée d'un jour par le fuseau du serveur.
+    expect(sinceLaunchHint(allTime, '2026-09-02', 'America/Los_Angeles')).toBe('4.9M input · 560k output tokens · online since Sep 2, 2026')
+    expect(sinceLaunchHint(allTime, '2026-09-02T08:00:00Z', 'UTC')).toBe('4.9M input · 560k output tokens · online since Sep 2, 2026')
+  })
+
+  it('sans date (ou date invalide) : repli sur la première demande', () => {
+    expect(sinceLaunchHint(allTime, undefined, 'UTC')).toBe('4.9M input · 560k output tokens · since Sep 10, 2026')
+    expect(sinceLaunchHint(allTime, 'soon', 'UTC')).toBe('4.9M input · 560k output tokens · since Sep 10, 2026')
+  })
+
+  it('aucune demande', () => {
+    const none = { requests: 0, totals: { inputTokens: 0, outputTokens: 0, costUsd: 0 } }
+    expect(sinceLaunchHint(none)).toBe('No AI requests yet.')
+    expect(sinceLaunchHint(none, '2026-09-02')).toBe('No AI requests yet · online since Sep 2, 2026')
   })
 })

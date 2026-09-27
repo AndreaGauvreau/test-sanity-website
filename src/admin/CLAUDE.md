@@ -18,6 +18,7 @@ site Kuartz. Le site n'est connu que par `src/admin.config.ts` (type `AdminConfi
 | `core/sanity/` | Clients Sanity serveur (lecture, écriture au nom de l'utilisateur) | — |
 | `core/engine/` | Client du moteur IA, relais signé, moteur simulé (`ENGINE_MOCK`) | — |
 | `core/usage/` | Journal `aiUsage` : lecture et agrégats | B5, G4 |
+| `core/autosave.ts` | État « Draft saved automatically » partagé (fichier seul, pas de CLAUDE.md propre : contrat de l'orchestrateur, commenté en tête) | Top bar |
 | `ui/` | Kit du Design System (tokens `--k-*`, icônes, composants) | tous |
 | `shell/` | Coque : Sidebar, Top bar, garde < 1024 px | tous |
 | `features/overview`, `general`, `team` | Réglages | B1, B2, B4 |
@@ -25,6 +26,8 @@ site Kuartz. Le site n'est connu que par `src/admin.config.ts` (type `AdminConfi
 | `features/pages` | Contenu et SEO des pages, modèle SEO d'article | C1, C2, C6 |
 | `features/cms`, `media` | Collections (liste, fiche), médiathèque | C3, C4, G5, C5 |
 | `features/publish` | Publication, versions, états de la Top bar | E1, E2, G3 |
+| `features/ai-editor/page` | Écran plein écran `/admin/editor` : assemble le magasin, la sidebar et l'aperçu | D1-D3, G1 |
+| `features/ai-editor/state` | Magasin partagé sidebar ⇄ aperçu (sélection, mode, taille, demande, modification en attente) | D1-D3 |
 | `features/ai-editor/sidebar` | Conversation avec Claude (9 états) | D1-D3, G2 |
 | `features/ai-editor/canvas` | Aperçu, sélection, barre d'outils | D1-D3, G1 |
 | `features/ask-ai` | Assistant en lecture seule | G4 |
@@ -43,5 +46,7 @@ Le moteur IA est hors de ce dossier : `engine/` (voir `engine/CLAUDE.md`).
 
 ## Chaque module
 
-A son `CLAUDE.md` (modèle : `docs/admin/CONTEXT-TEMPLATE.md`) : utilité, fichiers, contrats, comportement, forces,
-faiblesses, points sensibles, pièges, recettes de modification, tests, décisions, demandes de contrat.
+Chaque dossier du tableau (sauf le fichier `core/autosave.ts`) a son `CLAUDE.md` (modèle :
+`docs/admin/CONTEXT-TEMPLATE.md`) : utilité, fichiers, contrats, comportement, forces, faiblesses, points sensibles,
+pièges, recettes de modification, tests, décisions, demandes de contrat. Claude Code le charge dès qu'il lit un fichier
+du dossier. Demandes croisées en cours : `docs/admin/FOLLOWUPS.md`.

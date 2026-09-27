@@ -4,7 +4,7 @@ import { act, cleanup, fireEvent, render, screen, within } from '@testing-librar
 import { MotionGlobalConfig } from 'motion/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { EngineErrorBody } from '@/admin/core/contracts'
-import { createEditorMock } from '@/admin/core/engine/mock/editor'
+import { createEditorMock, MOCK_EDITOR_MESSAGES } from '@/admin/core/engine/mock/editor'
 import type { MockEngineRequest } from '@/admin/core/engine/mock/types'
 import { EditorStoreProvider, useEditorStore } from '../state/context'
 import type { EditorStore } from '../state/store'
@@ -287,6 +287,34 @@ describe('EditorSidebar — les 9 états de G2', () => {
     expect(screen.getByText('Claude is working on another page. You can send a request when it’s done.')).toBeTruthy()
     expect(screen.getByRole('textbox')).toHaveProperty('disabled', true)
     expect(engine.calls.filter((c) => c === 'POST editor/requests')).toHaveLength(1)
+  })
+
+  it('409 publishing (publication en cours) : message du moteur, la demande reste dans le champ', async () => {
+    let running = true
+    engine.mock = createEditorMock({ publish: { isPublishing: () => running } })
+    mount()
+    await tick(0)
+    await ask('Make the title bigger', ['Style'])
+    await tick(0)
+    expect(screen.getByRole('alert').textContent).toBe(MOCK_EDITOR_MESSAGES.publishing)
+    expect((screen.getByRole('textbox', { name: 'Describe the change' }) as HTMLTextAreaElement).value).toBe('Make the title bigger')
+    expect(engine.mock!.world.sims.size).toBe(0)
+    running = false
+    await u.click(screen.getByRole('button', { name: 'Apply' }))
+    await tick(0)
+    expect(screen.queryByRole('alert')).toBeNull()
+    expect(engine.calls.filter((c) => c === 'POST editor/requests')).toHaveLength(2)
+  })
+
+  it('503 unavailable (scénario « no-claude ») : message du moteur, rien n’est envoyé à Claude', async () => {
+    engine.mock!.setScenario('no-claude')
+    mount()
+    await tick(0)
+    await ask('Put solved in bold', ['Text'])
+    await tick(0)
+    expect(screen.getByRole('alert').textContent).toBe(MOCK_EDITOR_MESSAGES.noClaude)
+    expect((screen.getByRole('textbox', { name: 'Describe the change' }) as HTMLTextAreaElement).value).toBe('Put solved in bold')
+    expect(engine.mock!.world.sims.size).toBe(0)
   })
 
   it('sondage : erreur affichée (jamais avalée), retour à la normale, arrêt au démontage', async () => {

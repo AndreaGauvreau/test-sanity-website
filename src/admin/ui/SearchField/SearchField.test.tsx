@@ -1,4 +1,6 @@
 /** @vitest-environment jsdom */
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -67,5 +69,25 @@ describe('Input', () => {
   it('libellé masqué reste le nom accessible', () => {
     render(<Input label="Hidden label" hideLabel />)
     expect(screen.getByLabelText('Hidden label')).toBeTruthy()
+  })
+})
+
+describe('SearchField size (FOLLOWUPS #38)', () => {
+  it('medium par défaut, small sur demande (barre d’outils)', () => {
+    const { rerender } = render(<SearchField shortcut={false} />)
+    const wrapper = () => screen.getByRole('searchbox').parentElement!
+    expect(wrapper().getAttribute('data-size')).toBe('medium')
+    rerender(<SearchField shortcut={false} size="small" />)
+    expect(wrapper().getAttribute('data-size')).toBe('small')
+    expect(wrapper().className).toMatch(/small/)
+  })
+
+  it('small = 28 px, medium = 30 px (règles CSS)', () => {
+    const css = readFileSync(join(__dirname, 'SearchField.module.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
+    const rule = (selector: string) => css.match(new RegExp(`(^|\\n)\\${selector}\\s*\\{([^}]*)\\}`))?.[2] ?? ''
+    expect(rule('.search')).toMatch(/height:\s*30px/)
+    expect(rule('.small')).toMatch(/height:\s*28px/)
+    // .small vient après .search (même spécificité) : c'est lui qui l'emporte.
+    expect(css.indexOf('.small {')).toBeGreaterThan(css.indexOf('.search {'))
   })
 })

@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest'
 
-import { parseScriptCode, resolveScriptParts, scriptsForPage, scriptVariables, type SiteScript } from './site-scripts'
+import { signableScript, signScript } from './script-signature'
+import {
+  parseScriptCode,
+  resolveScriptParts,
+  scriptsForPage,
+  scriptVariables,
+  scriptVariablesOutsideStrings,
+  verifiedScripts,
+  type SiteScript,
+} from './site-scripts'
 
 describe('parseScriptCode', () => {
   it('découpe <script>, <script src>, JSON-LD et <style>, dans l’ordre', () => {
@@ -60,5 +69,86 @@ describe('resolveScriptParts', () => {
 
   it('scriptVariables', () => {
     expect(scriptVariables('<script>"{{title}}" + "{{date}}"</script>')).toEqual(['title', 'date'])
+  })
+})
+
+// SEC-01 : une valeur d'article (titre, extrait…) ne doit jamais sortir de la chaîne qui la contient,
+// quel que soit le délimiteur (", ', `), ni devenir du code hors chaîne.
+describe('resolveScriptParts — valeurs inertes (SEC-01)', () => {
+  const hostile = `"'\`\${globalThis.pwned = 1} */ </script>\\ \n  end`
+
+  function run(content: string): Record<string, unknown> {
+    const sandbox: Record<string, unknown> = {}
+    new Function('globalThis', content)(sandbox)
+    return sandbox
+  }
+
+  it.each([
+    ['guillemets doubles', '"{{title}}"'],
+    ['apostrophes', "'{{title}}'"],
+    ['accents graves', '`{{title}}`'],
+    ['accents graves, texte autour', '`Read: {{title}} (${1 + 1})`'],
+  ])('%s : la valeur reste une chaîne, rien n’est exécuté', (_label, literal) => {
+    const { parts } = parseScriptCode(`<script>globalThis.t = ${literal}</script>`)
+    const [resolved] = resolveScriptParts(parts, { title: hostile })
+    expect(resolved.content).not.toContain('</script')
+    const sandbox = run(resolved.content)
+    expect(sandbox.pwned).toBeUndefined()
+    expect(String(sandbox.t)).toContain(hostile)
+  })
+
+  it('hors chaîne (code, commentaire) : variable laissée telle quelle, jamais remplacée', () => {
+    const code = '<script>/* {{title}} */ // {{title}}\nglobalThis.t = {{title}}; globalThis.u = "{{title}}"</script>'
+    const [resolved] = resolveScriptParts(parseScriptCode(code).parts, { title: 'alert(1)' })
+    expect(resolved.content).toBe('/* {{title}} */ // {{title}}\nglobalThis.t = {{title}}; globalThis.u = "alert(1)"')
+  })
+
+  it('expression d’un gabarit `${…}` : code, pas chaîne', () => {
+    const [resolved] = resolveScriptParts(parseScriptCode('<script>globalThis.t = `a ${ {{title}} } b {{title}}`</script>').parts, {
+      title: 'x',
+    })
+    expect(resolved.content).toBe('globalThis.t = `a ${ {{title}} } b x`')
+  })
+
+  it('expression régulière et division : les guillemets qu’elles contiennent n’ouvrent pas de chaîne', () => {
+    const code = `<script>globalThis.r = /"/.test("a"); globalThis.d = 4 / 2 / 1; globalThis.t = {{title}}</script>`
+    const [resolved] = resolveScriptParts(parseScriptCode(code).parts, { title: 'alert(1)' })
+    expect(resolved.content).toContain('globalThis.t = {{title}}')
+  })
+
+  it('scriptVariablesOutsideStrings : variables placées hors d’une chaîne (B3 les refuse)', () => {
+    expect(scriptVariablesOutsideStrings('<script>var a = "{{title}}"; var b = {{slug}}</script>')).toEqual(['slug'])
+    expect(scriptVariablesOutsideStrings('<script type="application/ld+json">{"a":"{{title}}"}</script>')).toEqual([])
+    expect(scriptVariablesOutsideStrings('<style>.x::after { content: "{{title}}" }</style>')).toEqual([])
+  })
+})
+
+// SEC-04 : seul un script signé par l'admin (secret serveur) est injecté.
+describe('verifiedScripts (SEC-04)', () => {
+  const secret = 'x'.repeat(40)
+  const base: SiteScript = {
+    _key: 'k1',
+    name: 'Tag',
+    placement: 'bodyEnd',
+    page: 'all',
+    run: 'once',
+    enabled: true,
+    code: '<script>window.a = 1</script>',
+  }
+
+  it('script signé : gardé ; modifié hors admin, non signé, ou secret absent : écarté', async () => {
+    const signature = await signScript(secret, signableScript(base))
+    const signed = { ...base, signature }
+    const tampered = { ...signed, _key: 'k2', code: '<script>steal()</script>' }
+    const unsigned = { ...base, _key: 'k3' }
+    expect((await verifiedScripts([signed, tampered, unsigned], secret)).map((s) => s._key)).toEqual(['k1'])
+    expect(await verifiedScripts([signed], undefined)).toEqual([])
+    expect(await verifiedScripts(null, secret)).toEqual([])
+  })
+
+  it('enabled absent = actif (même chaîne signée que enabled: true)', async () => {
+    const signature = await signScript(secret, signableScript(base))
+    const legacy = { ...base, enabled: null, signature }
+    expect(await verifiedScripts([legacy], secret)).toHaveLength(1)
   })
 })

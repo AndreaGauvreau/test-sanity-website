@@ -8,14 +8,15 @@ import type { Session } from '@/admin/core/contracts/session'
 import { SanityWriteError } from '@/admin/core/sanity/paths'
 
 import { CODE_MAX } from './scripts'
-import { createScript, deleteScript, moveScript, setScriptEnabled, updateScript } from './script-writes'
+import { createScript, deleteScript, moveScript, resignScript, setScriptEnabled, updateScript } from './script-writes'
 
 /**
  * Server actions de B3 (scripts du site). Chacune :
  * 1. `requireCapability('settings.code', 'action')` EN PREMIER (Kuartz seulement) — le code est injecté tel quel
  *    sur le site publié : c'est une exécution de code voulue, réservée à ce droit ;
  * 2. valide ses entrées (zod, puis `checkScript` + FieldDef dans script-writes.ts) ;
- * 3. écrit le brouillon de siteSettings, puis `refresh()` (la liste B3 est relue par le Server Component).
+ * 3. écrit le brouillon de siteSettings (scripts SIGNÉS, SEC-04 — voir script-writes.ts), puis `refresh()` (la liste
+ *    B3 est relue par le Server Component).
  * Réponse : `{ ok: true }` ou `{ ok: false, error, fieldErrors? }` (messages anglais prêts à afficher).
  */
 
@@ -35,6 +36,20 @@ const saveInput = z.object({ key: key.optional(), values }).strict()
 const enabledInput = z.object({ key, enabled: z.boolean() }).strict()
 const keyInput = z.object({ key }).strict()
 const moveInput = z.object({ key, direction: z.enum(['up', 'down']) }).strict()
+const resignInput = z
+  .object({
+    key,
+    expected: z
+      .object({
+        placement: z.enum(['headEnd', 'bodyStart', 'bodyEnd']),
+        page: z.string().min(1).max(100),
+        run: z.enum(['once', 'everyPageVisit']),
+        code: z.string().max(CODE_MAX + 1),
+        enabled: z.boolean(),
+      })
+      .strict(),
+  })
+  .strict()
 
 const GENERIC = "Couldn't save the script. Please try again."
 
@@ -77,6 +92,17 @@ export async function setScriptEnabledAction(input: { key: string; enabled: bool
 
 export async function deleteScriptAction(input: { key: string }): Promise<ScriptActionResult> {
   return run(input, keyInput, (session, data) => deleteScript(session, data.key))
+}
+
+/**
+ * Re-sign (SEC-04) : signe un script modifié hors de l'admin, après revue. `expected` = valeurs affichées dans B3 ;
+ * refus si le script a changé depuis.
+ */
+export async function resignScriptAction(input: {
+  key: string
+  expected: { placement: 'headEnd' | 'bodyStart' | 'bodyEnd'; page: string; run: 'once' | 'everyPageVisit'; code: string; enabled: boolean }
+}): Promise<ScriptActionResult> {
+  return run(input, resignInput, (session, data) => resignScript(session, data.key, data.expected))
 }
 
 export async function moveScriptAction(input: { key: string; direction: 'up' | 'down' }): Promise<ScriptActionResult> {

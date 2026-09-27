@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 import type { CollectionDef } from '@/admin/core/contracts/manifest'
 import adminConfig from '@/admin.config'
@@ -8,6 +8,7 @@ import { imageUrl, parseImageId } from './image-url'
 import { isStrictlyOrdered, isValidRank, keyBetween, planMove, rankAfterLast, sortByRank, targetIndexFromNeighbours } from './order'
 import { buildRows, countLabel, formatDate, type CmsRow } from './rows'
 import { articlePathFor, slugify, uniqueSlug } from './slug'
+import { partitionForDelete, runStage, stagedFrom, statusMenu } from './staging'
 import { computeStatus, deepEqual } from './status'
 
 const blog = adminConfig.collections.find((c) => c.id === 'blog') as CollectionDef
@@ -225,5 +226,47 @@ describe('slug, dates, libellés, URL d’image', () => {
     expect(parseImageId('image-abc-10x20-png')).toEqual({ hash: 'abc', width: 10, height: 20, ext: 'png' })
     expect(parseImageId('file-abc-pdf')).toBeNull()
     expect(imageUrl('image-abc-10x20-png', env, { w: 5 })).toBe('https://cdn.sanity.io/images/proj/development/abc-10x20.png?w=5&auto=format')
+  })
+})
+
+describe('staging (dépublier / supprimer au prochain Publish, #31)', () => {
+  const pending = (id: string, action?: 'publish' | 'unpublish' | 'delete') => ({ id, type: 'post', path: id, summary: '', updatedAt: '2026-09-27T00:00:00Z', ...(action ? { action } : {}) })
+
+  it('stagedFrom : seulement unpublish / delete, seulement les ids de la collection', () => {
+    const status = { pending: { content: [pending('a', 'unpublish'), pending('b', 'delete'), pending('c'), pending('z', 'delete')], design: [], total: 4 } }
+    expect(stagedFrom(status, ['a', 'b', 'c'])).toEqual({ a: 'unpublish', b: 'delete' })
+    expect(stagedFrom(null, ['a'])).toEqual({})
+  })
+
+  it('statusMenu : actions selon le statut et l’état programmé', () => {
+    expect(statusMenu('draft').map((a) => a.id)).toEqual(['delete-draft'])
+    expect(statusMenu('live').map((a) => a.id)).toEqual(['unpublish', 'delete-live'])
+    expect(statusMenu('changed').map((a) => a.id)).toEqual(['discard', 'unpublish', 'delete-live'])
+    expect(statusMenu('live', 'unpublish')).toEqual([{ id: 'unstage', label: 'Keep online', icon: 'eye' }])
+    expect(statusMenu('changed', 'delete').map((a) => a.id)).toEqual(['unstage'])
+  })
+
+  it('partitionForDelete : brouillons, en ligne, déjà programmés', () => {
+    const rows = [
+      { id: 'd', status: 'draft' as const },
+      { id: 'l', status: 'live' as const },
+      { id: 'c', status: 'changed' as const },
+      { id: 's', status: 'live' as const },
+    ]
+    const out = partitionForDelete(rows, { s: 'delete' })
+    expect(out.drafts.map((r) => r.id)).toEqual(['d'])
+    expect(out.live.map((r) => r.id)).toEqual(['l', 'c'])
+    expect(out.alreadyStaged.map((r) => r.id)).toEqual(['s'])
+  })
+
+  it('runStage : appelle stage / unstage et renvoie l’état ; erreur du moteur → message', async () => {
+    const status = { state: 'pending' as const, pending: { content: [pending('a', 'delete')], design: [], total: 1 }, deploy: { mode: 'local' as const } }
+    const client = { stage: vi.fn(async () => status), unstage: vi.fn(async () => ({ ...status, pending: { ...status.pending, content: [] } })) }
+    expect(await runStage(client, ['a'], 'a', 'delete')).toEqual({ ok: true, staged: { a: 'delete' } })
+    expect(client.stage).toHaveBeenCalledWith({ kind: 'delete', id: 'a' })
+    expect(await runStage(client, ['a'], 'a', null)).toEqual({ ok: true, staged: {} })
+    expect(client.unstage).toHaveBeenCalledWith('a')
+    const failing = { stage: vi.fn(async () => Promise.reject(new Error('A publish is running.'))), unstage: vi.fn() }
+    expect(await runStage(failing, ['a'], 'a', 'unpublish')).toEqual({ ok: false, error: 'A publish is running.' })
   })
 })

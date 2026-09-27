@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { buildDevSession, decideDevAutologin, hostnameOf, isLocalHost, resetDevWarnings, warnIfDevAutologinRefused } from './dev'
+import { buildDevSession, decideDevAutologin, hostnameOf, isAdminClosed, isLocalHost, resetDevWarnings, warnIfDevAutologinRefused } from './dev'
 
 const dev = { NODE_ENV: 'development', ADMIN_DEV_AUTOLOGIN: 'kuartz' }
 
@@ -16,6 +16,26 @@ describe('isLocalHost', () => {
     expect(isLocalHost('127.0.0.1.evil.com')).toBe(false)
     expect(isLocalHost('localhost.evil.com:4040')).toBe(false)
     expect(isLocalHost(null)).toBe(false)
+  })
+  it('régression SEC-03 : forme stricte host[:port], jamais un préfixe « [::1] » suivi d’autre chose', () => {
+    expect(isLocalHost('[::1]evil.com')).toBe(false)
+    expect(isLocalHost('[::1]:4040evil')).toBe(false)
+    expect(isLocalHost('[::1].evil.com')).toBe(false)
+    expect(isLocalHost('127.0.0.1:')).toBe(false)
+    expect(isLocalHost('127.0.0.1:123456')).toBe(false)
+    expect(isLocalHost('localhost:4040:1')).toBe(false)
+    expect(isLocalHost('::1')).toBe(false)
+    expect(isLocalHost('LOCALHOST:4040')).toBe(true)
+    expect(hostnameOf('[::1]evil.com')).toBe('')
+    expect(decideDevAutologin({ env: dev, host: '[::1]evil.com' })).toEqual({ enabled: false, reason: 'not-local' })
+  })
+})
+
+describe('isAdminClosed', () => {
+  it('serveur d’aperçu (KZ_EDITOR_PREVIEW=1) : jamais de session, même pour les routes hors du matcher du proxy', () => {
+    expect(isAdminClosed({ KZ_EDITOR_PREVIEW: '1' })).toBe(true)
+    expect(isAdminClosed({})).toBe(false)
+    expect(isAdminClosed({ KZ_EDITOR_PREVIEW: '0' })).toBe(false)
   })
 })
 

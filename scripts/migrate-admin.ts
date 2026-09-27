@@ -21,11 +21,17 @@
  *      tirées des photos du site, texte alternatif sur l'asset ;
  *   6. deux témoignages de plus, réponses publiées des 8 questions de la FAQ, un script d'exemple
  *      (JSON-LD BlogPosting sur les pages article).
+ * Signature (toujours, SEC-04) :
+ *   7. signe les scripts d'exemple de siteSettings (publié et brouillon) dont le contenu est IDENTIQUE à
+ *      celui du dépôt (src/sanity/seed/demo-script-signatures.ts), avec SCRIPTS_SIGNING_SECRET (.env.local) ;
+ *      le site n'injecte que les scripts signés. Secret absent : étape sautée (le dit). Les autres scripts ne
+ *      sont signés que par l'admin (B3).
  */
 import { generateKeyBetween, generateNKeysBetween } from 'fractional-indexing'
 import { getCliClient } from 'sanity/cli'
 
 import { assertNotProduction } from '../src/sanity/lib/dataset-guard'
+import { planDemoScriptSignatures } from '../src/sanity/seed/demo-script-signatures'
 import { runDemo } from './lib/demo'
 import { socialImageBuffer } from './lib/images'
 
@@ -197,6 +203,30 @@ async function ensureSingletons() {
   }
 }
 
+// ─── 7. Signature des scripts d'exemple (SEC-04) ─────────────────────────────────────────
+
+async function signDemoScripts() {
+  const secret = process.env.SCRIPTS_SIGNING_SECRET
+  if (!secret || secret.length < 32) {
+    log('scripts : SCRIPTS_SIGNING_SECRET absent ou trop court — signature des scripts d’exemple sautée')
+    return
+  }
+  const documents = await client.fetch<{ _id: string; scripts?: { _key: string }[] }[]>(
+    `*[_id in ["siteSettings", "drafts.siteSettings"]]{ _id, scripts }`,
+    {},
+    { perspective: 'raw' },
+  )
+  const plan = await planDemoScriptSignatures(documents, secret)
+  log(`scripts : ${plan.length} script(s) d'exemple à signer`)
+  if (dryRun) return
+  for (const item of plan) {
+    await client
+      .patch(item.documentId)
+      .set({ [`scripts[_key=="${item.key}"].signature`]: item.signature })
+      .commit()
+  }
+}
+
 async function main() {
   const dataset = assertNotProduction(client)
   log(`Migration admin → dataset ${dataset}${demo ? ' (+ démo)' : ''}`)
@@ -204,6 +234,7 @@ async function main() {
   for (const type of Object.keys(CURRENT_ORDER)) await migrateOrderRank(type)
   await ensureSingletons()
   if (demo) await runDemo(client, { dryRun, log })
+  await signDemoScripts()
   log('Terminé.')
 }
 

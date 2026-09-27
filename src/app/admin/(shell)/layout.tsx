@@ -1,40 +1,23 @@
+import { headers } from 'next/headers'
+import { notFound } from 'next/navigation'
 import type { ReactNode } from 'react'
 
-import { adminConfig } from '@/admin.config'
-import { getDevLoginState, requireSession } from '@/admin/core/auth/session'
-import { toPublicSession } from '@/admin/core/contracts/session'
-import { AskAiProvider } from '@/admin/features/ask-ai/AskAiProvider'
-import { PublishStatusBar } from '@/admin/features/publish/PublishStatusBar'
-import { getCollectionCounts } from '@/admin/shell/counts'
-import { ShellFrame } from '@/admin/shell/ShellFrame'
-import { ShellSidebar } from '@/admin/shell/ShellSidebar'
-import { buildShellSidebarProps } from '@/admin/shell/sidebar-props'
+import { REQUEST_PATH_HEADER } from '@/admin/core/auth/constants'
+import { requireSession } from '@/admin/core/auth/session'
+import { isShellPathRefused } from '@/admin/shell/access'
+import { loadShellSidebarProps, ShellChrome } from '@/admin/shell/ShellChrome'
 
 /**
  * Coque des écrans de l'admin (B, C, E) : Sidebar + Top bar + zone de contenu qui défile, sous <AskAiProvider>.
- * requireSession EN PREMIER (sans session : redirection vers A1 puis retour ici). Chaque page appelle aussi sa
- * propre garde : un layout ne se recalcule pas à chaque navigation.
+ * 1. requireSession EN PREMIER (sans session : redirection vers A1 puis retour ici).
+ * 2. Droit de la page d'après l'URL (en-tête x-kz-path, toujours réécrit par le proxy) : refusé → notFound() ICI,
+ *    avant la frontière <Suspense> de loading.tsx, donc une vraie 404 (rendue par src/app/admin/not-found.tsx, dans
+ *    la coque). Chaque page garde quand même sa propre garde : un layout ne se recalcule pas à la navigation client.
  * Hors coque : /admin/login (A1), /admin/auth/callback, /admin/editor (plein écran).
  */
 export default async function ShellLayout({ children }: { children: ReactNode }) {
   const session = await requireSession()
-  const [counts, devState] = await Promise.all([
-    getCollectionCounts(adminConfig.collections),
-    session.dev ? getDevLoginState() : Promise.resolve(null),
-  ])
-  const sidebar = buildShellSidebarProps({
-    config: adminConfig,
-    session: toPublicSession(session),
-    counts,
-    hubUrlEnv: process.env.KUARTZ_HUB_URL,
-    devState,
-  })
-
-  return (
-    <AskAiProvider>
-      <ShellFrame sidebar={<ShellSidebar {...sidebar} />} topBar={<PublishStatusBar siteUrl={adminConfig.site.url} />}>
-        {children}
-      </ShellFrame>
-    </AskAiProvider>
-  )
+  if (isShellPathRefused(session.role, (await headers()).get(REQUEST_PATH_HEADER))) notFound()
+  const sidebar = await loadShellSidebarProps(session)
+  return <ShellChrome sidebar={sidebar}>{children}</ShellChrome>
 }

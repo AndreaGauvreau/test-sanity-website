@@ -22,6 +22,7 @@ const actions = vi.hoisted(() => ({
   publishChangesAction: vi.fn(),
   retryPublishAction: vi.fn(),
   discardChangeAction: vi.fn(),
+  unstageChangeAction: vi.fn(),
   loadDiffAction: vi.fn(),
   rollbackVersionAction: vi.fn(),
 }))
@@ -154,6 +155,43 @@ describe('E1 · Pending', () => {
     expect(fetchStatus).toHaveBeenCalled()
   })
 
+  it('dépublier / supprimer programmés : tag de l’action, bouton qui annule (sans Discard), erreur affichée', async () => {
+    const user = userEvent.setup()
+    const staged: PublishStatus = {
+      ...PENDING,
+      pending: {
+        ...PENDING.pending,
+        content: [
+          { ...PENDING.pending.content[1], action: 'delete', summary: 'Deleted from the site and the CMS' },
+          { id: 'post-old', type: 'post', path: 'Blog › Old post', summary: 'Taken off the site; the draft is kept', action: 'unpublish', author: 'Paul', updatedAt: new Date(now - 60_000).toISOString() },
+        ],
+        design: [],
+        total: 2,
+      },
+    }
+    const after: PublishStatus = { ...staged, pending: { ...staged.pending, content: staged.pending.content.slice(0, 1), total: 1 } }
+    actions.unstageChangeAction.mockResolvedValueOnce({ ok: true, data: after })
+    renderPending(staged)
+    const content = screen.getByRole('region', { name: 'Content' })
+    expect(within(content).getByText('Delete')).toBeTruthy()
+    expect(within(content).getByText('Unpublish')).toBeTruthy()
+    expect(within(content).queryByRole('button', { name: /^Discard/ })).toBeNull()
+    await user.click(within(content).getByRole('button', { name: 'Keep online: Blog › Old post' }))
+    expect(actions.unstageChangeAction).toHaveBeenCalledWith({ id: 'post-old' })
+    expect(actions.discardChangeAction).not.toHaveBeenCalled()
+    await waitFor(() => expect(screen.queryByText('Blog › Old post')).toBeNull())
+
+    actions.unstageChangeAction.mockResolvedValueOnce({ ok: false, status: 404, code: 'not_found', message: 'Nothing is scheduled for this item anymore.' })
+    await user.click(within(content).getByRole('button', { name: 'Don’t delete: Blog › Carrier portals: a checklist' }))
+    expect((await screen.findByRole('alert')).textContent).toBe('Nothing is scheduled for this item anymore.')
+  })
+
+  it('View ↗ d’une modification de design : l’éditeur IA sur la page modifiée', () => {
+    renderPending({ ...PENDING, pending: { ...PENDING.pending, design: [{ ...PENDING.pending.design[0], page: '/blog' }] } })
+    const design = screen.getByRole('region', { name: 'Design' })
+    expect(within(design).getByRole('link', { name: /^View Hero · Title/ }).getAttribute('href')).toBe('/admin/editor?page=%2Fblog')
+  })
+
   it('vide : « Everything is published. », Publish grisé', () => {
     renderPending({ state: 'idle', pending: { content: [], design: [], total: 0 }, deploy: { mode: 'local' } })
     expect(screen.getByRole('heading', { name: 'Everything is published.' })).toBeTruthy()
@@ -182,6 +220,53 @@ describe('E1 · Pending', () => {
     expect(screen.getByText('Failed:', { exact: false })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Retry' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'See error' })).toBeTruthy()
+  })
+
+  it('FOLLOWUPS #41 : carte « After “Publish” » en ChecklistItem du kit, See error sur l’étape en échec seulement', () => {
+    const { container } = renderPending({
+      ...PENDING,
+      state: 'failed',
+      run: {
+        id: 'r',
+        startedAt: '',
+        startedBy: 'Marie',
+        step: 3,
+        steps: [
+          { step: 1, label: '', status: 'done' },
+          { step: 2, label: '', status: 'skipped', detail: 'No code changed.' },
+          { step: 3, label: '', status: 'failed' },
+          { step: 4, label: '', status: 'waiting' },
+        ],
+        error: { message: 'Vercel build failed.', log: 'log' },
+      },
+    })
+    const card = screen.getByRole('region', { name: 'After “Publish”' })
+    const items = within(card).getAllByRole('listitem')
+    expect(items.map((li) => li.getAttribute('data-state'))).toEqual(['done', 'skipped', 'failed', 'todo'])
+    // Préfixe d'état du kit (CHECKLIST_STATE_LABELS) lu avant le titre.
+    expect(items[1].textContent).toContain('Skipped: Only if code changed: draft → main')
+    expect(items[1].textContent).toContain('No code changed.')
+    expect(within(items[2]).getByRole('button', { name: 'See error' })).toBeTruthy()
+    expect(within(items[0]).queryByRole('button')).toBeNull()
+    expect(within(items[3]).queryByRole('button')).toBeNull()
+    // Plus de Checklist item composé localement.
+    expect(container.querySelector('[class*="checkIcon"]')).toBeNull()
+  })
+
+  it('FOLLOWUPS #41 : pendant une publication, l’étape en cours porte aria-current="step"', () => {
+    renderPending({
+      ...PENDING,
+      state: 'publishing',
+      run: { id: 'r', startedAt: '', startedBy: 'Marie', step: 2, steps: [{ step: 1, label: '', status: 'done' }, { step: 2, label: '', status: 'running' }] },
+    })
+    const items = within(screen.getByRole('region', { name: 'After “Publish”' })).getAllByRole('listitem')
+    expect(items[1].getAttribute('aria-current')).toBe('step')
+    expect(items.filter((li) => li.hasAttribute('aria-current'))).toHaveLength(1)
+  })
+
+  it('FOLLOWUPS #41 : rangées de E1 avec l’écart 2 px du kit (ListItem textGap={2})', () => {
+    const { container } = renderPending(PENDING)
+    expect(container.querySelectorAll('[data-text-gap="2"]')).toHaveLength(3)
   })
 
   it('moteur injoignable au rendu serveur : message et « Try again »', async () => {

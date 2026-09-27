@@ -113,7 +113,8 @@ Le bouton Publish natif du Studio publierait un texte sans le code qui va avec :
 - **A1** : la page liste les fournisseurs Sanity (`/auth/providers`), renvoie vers le fournisseur avec
   `origin=<site>/admin/auth/callback` et `type=token`, reçoit `#sid=…`, et le serveur l'échange (`/auth/fetch?sid=`) contre
   le jeton de l'utilisateur. `/users/me` sur l'hôte du projet donne l'identité et les rôles du projet → rôle de l'admin
-  (`core/contracts/roles.ts`). Viewer ou rôle inconnu : accès refusé avec un message clair.
+  (`core/contracts/roles.ts`). « kuartz » exige en plus la liste blanche `KUARTZ_ALLOWLIST` (un Developer hors liste
+  est « editor », SEC-05). Viewer ou rôle inconnu : accès refusé avec un message clair.
 - **Session** : cookie `kz_admin` chiffré (JWE, `ADMIN_SESSION_SECRET`), httpOnly, SameSite=Lax, `path=/admin`, Secure en
   production. Le jeton Sanity de l'utilisateur ne quitte jamais le serveur (`PublicSession` côté client).
 - **Garde** : `src/proxy.ts` (Next 16) redirige vers `/admin/login` sans cookie ; la vraie vérification est
@@ -121,7 +122,8 @@ Le bouton Publish natif du Studio publierait un texte sans le code qui va avec :
 - **Développement** : `ADMIN_DEV_AUTOLOGIN=kuartz|client|editor` (seulement `NODE_ENV=development` et hôte 127.0.0.1)
   ouvre une session sans jeton Sanity ; les écritures passent alors par `SANITY_API_WRITE_TOKEN`. Un sélecteur de rôle de
   développement dans le menu utilisateur permet de voir les deux admins. Jamais dans un `.env` commité.
-- **Moteur** : n'accepte que `Authorization: Bearer ENGINE_SECRET` + identité signée (HMAC). Il revérifie les droits
+- **Moteur** : n'accepte que `Authorization: Bearer ENGINE_SECRET` + identité signée en Ed25519 avec une clé DISTINCTE
+  (iat/exp ≤ 120 s ; SEC-10). Il revérifie les droits
   (`publish.diff`, `versions.rollback`…) d'après le rôle signé. L'admin ne relaie qu'une liste blanche de routes.
 
 ## 6. Moteur IA
@@ -192,10 +194,13 @@ le pont reçoit `refresh` et le moteur attend un signal (texte attendu présent)
 `SANITY_API_READ_TOKEN`, `SANITY_API_WRITE_TOKEN` (robot, rôle Editor — créé par l'utilisateur ; dev autologin seulement
 côté admin), `ADMIN_SESSION_SECRET`, `ADMIN_DEV_AUTOLOGIN` (dev), `ENGINE_URL`, `ENGINE_SECRET`, `REVALIDATE_SECRET`,
 `KZ_EDITOR_PREVIEW` (aperçu seulement), `ENGINE_PREVIEW_SECRET` (aperçu seulement), `ADMIN_ORIGIN` (aperçu : origine
-autorisée du pont).
+autorisée du pont), `ENGINE_IDENTITY_PRIVATE_KEY` (Ed25519, signe l'identité envoyée au moteur), `SCRIPTS_SIGNING_SECRET`
+(signature des scripts du site, SEC-04), `KUARTZ_ALLOWLIST` (qui est « kuartz », SEC-05), `NEXT_PUBLIC_SITE_LAUNCHED_AT`
+(B5), `KUARTZ_HUB_URL`, `ENGINE_MOCK` et `ENGINE_MOCK_EDITOR` (moteur simulé, développement seulement).
 
 `engine/.env.local` : `ENGINE_MODE` (`local` | `hosted` ; le jeton d'abonnement Claude n'est accepté qu'en `local`),
-`ENGINE_PORT`, `ENGINE_SECRET`, `ENGINE_WORKSPACE`, `ENGINE_PREVIEW_PORT`, `ENGINE_PREVIEW_SECRET`,
+`ENGINE_PORT`, `ENGINE_SECRET`, `ENGINE_IDENTITY_PUBLIC_KEY` (Ed25519 SPKI base64, vérifie l'identité), `ENGINE_FAKE_CLAUDE`
+(facultatif, mode local seulement : faux Claude pour les essais de bout en bout), `ENGINE_WORKSPACE`, `ENGINE_PREVIEW_PORT`, `ENGINE_PREVIEW_SECRET`,
 `ENGINE_SOURCE_REPO`, `ENGINE_SOURCE_BRANCH` (facultatif, sinon la branche courante de la source), `ENGINE_GIT_PUSH` (0 par défaut),
 `EDITOR_MAX_REQUEST_USD` (facultatif : plafond du cumul d'une demande, 2 essais compris ; défaut = `EDITOR_MAX_BUDGET_USD`), `VERCEL_DEPLOY_HOOK_URL` (facultatif), `SITE_REVALIDATE_URL`,
 `REVALIDATE_SECRET`, `NEXT_PUBLIC_SANITY_PROJECT_ID`, `NEXT_PUBLIC_SANITY_DATASET`, `SANITY_API_READ_TOKEN`,

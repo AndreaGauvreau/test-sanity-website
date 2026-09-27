@@ -1,12 +1,24 @@
 import assert from 'node:assert/strict'
-import { readFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { beforeAll, describe, it } from 'vitest'
+import { cssCustomValues, resolveCssValue } from '../claude/palette'
 import { ALLOWED_TOOLS as CLAUDE_ALLOWED_TOOLS, ASK_TOOL as CLAUDE_ASK, MEASURE_TOOL as CLAUDE_MEASURE, TEXT_TOOL as CLAUDE_TEXT } from '../claude/names'
 import { isExemptable, PLACEMENT_PROPERTIES, tokenSets } from './css-policy'
 import { lintCssFiles } from './css-lint'
-import { buildDesignSystem, DesignSystemError, loadDesignSystem, type DesignSystem } from './design-system'
+import {
+  buildDesignSystem,
+  customPropertyValues,
+  declaredProperties,
+  DesignSystemError,
+  loadDesignSystem,
+  TOKENS_CSS_FILE,
+  TOKENS_FILE,
+  ZONES_FILE,
+  type DesignSystem,
+} from './design-system'
 import {
   ALLOWED_TOOLS,
   ASK_TOOL,
@@ -22,14 +34,15 @@ import type { Hardcoded, ScopeFlags, ZoneDef } from './types'
 import { MODULE_HASH, previewUrl, withoutHash } from './visual'
 
 /**
- * Portage Sanity/Conduit : design system chargé depuis un site au format du contrat (fixtures/conduit : tokens.css réel de
- * Conduit, tokens.json au format TokensFile, zones.json au format ZonesFile, trois CSS Modules réels), politique
- * paramétrée (styles de texte en raccourci font + tracking, pas de tokens d'espacement génériques, points de rupture du
- * site), lecture limitée aux dossiers du site, demandes à plusieurs éléments, mineurs #74 et #83 du POC.
+ * Portage Sanity/Conduit, sur le VRAI site du dépôt (AI-09) : `src/styles/tokens.json`, `src/editor/zones.json`,
+ * `src/styles/tokens.css`, RULES.md et les CSS Modules réels, lus à la racine du dépôt (comme jobs/conduit.test.ts).
+ * Politique paramétrée (styles de texte en raccourci font + tracking, tokens d'espacement `--space-*`, points de rupture
+ * déclarés par le groupe `breakpoint` de tokens.json), lecture limitée aux dossiers du site, demandes à plusieurs
+ * éléments, mineurs #74 et #83 du POC. Les fixtures `fixtures/conduit` ne servent plus qu'au banc d'engine-core.
  */
 
 const here = path.dirname(fileURLToPath(import.meta.url))
-const siteDir = path.join(here, 'fixtures/conduit')
+const siteDir = path.resolve(here, '../../..')
 const HERO = 'src/components/sections/Hero/Hero.module.css'
 const GET_STARTED = 'src/components/sections/GetStarted/GetStarted.module.css'
 const STYLE: ScopeFlags = { style: true, text: false }
@@ -76,16 +89,30 @@ describe('design system de Conduit', () => {
     assert.equal(ds.policy.trackingOf.get('var(--text-body-strong)'), 'var(--text-body-tracking)')
     assert.deepEqual([...roles.spaceWide].sort(), ['var(--gutter)', 'var(--page-inset)', 'var(--section-space)', 'var(--section-space-lg)'])
     assert.deepEqual([...roles.measure], ['var(--page-max)'])
-    // Pas de tokens d'espacement génériques, d'arrondi, d'ombre, de graisse ni de taille seule : rôles vides.
-    for (const role of ['space', 'radius', 'shadow', 'weight', 'fontSize'] as const) assert.equal(roles[role].size, 0, role)
+    // Espacement (groupe space de tokens.json) : --space-8 à --space-64, jamais les tokens de mise en page.
+    assert.deepEqual(
+      [...roles.space],
+      ['8', '12', '16', '20', '24', '32', '40', '48', '64'].map((step) => `var(--space-${step})`),
+    )
+    // Pas d'arrondi, d'ombre, de graisse ni de taille seule : rôles vides.
+    for (const role of ['radius', 'shadow', 'weight', 'fontSize'] as const) assert.equal(roles[role].size, 0, role)
     assert.equal(ds.policy.lift.size, 0, 'aucun soulèvement sans --space-1 / --space-2')
     assert.deepEqual(ds.warnings, [])
   })
 
-  it('prend les points de rupture en service dans le CSS du site quand rien ne les déclare (min-width seulement)', () => {
+  it('prend les points de rupture du groupe breakpoint de tokens.json (min-width seulement)', () => {
     assert.deepEqual(ds.breakpoints, ['50.625rem', '64rem', '80rem', '90rem'])
-    assert.equal(ds.breakpointSource, 'css')
+    assert.equal(ds.breakpointSource, 'tokens')
+    assert.deepEqual([...ds.policy.media], ['50.625rem', '64rem', '80rem', '90rem'].map((width) => `(min-width: ${width})`))
     assert.ok(!ds.policy.media.has('(min-width: 48rem)'))
+  })
+
+  it('les fichiers ouverts par les zones existent dans le dépôt', async () => {
+    for (const [id, zone] of Object.entries(ds.zones)) {
+      for (const file of [...zone.files, ...(zone.text?.source === 'code' ? zone.text.files : [])]) {
+        await readFile(path.join(siteDir, file), 'utf8').catch(() => assert.fail(`${id} : ${file} absent`))
+      }
+    }
   })
 
   it('préfère les points de rupture déclarés : option du moteur, puis groupe breakpoint de tokens.json', () => {
@@ -95,7 +122,8 @@ describe('design system de Conduit', () => {
     assert.deepEqual([fromTokens.breakpoints, fromTokens.breakpointSource], [['50.625rem'], 'tokens'])
     const fromOption = buildDesignSystem({ tokens, zones }, { breakpoints: ['90rem', '64rem'] })
     assert.deepEqual([fromOption.breakpoints, fromOption.breakpointSource], [['64rem', '90rem'], 'option'])
-    const none = buildDesignSystem({ tokens: ds.tokens, zones })
+    const { breakpoint: _declared, ...undeclared } = ds.tokens
+    const none = buildDesignSystem({ tokens: undeclared, zones })
     assert.deepEqual([none.breakpoints, [...none.policy.media]], [[], []])
     assert.throws(() => buildDesignSystem({ tokens, zones }, { breakpoints: ['calc(1px)'] }), DesignSystemError)
   })
@@ -133,6 +161,64 @@ describe('design system de Conduit', () => {
   })
 })
 
+describe('ds.cssValues : valeurs de tokens.css (FOLLOWUPS #37, AI-03)', () => {
+  it('loadDesignSystem remplit cssValues depuis le vrai tokens.css, var() non résolus', () => {
+    assert.equal(ds.cssValues.get('--color-neutral-900'), '#232325')
+    assert.equal(ds.cssValues.get('--color-orange-500'), '#ff5100')
+    // Un rôle garde sa référence brute : la résolution est l'affaire d'engine-claude (resolveCssValue).
+    assert.equal(ds.cssValues.get('--color-text'), 'var(--color-neutral-900)')
+    assert.equal(resolveCssValue('var(--color-text)', ds.cssValues), '#232325')
+    // Seulement des custom properties (jamais color-scheme ni une propriété ordinaire).
+    assert.ok([...ds.cssValues.keys()].every((name) => name.startsWith('--')))
+    assert.ok(!ds.cssValues.has('color-scheme'))
+  })
+
+  it('mêmes clés que declaredProperties et mêmes valeurs que cssCustomValues d’engine-claude', async () => {
+    const css = await readFile(path.join(siteDir, TOKENS_CSS_FILE), 'utf8')
+    assert.deepEqual([...ds.cssValues.keys()].sort(), [...declaredProperties(css)].sort())
+    assert.deepEqual([...ds.cssValues], [...cssCustomValues(css)])
+    assert.ok(ds.cssValues.size > 0)
+    // Toutes les couleurs de tokens.json se résolvent (catalogue du prompt avec ton et ratio).
+    for (const [key, token] of Object.entries(ds.tokens.color?.tokens ?? {})) {
+      assert.ok(resolveCssValue(token.value, ds.cssValues)?.startsWith('#'), key)
+    }
+  })
+
+  it('dernière déclaration gagnante, !important retiré, feuille illisible = aucune valeur', () => {
+    const values = customPropertyValues(
+      ':root { --a: #111; --b: var(--a); }\n@media (prefers-color-scheme: dark) { :root { --a:  #eee !important ; } }',
+    )
+    assert.deepEqual([...values], [['--a', '#eee'], ['--b', 'var(--a)']])
+    assert.equal(customPropertyValues(':root { --a: #111').size, 0)
+    assert.equal(customPropertyValues('').size, 0)
+  })
+
+  it('buildDesignSystem : champ additif, vide par défaut, copié (jamais la Map de l’appelant)', () => {
+    const zones = { controls: ds.controls, zones: ds.zones }
+    assert.equal(buildDesignSystem({ tokens: ds.tokens, zones }).cssValues.size, 0)
+    const given = new Map([['--x', '#000']])
+    const built = buildDesignSystem({ tokens: ds.tokens, zones, cssValues: given })
+    assert.deepEqual([...built.cssValues], [['--x', '#000']])
+    given.set('--y', '#fff')
+    assert.ok(!built.cssValues.has('--y'))
+  })
+
+  it('loadDesignSystem sans tokens.css : cssValues vide, le reste inchangé', async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), 'kz-ds-'))
+    try {
+      for (const file of [TOKENS_FILE, ZONES_FILE]) {
+        await mkdir(path.dirname(path.join(dir, file)), { recursive: true })
+        await writeFile(path.join(dir, file), await readFile(path.join(siteDir, file), 'utf8'))
+      }
+      const bare = await loadDesignSystem(dir)
+      assert.equal(bare.cssValues.size, 0)
+      assert.deepEqual(bare.breakpoints, ds.breakpoints)
+    } finally {
+      await rm(dir, { recursive: true, force: true })
+    }
+  })
+})
+
 describe('lintCssFiles sur Conduit', () => {
   it('accepte un style de texte avec son tracking, dans la même règle', () => {
     const after = hero.replace(
@@ -166,11 +252,14 @@ describe('lintCssFiles sur Conduit', () => {
     assert.deepEqual(rules(at('@container (min-width: 25rem)'), 'hero.title'), ['at-rule'])
   })
 
-  it('sans token d’espacement : 0 et les tokens de mise en page seulement, une valeur accordée (🔴) sinon', () => {
+  it('espacement : tokens --space-*, 0 et les tokens de mise en page ; une valeur accordée (🔴) sinon', () => {
     assert.deepEqual(rules(inRule(hero, '.title', '  padding-block: var(--section-space) 0;'), 'hero.title'), [])
+    assert.deepEqual(rules(inRule(hero, '.title', '  padding: var(--space-16);'), 'hero.title'), [])
+    assert.deepEqual(rules(inRule(hero, '.title', '  gap: var(--space-8) var(--space-24);'), 'hero.title'), [])
     assert.deepEqual(rules(inRule(hero, '.title', '  padding: 1rem;'), 'hero.title'), ['value'])
     assert.deepEqual(rules(inRule(hero, '.title', '  padding: 1rem;'), 'hero.title', { hardcoded: [{ property: 'padding', value: '1rem' }] }), [])
     assert.deepEqual(rules(inRule(hero, '.title', '  gap: var(--page-inset);'), 'hero.title'), ['value'])
+    assert.deepEqual(rules(inRule(hero, '.title', '  gap: var(--space-10);'), 'hero.title'), ['unknown-token'])
     assert.deepEqual(rules(inRule(hero, '.title', '  margin: calc(-1 * 1rem);'), 'hero.title', { hardcoded: [{ property: 'margin', value: 'calc(-1 * 1rem)' }] }), ['value'])
   })
 
@@ -209,9 +298,10 @@ describe('lintCssFiles sur Conduit', () => {
     assert.deepEqual(rules(inRule(hero, '.title', '  min-width: 0;'), 'hero'), ['min-width', 'selector'])
   })
 
-  it('juge une zone à plusieurs classes (getStarted.title : .title et .muted)', () => {
-    const muted = getStarted.replace('.muted {\n', '.muted {\n  color: var(--color-text-inverse-muted);\n')
-    assert.deepEqual(rules(muted, 'getStarted.title', { file: GET_STARTED }), [])
+  it('juge la règle d’une zone intérieure (getStarted.title.muted : .muted, dans getStarted.title)', () => {
+    const muted = getStarted.replace('.muted {\n', '.muted {\n  text-align: center;\n')
+    assert.notEqual(muted, getStarted)
+    assert.deepEqual(rules(muted, 'getStarted.title.muted', { file: GET_STARTED }), [])
     assert.deepEqual(rules(muted, 'getStarted.text', { file: GET_STARTED }), ['selector'])
   })
 })

@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter, useSelectedLayoutSegment } from 'next/navigation'
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 
 import type { CollectionDef } from '@/admin/core/contracts/manifest'
 import {
@@ -10,7 +10,6 @@ import {
   CMSCell,
   CMSRow,
   CMSTable,
-  Checkbox,
   ContentArea,
   EmptyState,
   Icon,
@@ -18,11 +17,9 @@ import {
   PageHeader,
   SelectionBar,
   StatusSelect,
-  Tooltip,
   cx,
   useToast,
   type FilterCondition,
-  type StatusAction,
 } from '@/admin/ui'
 
 import {
@@ -38,10 +35,11 @@ import {
 } from '../lib/list-query'
 import { keyBetween, isValidRank } from '../lib/order'
 import { countLabel, pluralize, type CmsRow } from '../lib/rows'
-import type { CmsStatus } from '../lib/status'
+import { partitionForDelete, runStage, stagedFrom, stagedLabel, stagedToast, statusMenu, type StagedAction, type StagedMap } from '../lib/staging'
 import { createItemAction, deleteItemsAction, reorderAction, saveFieldAction, statusAction } from '../server/actions'
 import { CollectionContext } from './CollectionContext'
 import { ListTools } from './ListTools'
+import { loadPublishStatus, stageClient } from './stage-client'
 import { moveIndex, useReorder } from './useReorder'
 import styles from './CollectionScreen.module.css'
 
@@ -56,12 +54,9 @@ type Props = {
   children?: ReactNode
 }
 
-const STATUS_ACTIONS: Record<CmsStatus, StatusAction[]> = {
-  // Dépublier se fera au prochain Publish : pas encore relié au moteur (voir CLAUDE.md).
-  live: [{ id: 'unpublish', label: 'Unpublish', icon: 'eye-off', disabled: true }],
-  draft: [{ id: 'delete-draft', label: 'Delete draft', icon: 'trash', danger: true }],
-  changed: [{ id: 'discard', label: 'Discard changes', icon: 'history', danger: true }],
-}
+type Confirm =
+  | { kind: 'discard' | 'delete-draft' | 'unpublish' | 'delete-live'; row: CmsRow }
+  | { kind: 'delete-many'; drafts: string[]; live: string[] }
 
 function storageKey(collection: CollectionDef) {
   return `kz-admin:cms:${collection.id}`
@@ -107,8 +102,25 @@ export function CollectionScreen({ collection, rows: serverRows, children }: Pro
   const [editing, setEditing] = useState<{ id: string; field: string } | null>(null)
   const [cellErrors, setCellErrors] = useState<Record<string, string>>({})
   const [adding, setAdding] = useState(false)
-  const [confirm, setConfirm] = useState<{ kind: 'discard' | 'delete-draft'; row: CmsRow } | { kind: 'delete-many'; ids: string[] } | null>(null)
+  const [confirm, setConfirm] = useState<Confirm | null>(null)
   const [busy, setBusy] = useState(false)
+
+  // Dépublier / supprimer au prochain Publish : état lu dans le moteur (E1), sans bloquer l'affichage de la liste.
+  const [staged, setStaged] = useState<StagedMap>({})
+  const rowIds = useMemo(() => rows.map((r) => r.id), [rows])
+  const rowIdsRef = useRef(rowIds)
+  useEffect(() => {
+    rowIdsRef.current = rowIds
+  })
+  useEffect(() => {
+    let alive = true
+    void loadPublishStatus().then((status) => {
+      if (alive && status) setStaged(stagedFrom(status, rowIdsRef.current))
+    })
+    return () => {
+      alive = false
+    }
+  }, [collection.id, serverRows])
 
   const visible = useMemo(() => applyListQuery(rows, query), [rows, query])
   const reorderable = canReorder(collection, query)
@@ -122,7 +134,18 @@ export function CollectionScreen({ collection, rows: serverRows, children }: Pro
       return next
     })
   }, [])
-  const context = useMemo(() => ({ updateRow, removeRow }), [updateRow, removeRow])
+  /** Programme (kind) ou annule (null) l'action d'un élément en ligne ; renvoie l'erreur éventuelle. */
+  const stage = useCallback(
+    async (id: string, kind: StagedAction | null): Promise<string | null> => {
+      const result = await runStage(stageClient, rowIdsRef.current, id, kind)
+      if (!result.ok) return result.error
+      setStaged(result.staged)
+      router.refresh()
+      return null
+    },
+    [router],
+  )
+  const context = useMemo(() => ({ updateRow, removeRow, staged, stage }), [updateRow, removeRow, staged, stage])
 
   // ─── Ordre manuel ──────────────────────────────────────────────────────────
   const onDrop = useCallback(
@@ -215,27 +238,52 @@ export function CollectionScreen({ collection, rows: serverRows, children }: Pro
     if (result.row) updateRow(result.row)
     else removeRow(row.id)
     toast.show({ type: 'success', message: kind === 'discard' ? 'Changes discarded.' : `${collection.singular} deleted.` })
+    // Comptes de la sidebar (coque) et « Unpublished changes » : relus par le serveur.
+    router.refresh()
   }
 
-  const deleteMany = async (ids: string[]) => {
+  const stageRow = async (row: CmsRow, kind: StagedAction | null) => {
     setBusy(true)
-    const result = await deleteItemsAction({ collectionId: collection.id, ids })
+    const error = await stage(row.id, kind)
     setBusy(false)
     setConfirm(null)
-    if (!result.ok) {
-      toast.show({ type: 'error', message: result.error })
-      router.refresh()
-      return
+    toast.show(error ? { type: 'error', message: error } : { type: 'success', message: stagedToast(kind, collection.singular) })
+  }
+
+  /** Sélection : brouillons supprimés tout de suite, éléments en ligne supprimés au prochain Publish. */
+  const deleteMany = async (drafts: string[], live: string[]) => {
+    setBusy(true)
+    const errors: string[] = []
+    let deleted = 0
+    if (drafts.length) {
+      const result = await deleteItemsAction({ collectionId: collection.id, ids: drafts })
+      if (result.ok) {
+        result.deleted.forEach(removeRow)
+        deleted = result.deleted.length
+      } else errors.push(result.error)
     }
-    result.deleted.forEach(removeRow)
-    const n = result.deleted.length
-    toast.show({ type: 'success', message: `${n} ${n === 1 ? collection.singular.toLowerCase() : pluralize(collection.singular.toLowerCase())} deleted.` })
+    let scheduled = 0
+    for (const id of live) {
+      const error = await stage(id, 'delete')
+      if (error) errors.push(error)
+      else scheduled += 1
+    }
+    setBusy(false)
+    setConfirm(null)
+    setSelected(new Set())
+    router.refresh()
+    const parts = [
+      deleted ? `${deleted} ${deleted === 1 ? 'draft' : 'drafts'} deleted.` : '',
+      scheduled ? `${scheduled} live ${scheduled === 1 ? collection.singular.toLowerCase() : pluralize(collection.singular.toLowerCase())} will be deleted at the next Publish.` : '',
+    ].filter(Boolean)
+    if (errors.length) toast.show({ type: 'error', message: [...parts, errors[0]].join(' ') })
+    else toast.show({ type: 'success', message: parts.join(' ') })
   }
 
   // ─── Sélection ─────────────────────────────────────────────────────────────
   const selectedRows = rows.filter((r) => selected.has(r.id))
-  const deletable = selectedRows.filter((r) => r.status === 'draft')
-  const locked = selectedRows.length - deletable.length
+  const toDelete = partitionForDelete(selectedRows, staged)
+  const deletableCount = toDelete.drafts.length + toDelete.live.length
   const allVisibleSelected = visible.length > 0 && visible.every((r) => selected.has(r.id))
   const someVisibleSelected = visible.some((r) => selected.has(r.id))
   const toggle = (id: string, on: boolean) =>
@@ -253,6 +301,7 @@ export function CollectionScreen({ collection, rows: serverRows, children }: Pro
   const sortDirections = directionOptions(query.sort.by)
   const hasQuery = activeConditions(query.conditions).length > 0 || query.search.trim() !== ''
   const columns = collection.columns
+  const manyCount = confirm?.kind === 'delete-many' ? confirm.drafts.length + confirm.live.length : 0
 
   const tools = (
     <ListTools
@@ -321,7 +370,6 @@ export function CollectionScreen({ collection, rows: serverRows, children }: Pro
               {column.label}
             </CMSCell>
           ))}
-          <span className={styles.filler} aria-hidden="true" />
         </CMSRow>
         {display.map((row, index) => {
           const offset = reorder.offsetFor(index)
@@ -337,35 +385,39 @@ export function CollectionScreen({ collection, rows: serverRows, children }: Pro
               onOpen={() => router.push(hrefOf(row.id), { scroll: false })}
               openLabel={`Open ${row.title || 'Untitled'}`}
             >
-              <div role="cell" className={styles.handle}>
-                {collection.orderable ? (
-                  <Tooltip label={reorderable ? 'Drag to reorder' : 'Sort by Manual order, without filters, to reorder'} placement="right">
-                    <button
-                      type="button"
-                      data-grip={row.id}
-                      className={styles.grip}
-                      aria-label={`Reorder ${row.title || 'Untitled'}`}
-                      aria-disabled={!reorderable || undefined}
-                      aria-describedby={`${collection.id}-reorder-help`}
-                      {...grip}
-                    >
-                      <Icon name="grip" size={12} />
-                    </button>
-                  </Tooltip>
-                ) : (
-                  <span className={styles.gripSpace} />
-                )}
-                <Checkbox aria-label={`Select ${row.title || 'Untitled'}`} checked={selected.has(row.id) || row.id === openId} onCheckedChange={(on) => toggle(row.id, on)} />
-              </div>
+              <CMSCell
+                type="handle"
+                checked={selected.has(row.id) || row.id === openId}
+                onCheckedChange={(on) => toggle(row.id, on)}
+                checkboxLabel={`Select ${row.title || 'Untitled'}`}
+                // Collection sans ordre manuel : pas de poignée, place gardée (.noGrip) pour aligner les cases.
+                grip={collection.orderable}
+                className={collection.orderable ? undefined : styles.noGrip}
+                gripLabel={`Reorder ${row.title || 'Untitled'}`}
+                gripTooltip={reorderable ? 'Drag to reorder' : 'Sort by Manual order, without filters, to reorder'}
+                gripProps={
+                  collection.orderable
+                    ? {
+                        ...grip,
+                        'data-grip': row.id,
+                        'aria-disabled': !reorderable || undefined,
+                        'aria-describedby': `${collection.id}-reorder-help`,
+                      }
+                    : undefined
+                }
+              />
               {columns.map((column) => {
                 if (column.kind === 'status') {
                   return (
                     <CMSCell key={column.field} type="status" width={column.width}>
                       <StatusSelect
                         status={row.status}
-                        actions={STATUS_ACTIONS[row.status]}
+                        label={staged[row.id] ? stagedLabel(staged[row.id]) : undefined}
+                        actions={statusMenu(row.status, staged[row.id])}
+                        disabled={busy}
                         onAction={(action) => {
-                          if (action === 'discard' || action === 'delete-draft') setConfirm({ kind: action, row })
+                          if (action === 'discard' || action === 'delete-draft' || action === 'unpublish' || action === 'delete-live') setConfirm({ kind: action, row })
+                          else if (action === 'unstage') void stageRow(row, null)
                         }}
                       />
                     </CMSCell>
@@ -411,8 +463,6 @@ export function CollectionScreen({ collection, rows: serverRows, children }: Pro
                   </CMSCell>
                 )
               })}
-              {/* Tableau plus étroit que l'écran (FAQ) : pousse le bouton « open » au bord droit. */}
-              <span className={styles.filler} aria-hidden="true" />
             </CMSRow>
           )
         })}
@@ -433,14 +483,20 @@ export function CollectionScreen({ collection, rows: serverRows, children }: Pro
               onSelectAll={selectAll}
               onClear={() => setSelected(new Set())}
             >
-              <Button variant="secondary" size="small" iconLeft="trash" disabled={deletable.length === 0 || busy} onClick={() => setConfirm({ kind: 'delete-many', ids: deletable.map((r) => r.id) })}>
-                {deletable.length === 0 ? 'Delete' : `Delete ${deletable.length} ${deletable.length === 1 ? 'draft' : 'drafts'}`}
+              <Button
+                variant="secondary"
+                size="small"
+                iconLeft="trash"
+                disabled={deletableCount === 0 || busy}
+                onClick={() => setConfirm({ kind: 'delete-many', drafts: toDelete.drafts.map((r) => r.id), live: toDelete.live.map((r) => r.id) })}
+              >
+                {deletableCount === 0 ? 'Delete' : `Delete ${deletableCount}`}
               </Button>
-              {locked > 0 ? (
+              {toDelete.live.length > 0 ? (
                 <span className={styles.lockNote}>
-                  <Icon name="lock" size={12} />
+                  <Icon name="pending" size={12} />
                   <span>
-                    {locked} live {locked === 1 ? collection.singular.toLowerCase() : plural} can’t be deleted here
+                    {toDelete.live.length} live {toDelete.live.length === 1 ? collection.singular.toLowerCase() : plural} will be deleted at the next Publish
                   </span>
                 </span>
               ) : null}
@@ -479,16 +535,48 @@ export function CollectionScreen({ collection, rows: serverRows, children }: Pro
         onConfirm={() => confirm?.kind === 'delete-draft' && void runStatus('delete-draft', confirm.row)}
       />
       <Modal
+        open={confirm?.kind === 'unpublish'}
+        onClose={() => !busy && setConfirm(null)}
+        title={`Unpublish this ${collection.singular.toLowerCase()}?`}
+        description="It stays on the site until the next Publish, then it’s taken offline. Its content is kept here as a draft."
+        confirmLabel="Unpublish"
+        confirmLoading={busy}
+        onConfirm={() => confirm?.kind === 'unpublish' && void stageRow(confirm.row, 'unpublish')}
+      />
+      <Modal
+        open={confirm?.kind === 'delete-live'}
+        onClose={() => !busy && setConfirm(null)}
+        tone="destructive"
+        title={`Delete this ${collection.singular.toLowerCase()}?`}
+        description="It stays on the site until the next Publish, then it’s removed from the site and deleted for good."
+        confirmLabel="Delete"
+        confirmLoading={busy}
+        onConfirm={() => confirm?.kind === 'delete-live' && void stageRow(confirm.row, 'delete')}
+      />
+      <Modal
         open={confirm?.kind === 'delete-many'}
         onClose={() => !busy && setConfirm(null)}
         tone="destructive"
-        title={`Delete ${confirm?.kind === 'delete-many' ? confirm.ids.length : 0} ${confirm?.kind === 'delete-many' && confirm.ids.length === 1 ? 'draft' : 'drafts'}?`}
-        description={`These ${plural} have never been published: they will be deleted for good. Live ${plural} are kept.`}
+        title={`Delete ${manyCount} ${manyCount === 1 ? collection.singular.toLowerCase() : plural}?`}
+        description={deleteManyDescription(confirm?.kind === 'delete-many' ? confirm : null, collection.singular.toLowerCase(), plural)}
         confirmLabel="Delete"
         confirmLoading={busy}
-        onConfirm={() => confirm?.kind === 'delete-many' && void deleteMany(confirm.ids)}
+        onConfirm={() => confirm?.kind === 'delete-many' && void deleteMany(confirm.drafts, confirm.live)}
       />
       {children}
     </CollectionContext.Provider>
   )
+}
+
+/** Texte de confirmation d'une suppression multiple (brouillons tout de suite, en ligne au prochain Publish). */
+export function deleteManyDescription(target: { drafts: readonly string[]; live: readonly string[] } | null, singular: string, plural: string): string {
+  if (!target) return ''
+  const d = target.drafts.length
+  const l = target.live.length
+  return [
+    d ? `${d === 1 ? 'This draft has' : `These ${d} drafts have`} never been published: ${d === 1 ? 'it is' : 'they are'} deleted for good now.` : '',
+    l ? `${l === 1 ? `The live ${singular} stays` : `The ${l} live ${plural} stay`} on the site until the next Publish, then ${l === 1 ? 'it is' : 'they are'} removed and deleted.` : '',
+  ]
+    .filter(Boolean)
+    .join(' ')
 }

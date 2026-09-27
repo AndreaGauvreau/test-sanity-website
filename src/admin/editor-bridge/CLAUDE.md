@@ -115,5 +115,6 @@ De bout en bout : `canvas/harness.e2e.test.ts` (voir ../features/ai-editor/canva
 - Cadre « à valider » bleu comme la sélection (Figma D3), pas l'anneau vert du POC.
 
 ## Demandes de contrat
-- engine-core : lancer l'aperçu 4042 avec `ADMIN_ORIGIN=<origine de l'admin>` (le pont et le proxy d'aperçu en ont
-  besoin) ; sinon le pont reste inerte et l'éditeur affiche « The draft preview isn't responding » au bout de 15 s.
+- ~~engine-core : lancer l'aperçu 4042 avec `ADMIN_ORIGIN=<origine de l'admin>`~~ — **fait** (vérifié le 2026-09-27) :
+  `ADMIN_ORIGIN` obligatoire dans la config du moteur (`config.ts`) et passé à l'aperçu (`workspace/workspace.ts`).
+  Sans lui, le pont resterait inerte (« The draft preview isn't responding » au bout de 15 s).

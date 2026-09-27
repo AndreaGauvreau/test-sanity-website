@@ -40,3 +40,14 @@ export const VIEWPORTS: readonly { value: Viewport; label: string; icon: 'deskto
   { value: 768, label: 'Tablet', icon: 'tablet' },
   { value: 375, label: 'Mobile', icon: 'mobile' },
 ]
+
+/** Retrait minimal des barres flottantes (barre de validation) par rapport aux bords du cadre d'aperçu. */
+export const FLOATING_INSET = 12
+
+/**
+ * Largeur maximale d'une barre flottante posée sur l'aperçu (QA-5) : celle du cadre moins `FLOATING_INSET` de chaque
+ * côté. En Mobile (cadre de 375 px), la barre « to validate » du Figma (388 px) passe sur deux lignes au lieu de déborder.
+ */
+export function floatingMaxWidth(frameWidth: number): number {
+  return Number.isFinite(frameWidth) ? Math.max(0, frameWidth - 2 * FLOATING_INSET) : 0
+}

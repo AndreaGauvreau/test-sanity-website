@@ -90,25 +90,27 @@ export function PublishStatusBar({ siteUrl }: { siteUrl: string }) {
         linkAs={Link}
         autosaveText={autosaveText}
         siteUrl={siteUrl}
+        statusAction={
+          view.showSeeError ? (
+            <Button variant="ghost" size="small" onClick={() => setLogOpen(true)} aria-haspopup="dialog">
+              See error
+            </Button>
+          ) : undefined
+        }
         publish={
-          <>
-            {view.showSeeError ? (
-              <Button variant="ghost" size="small" onClick={() => setLogOpen(true)} aria-haspopup="dialog">
-                See error
-              </Button>
-            ) : null}
-            <PublishButton
-              state={state}
-              pendingCount={view.count}
-              disabled={!status && state === 'idle'}
-              onPublish={() => {
-                if (!pending) publish(status)
-              }}
-              onRetry={() => {
-                if (!pending) retry()
-              }}
-            />
-          </>
+          <PublishButton
+            state={state}
+            pendingCount={view.count}
+            // Étape en échec : annonce exacte au lecteur d'écran (étape 1 = rien n'est parti ; ensuite, contenu en ligne).
+            failedStep={status?.run?.step}
+            disabled={!status && state === 'idle'}
+            onPublish={() => {
+              if (!pending) publish(status)
+            }}
+            onRetry={() => {
+              if (!pending) retry()
+            }}
+          />
         }
       />
       <ErrorLogModal

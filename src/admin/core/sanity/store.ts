@@ -12,6 +12,7 @@ export type SanityDoc = { _id: string; _type: string; _rev?: string; [field: str
 export type DraftMutation =
   | { createIfNotExists: SanityDoc }
   | { create: SanityDoc }
+  /** ifRevisionID : Sanity refuse (409) si la révision du document n'est plus celle-là (concurrence optimiste). */
   | { patch: { id: string; set?: Record<string, unknown>; unset?: string[]; ifRevisionID?: string } }
   | { delete: { id: string } }
 
@@ -51,7 +52,9 @@ export function toWriteError(err: unknown): SanityWriteError {
     return new SanityWriteError('forbidden', "You don't have permission to edit this in Sanity.")
   }
   if (status === 404) return new SanityWriteError('not_found', 'This item no longer exists.')
-  if (status === 409) return new SanityWriteError('bad_request', 'This item was changed at the same time. Reload and try again.')
+  if (status === 409) {
+    return new SanityWriteError('bad_request', 'This item was changed at the same time. Reload and try again.', undefined, 409)
+  }
   if (typeof status === 'number' && status >= 400 && status < 500) {
     return new SanityWriteError('bad_request', "Sanity rejected this change.")
   }

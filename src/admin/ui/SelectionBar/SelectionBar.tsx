@@ -1,14 +1,23 @@
 'use client'
 
 import type { ReactNode, Ref } from 'react'
-import { motion, type HTMLMotionProps } from 'motion/react'
+import { motion, useReducedMotion, type HTMLMotionProps, type Variants } from 'motion/react'
 import { Button } from '../Button'
 import { Checkbox } from '../Checkbox'
 import { Icon } from '../icons'
 import { slideDown } from '../motion-presets'
-import { useMotionVariants } from '../motion'
 import { cx } from '../utils/cx'
 import styles from './SelectionBar.module.css'
+
+/**
+ * Variantes en mouvement réduit : MÊME état initial que `slideDown` (le serveur, qui ignore la préférence, rend
+ * `opacity:0; translateY(-6px)` ; un autre état initial côté client = écart d'hydratation), transitions nulles.
+ */
+const slideDownReduced: Variants = {
+  initial: slideDown.initial,
+  animate: { opacity: 1, y: 0, transition: { duration: 0 } },
+  exit: { opacity: 0, transition: { duration: 0 } },
+}
 
 export type SelectionBarProps = Omit<HTMLMotionProps<'div'>, 'children' | 'ref'> & {
   /** Nombre d'éléments sélectionnés. */
@@ -53,7 +62,7 @@ export function SelectionBar({
   ref,
   ...rest
 }: SelectionBarProps) {
-  const variants = useMotionVariants(slideDown)
+  const variants = useReducedMotion() ? slideDownReduced : slideDown
   const all = totalCount > 0 && selectedCount >= totalCount
   const partialSelection = selectedCount > 0 && !all
   const deletable = deletableCount ?? selectedCount

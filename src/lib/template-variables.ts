@@ -23,8 +23,11 @@ export type EscapeContext = 'text' | 'js' | 'css' | 'html'
 /**
  * Échappe une valeur pour son contexte. Les valeurs viennent du contenu (modifiable par le client) :
  * elles ne doivent jamais pouvoir fermer la balise ni la chaîne qui les contient.
- * - js   : contenu d'une chaîne JavaScript ou JSON entre guillemets doubles (JSON.stringify sans les
- *          guillemets), `<` en < (jamais de « </script> »), U+2028 et U+2029 échappés ;
+ * - js   : contenu d'une chaîne JavaScript ou JSON, quel que soit son délimiteur (" ' `) : JSON.stringify sans
+ *          les guillemets, puis ' ` $ / < > U+2028 U+2029 en séquences \uXXXX. La valeur ne peut donc ni fermer
+ *          la chaîne, ni ouvrir une substitution ${…} d'un gabarit, ni fermer un commentaire, ni écrire
+ *          « </script> ». Hors d'une chaîne, aucun échappement ne suffit : src/lib/site-scripts.ts ne remplace
+ *          une variable QUE dans une chaîne (constat SEC-01) ;
  * - css  : contenu d'une chaîne CSS entre guillemets, caractères non alphanumériques en échappement hexadécimal ;
  * - html : entités pour & < > " ' ;
  * - text : tel quel (Next échappe les métadonnées).
@@ -34,10 +37,7 @@ export function escapeValue(value: string, context: EscapeContext): string {
     case 'js':
       return JSON.stringify(value)
         .slice(1, -1)
-        .replace(/</g, '\\u003c')
-        .replace(/>/g, '\\u003e')
-        .replace(/\u2028/g, '\\u2028')
-        .replace(/\u2029/g, '\\u2029')
+        .replace(/['`$/<>\u2028\u2029]/g, (char) => `\\u${char.charCodeAt(0).toString(16).padStart(4, '0')}`)
     case 'css':
       return value.replace(/[^A-Za-z0-9 _.,:/-]/g, (char) => `\\${char.codePointAt(0)!.toString(16)} `)
     case 'html':
