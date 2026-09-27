@@ -19,7 +19,6 @@
   font: var(--text-display);
   letter-spacing: var(--text-display-tracking);
   text-wrap: balance;
-  color: var(--color-text);
 }
 
 .lede {
