@@ -3,6 +3,7 @@ import { draftMode } from 'next/headers'
 import { VisualEditing } from 'next-sanity/visual-editing'
 
 import { EditorBridge } from '@/admin/editor-bridge'
+import { LiveEditButton } from '@/admin/live-edit'
 import { Analytics } from '@/components/Analytics'
 import { DraftModeBanner } from '@/components/DraftModeBanner'
 import { SiteFooter } from '@/components/layout/SiteFooter'
@@ -68,6 +69,10 @@ export default async function SiteLayout({ children }: LayoutProps<'/'>) {
       )}
 
       <SiteScripts scripts={scripts} page="all" placements={['bodyEnd']} />
+
+      {/* « Edit with AI » (question 9, src/admin/live-edit) : rien dans le HTML ; affiché côté client seulement si la
+          personne connectée à l'admin peut modifier cette page. Jamais en aperçu de l'éditeur ni en Draft Mode. */}
+      {!editorPreview && !isDraftMode && <LiveEditButton />}
 
       {/* Pont de l'éditeur IA (propriété d'editor-canvas) : aperçu 4042 seulement. */}
       {editorPreview && <EditorBridge />}
