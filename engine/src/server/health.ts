@@ -17,7 +17,9 @@ export type HealthExtras = { warnings?: string[]; fakeClaude?: string }
 export function createHealth(input: {
   mode: EngineMode
   access: AccessResult
+  /** Modèle en cours (accesseur dans main.ts : suit B5 · AI settings). */
   editorModel: string
+  /** Même valeur qu'`editorModel` depuis le 2026-09-28 (Ask AI suit les réglages de l'IA, FOLLOWUPS #47) ; compatibilité. */
   askModel: string
   sanityWrite: boolean
   preview: () => { url: string; ready: boolean }

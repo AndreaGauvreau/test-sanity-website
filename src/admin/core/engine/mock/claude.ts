@@ -24,7 +24,9 @@ import type { MockEngineResponse, MockHandler } from './types'
  * Aucun secret n'est gardé : seulement l'indice et un drapeau « échoue au test ».
  *
  * Réglages de l'IA (routes `/claude/settings`, carte « AI settings ») : mêmes règles que le moteur (validation STRICTE
- * `aiSettingsProblem` du contrat → 400), valeurs par défaut du contrat (Opus 5.5 / medium), Ask AI sur Haiku 4.5.
+ * `aiSettingsProblem` du contrat → 400, Haiku 4.5 compris), valeurs par défaut du contrat (Opus 5.5 / medium). Comme
+ * le moteur (FOLLOWUPS #47), ils valent pour TOUTE l'IA simulée : santé (`editorModel` = `askModel`), éditeur et Ask AI
+ * simulés lisent `mockAiSettings()` à chaque appel.
  * Un modèle « Fable 5.1 » + effort « max » enregistré avec `ENGINE_MOCK_CLAUDE_SETTINGS=fail` échoue (500 simulé)
  * pour voir l'erreur de l'écran.
  */
@@ -79,16 +81,18 @@ export function mockClaudeState(): ClaudeAccessState {
   return { ...base, access: 'none', source: 'none', problem }
 }
 
-export const MOCK_ASK_MODEL = 'claude-haiku-4-5'
+/** Réglages de l'IA simulée EN COURS (modèle et effort), lus à chaque appel par la santé, l'éditeur et Ask AI simulés. */
+export function mockAiSettings(): AiSettings {
+  return { ...(world().ai?.settings ?? DEFAULT_AI_SETTINGS) }
+}
 
 export function mockAiSettingsState(): AiSettingsState {
   const { ai } = world()
   return {
-    current: { ...(ai?.settings ?? DEFAULT_AI_SETTINGS) },
+    current: mockAiSettings(),
     defaults: { ...DEFAULT_AI_SETTINGS },
     source: ai ? 'saved' : 'default',
     ...(ai ? { updatedAt: ai.updatedAt } : {}),
-    askModel: MOCK_ASK_MODEL,
   }
 }
 

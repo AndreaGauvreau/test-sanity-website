@@ -6,8 +6,10 @@ import { CompleteError, createComplete, type ClaudeCredential, type CompleteInpu
  *   pas le crédit du compte (limite connue : un compte sans crédit passe ce test).
  * - Abonnement (machine ou jeton) : UN tour minimal par l'Agent SDK, sans outil (`complete` d'engine-claude : tools [],
  *   hook qui refuse tout, settingSources [], strictMcpConfig, maxTurns 1, persistSession false, env minimal), modèle le
- *   moins cher (ASK_MODEL, Haiku 4.5), 256 jetons de sortie au plus. Claude Code fait parfois dépasser une borne très
- *   basse (16 : « exceeded the 16 output token maximum », 2026-09-28) : Claude a alors bien répondu, le test réussit.
+ *   moins cher (ASK_MODEL, Haiku 4.5 : c'est désormais son SEUL usage, Ask AI suit B5 · AI settings), aucun effort,
+ *   256 jetons de sortie au plus. Claude Code fait parfois dépasser une borne très basse (16 : « exceeded the 16 output
+ *   token maximum », 2026-09-28) : Claude a alors bien répondu, le test réussit (`complete` le rend en
+ *   `stopReason: 'max_tokens'` ; l'ancienne forme, une erreur, reste reconnue).
  */
 
 /** `detail` : message brut de l'échec (journal du moteur seulement, masqué et tronqué par le service), jamais montré tel quel. */

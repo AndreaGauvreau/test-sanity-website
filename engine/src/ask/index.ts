@@ -5,7 +5,7 @@
 export { askModule, createAskReader, loadAdminConfig, registerAskRoutes, type AskModuleOptions } from './routes'
 export { ASK_MESSAGES, createAskService, type AskComplete, type AskService, type AskServiceDeps } from './service'
 export { buildSiteData, buildSiteQuery, renderSiteData, type AskReader, type AskSiteData } from './context'
-export { ASK_MAX_TOKENS, ASK_SYSTEM, buildAskMessages } from './prompt'
+export { ASK_MAX_TOKENS_PLAIN, ASK_MAX_TOKENS_THINKING, ASK_SYSTEM, askMaxTokens, buildAskMessages } from './prompt'
 export { finalizeAnswer, REFUSAL_TEXT, siteDomains } from './answer'
 export { parseAskRequest, HISTORY_MAX, QUESTION_MAX } from './request'
 export { askUsageDoc, sanityAskUsageRecorder, type AskUsageEntry, type AskUsageRecorder } from './usage'

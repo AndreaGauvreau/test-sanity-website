@@ -12,7 +12,7 @@ import { EngineError } from '../server/errors'
 import { createUsageModule, getUsageJournal, PENDING_FILE } from '../usage'
 import { createEngineServer, createRouter } from '../server/http'
 import { REFUSAL_TEXT } from './answer'
-import { ASK_MAX_TOKENS, ASK_SYSTEM } from './prompt'
+import { ASK_MAX_TOKENS_PLAIN, ASK_MAX_TOKENS_THINKING, ASK_SYSTEM, askMaxTokens } from './prompt'
 import { askModule, registerAskRoutes } from './routes'
 import type { EngineContext } from '../server/modules'
 import { ASK_MESSAGES, createAskService } from './service'
@@ -60,7 +60,9 @@ describe('service Ask AI', () => {
 
     const call = complete.calls[0]
     expect(call.model).toBe(MODEL)
-    expect(call.maxTokens).toBe(ASK_MAX_TOKENS)
+    // Haiku 4.5 (alias daté) : plafond sans réflexion, aucun effort transmis (aucun n'était réglé).
+    expect(call.maxTokens).toBe(ASK_MAX_TOKENS_PLAIN)
+    expect('effort' in call).toBe(false)
     expect(call.system).toBe(ASK_SYSTEM)
     // Données dans le message utilisateur, entre balises ; question à la fin.
     const last = call.messages.at(-1)!
@@ -71,6 +73,34 @@ describe('service Ask AI', () => {
     expect(recorded).toHaveLength(1)
     expect(recorded[0]).toMatchObject({ user: CLIENT, status: 'answered', page: '/admin/media', createdAt: '2026-09-27T10:00:00.000Z' })
     expect(recorded[0].requestId).toMatch(/^ask_[0-9a-f]{16}$/)
+  })
+
+  it('plafond de sortie PAR MODÈLE (la réflexion compte) : 16 000 pour un modèle qui réfléchit, 1 024 pour Haiku ; effort transmis', async () => {
+    expect([ASK_MAX_TOKENS_THINKING, ASK_MAX_TOKENS_PLAIN]).toEqual([16_000, 1_024])
+    expect(['claude-opus-5-5', 'claude-fable-5-1', 'claude-sonnet-5', 'claude-haiku-4-5', 'claude-haiku-4-5-20251001', 'claude-opus-5'].map(askMaxTokens)).toEqual([
+      16_000, 16_000, 16_000, 1_024, 1_024, 16_000,
+    ])
+    // Le plafond ne remplace jamais la brièveté du prompt.
+    expect(ASK_SYSTEM).toMatch(/in 1 to 3 short sentences/)
+    const { service, complete } = makeService(ANSWER, { model: 'claude-fable-5-1', effort: 'xhigh' })
+    await service.ask(CLIENT, { question: 'Which pages have no meta description?', history: [] })
+    expect(complete.calls[0]).toMatchObject({ model: 'claude-fable-5-1', effort: 'xhigh', maxTokens: 16_000 })
+  })
+
+  it('refus de Claude (refusal) ou plafond atteint (max_tokens) : message clair, aucun lien, consommation journalisée « failed »', async () => {
+    for (const [stopReason, answer] of [
+      ['refusal', ASK_MESSAGES.declined],
+      ['max_tokens', ASK_MESSAGES.cutOff],
+    ] as const) {
+      // Le texte (vide ou non) n'est jamais lu : même une réponse qui prétend avoir modifié ne passe pas.
+      const { service, recorded } = makeService({ text: 'ANSWER: Done, I changed it.\nLINKS: /admin/media\nCHANGE: yes', stopReason }, { model: 'claude-opus-5-5', effort: 'max' })
+      const res = await service.ask(CLIENT, { question: 'Where is the hero image used?', history: [], screen: '/admin/media' })
+      expect(res).toEqual({ answer, links: [], refusedChange: false, usage: expect.objectContaining({ model: 'claude-opus-5-5' }) })
+      expect(recorded).toHaveLength(1)
+      expect(recorded[0]).toMatchObject({ status: 'failed', usage: { model: 'claude-opus-5-5' }, page: '/admin/media' })
+    }
+    expect(ASK_MESSAGES.declined).toBe('Claude declined to answer this question. Try asking it another way.')
+    expect(ASK_MESSAGES.cutOff).toBe('The answer was cut off: Claude hit its length limit. Ask a shorter, more precise question.')
   })
 
   it('le prompt système est identique quel que soit le rôle, la question ou l’écran (cache)', async () => {
@@ -245,14 +275,20 @@ describe('SEC-08 dans le service', () => {
 })
 
 describe('askModule (EngineModule de MODULES)', () => {
-  it('enregistre POST /ask (droit ai.ask) avec le modèle ASK_MODEL de la config', async () => {
+  it('enregistre POST /ask (droit ai.ask) ; modèle et effort = réglages de l’IA EN COURS, relus à chaque question (plus ASK_MODEL)', async () => {
     const router = createRouter()
     const complete = fakeComplete(ANSWER)
+    // `context.settings` est un accesseur dans le vrai moteur (main.ts) : un choix enregistré dans B5 le change aussitôt.
+    let settings = { model: 'claude-opus-5-5', effort: 'medium' }
     const context = {
       router,
       access: { ok: false, error: 'no key' },
       sanity: null,
+      get settings() {
+        return settings
+      },
       config: {
+        // ASK_MODEL ne sert plus qu'au test de connexion : Ask AI ne le lit plus.
         models: { ask: 'claude-haiku-4-5-20251001' },
         sanity: { projectId: 'p', dataset: 'development', apiVersion: '2026-09-01', readToken: 'read', writeToken: null },
         paths: { claude: '/tmp/kz-claude' },
@@ -261,9 +297,22 @@ describe('askModule (EngineModule de MODULES)', () => {
     await askModule({ config: CONFIG, complete, reader: fakeReader(), usage: null }).register(context)
     const match = router.match('POST', '/ask')
     expect(match?.route.capability).toBe('ai.ask')
-    const res = (await match!.route.handler({ user: CLIENT, params: {}, query: new URLSearchParams(), body: { question: 'Where?' }, signal: new AbortController().signal })) as { json: AskResponse }
+    const ask = async () =>
+      (await match!.route.handler({ user: CLIENT, params: {}, query: new URLSearchParams(), body: { question: 'Where?' }, signal: new AbortController().signal })) as { json: AskResponse }
+    const res = await ask()
     expect(res.json.links[0]).toEqual({ label: 'Open Media', href: '/admin/media' })
-    expect(complete.calls[0].model).toBe('claude-haiku-4-5-20251001')
+    expect(res.json.usage.model).toBe('claude-opus-5-5')
+    // Rechargement à chaud : Haiku 4.5 choisi dans l'admin, puis Sonnet 5 / low.
+    settings = { model: 'claude-haiku-4-5', effort: 'high' }
+    expect((await ask()).json.usage.model).toBe('claude-haiku-4-5')
+    settings = { model: 'claude-sonnet-5', effort: 'low' }
+    await ask()
+    expect(complete.calls.map((call) => [call.model, call.effort, call.maxTokens])).toEqual([
+      ['claude-opus-5-5', 'medium', 16_000],
+      // Effort transmis tel quel : c'est `complete` qui ne l'envoie jamais à Haiku (complete.test.ts, main.test.ts).
+      ['claude-haiku-4-5', 'high', 1_024],
+      ['claude-sonnet-5', 'low', 16_000],
+    ])
   })
 
   it('sans accès Claude (resolveClaudeAccess en échec) : 503 clair', async () => {
@@ -272,6 +321,7 @@ describe('askModule (EngineModule de MODULES)', () => {
       router,
       access: { ok: false, error: 'no key' },
       sanity: null,
+      settings: { model: 'claude-opus-5-5', effort: 'medium' },
       config: { models: { ask: 'm' }, sanity: { projectId: 'p', dataset: 'd', apiVersion: '2026-09-01', readToken: 'r' }, paths: { claude: '/tmp/x' } },
     } as unknown as EngineContext
     await askModule({ config: CONFIG, reader: null, usage: null }).register(context)
@@ -289,6 +339,7 @@ describe('askModule (EngineModule de MODULES)', () => {
         // Sans jeton d'écriture : le journal commun garde le document dans son fichier local (jamais perdu).
         sanity: null,
         ports: {},
+        settings: { model: 'claude-sonnet-5', effort: 'low' },
         config: {
           models: { ask: MODEL },
           sanity: { projectId: 'p', dataset: 'development', apiVersion: '2026-09-01', readToken: 'read', writeToken: null },
@@ -301,7 +352,8 @@ describe('askModule (EngineModule de MODULES)', () => {
       const journal = getUsageJournal(context)!
       expect(await journal.pendingCount()).toBe(1)
       const doc = JSON.parse((await readFile(path.join(dataDir, PENDING_FILE), 'utf8')).trim())
-      expect(doc).toMatchObject({ _type: 'aiUsage', feature: 'ask', status: 'answered', user: { id: CLIENT.id, role: 'client' } })
+      // Le journal porte le modèle réellement utilisé (réglages de l'IA en cours), pas ASK_MODEL.
+      expect(doc).toMatchObject({ _type: 'aiUsage', feature: 'ask', status: 'answered', model: 'claude-sonnet-5', user: { id: CLIENT.id, role: 'client' } })
       expect(doc._id).toMatch(/^aiUsage\.ask_[0-9a-f]{16}$/)
       expect(JSON.stringify(doc)).not.toContain(CLIENT.email)
     } finally {

@@ -228,7 +228,8 @@ export async function makeBench(
     ok: true,
     version: 'test',
     mode: 'local',
-    claude: { access: 'api-key', editorModel: settings.model, askModel: 'claude-haiku-4-5' },
+    // Ask AI suit les réglages de l'IA comme l'éditeur (FOLLOWUPS #47) : même modèle.
+    claude: { access: 'api-key', editorModel: settings.model, askModel: settings.model },
     sanityWrite: !options.noWriteToken,
     preview: { url: 'http://127.0.0.1:4999', ready: true },
     git: { branch: 'draft', clean: true, aheadOfMain: 0 },

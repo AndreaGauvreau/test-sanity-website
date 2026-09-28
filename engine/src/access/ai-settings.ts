@@ -5,6 +5,7 @@ import {
   aiSettingsProblem,
   isAiEffort,
   isAiModelId,
+  modelSupportsEffort,
   type AiSettings,
   type AiSettingsInEffect,
   type AiSettingsState,
@@ -13,15 +14,18 @@ import { badRequest } from '../server/errors'
 
 /**
  * Réglages de l'IA choisis depuis l'admin (B5 · carte « AI settings ») : MODÈLE et NIVEAU DE RÉFLEXION (effort) de
- * l'éditeur IA. Ask AI n'est pas concerné (ASK_MODEL, Haiku).
+ * TOUTE l'IA du site — l'éditeur IA et Ask AI (FOLLOWUPS #47, 2026-09-28 ; ASK_MODEL ne sert plus qu'au test de
+ * connexion de l'abonnement). Haiku 4.5 n'a pas d'effort : l'effort enregistré est gardé, jamais envoyé à Claude
+ * (engine-claude : `buildAgentOptions`, `complete`).
  *
  * Fichier : `<ENGINE_WORKSPACE>/data/ai-settings.json` (écriture atomique : fichier temporaire puis renommage, 0600
  * comme les autres fichiers de data/ ; rien de secret, donc pas de chiffrement). Absent ou illisible → valeurs par
  * défaut du moteur (EDITOR_MODEL / EDITOR_EFFORT de l'environnement, sinon claude-opus-5-5 / medium).
  *
  * RECHARGEMENT À CHAUD : `current()` est synchrone et suit le dernier enregistrement ; main.ts l'expose par des
- * ACCESSEURS (réglages de l'éditeur, /health) : chaque nouvelle demande lit les réglages en cours à son départ, une
- * demande lancée garde les siens (2e essai compris : même session, même modèle).
+ * ACCESSEURS (réglages de l'éditeur, `context.settings` lu par Ask AI, /health) : chaque nouvelle demande de l'éditeur
+ * lit les réglages en cours à son départ (une demande lancée garde les siens, 2e essai compris : même session, même
+ * modèle) ; Ask AI les relit à chaque question.
  */
 
 export const AI_SETTINGS_FILE = 'ai-settings.json'
@@ -74,7 +78,7 @@ export function openAiSettingsStore(input: { dataDir: string; now?: () => Date }
 }
 
 export type AiSettingsService = {
-  /** Réglages en cours (synchrone) : ceux que prendra la PROCHAINE demande de l'éditeur. */
+  /** Réglages en cours (synchrone) : ceux de la PROCHAINE demande de l'éditeur et de la PROCHAINE question d'Ask AI. */
   current(): AiSettingsInEffect
   /** Relit le fichier (démarrage). */
   load(): Promise<void>
@@ -87,8 +91,6 @@ export type AiSettingsDeps = {
   store: AiSettingsStore
   /** Valeurs par défaut : EDITOR_MODEL / EDITOR_EFFORT (`readAgentSettings`), sinon claude-opus-5-5 / medium. */
   defaults: AiSettingsInEffect
-  /** ASK_MODEL (affiché par l'écran : Ask AI n'est pas concerné). */
-  askModel: string
   log?: (line: string) => void
 }
 
@@ -102,7 +104,6 @@ export function createAiSettingsService(deps: AiSettingsDeps): AiSettingsService
     defaults: { ...defaults },
     source: saved ? 'saved' : 'default',
     ...(saved?.updatedAt ? { updatedAt: saved.updatedAt } : {}),
-    askModel: deps.askModel,
   })
 
   return {
@@ -119,7 +120,8 @@ export function createAiSettingsService(deps: AiSettingsDeps): AiSettingsService
       const { model, effort } = body as AiSettings
       // Écrit d'abord : un disque en erreur laisse les réglages en cours inchangés.
       saved = await deps.store.write({ model, effort })
-      deps.log?.(`AI settings saved: ${model}, effort ${effort} (next AI editor request).`)
+      const used = modelSupportsEffort(model) ? `effort ${effort}` : `no effort (${effort} kept for the other models)`
+      deps.log?.(`AI settings saved: ${model}, ${used} (next AI editor request and Ask AI question).`)
       return state()
     },
   }

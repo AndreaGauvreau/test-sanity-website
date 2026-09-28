@@ -34,11 +34,11 @@ export type EngineContext = {
   readonly access: AccessResult
   /** Connexion à Claude rechargeable (engine/src/access) : routes `/claude/access*`, test de connexion. */
   claudeAccess: ClaudeAccessService
-  /** Réglages de l'IA rechargeables (modèle et effort de l'éditeur, B5) : routes `/claude/settings`. */
+  /** Réglages de l'IA rechargeables (modèle et effort de toute l'IA du site : éditeur et Ask AI, B5) : `/claude/settings`. */
   aiSettings: AiSettingsService
   /**
    * Réglages de l'agent EN COURS (accesseur : modèle et effort suivent `aiSettings`). Lire au moment de l'appel, jamais
-   * copier à l'enregistrement d'un module.
+   * copier à l'enregistrement d'un module : Ask AI y lit son modèle et son effort à chaque question.
    */
   readonly settings: AgentSettings
   /** Ports que les modules branchent (appelés par l'éditeur). */

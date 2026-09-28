@@ -1,6 +1,6 @@
 # features/usage — LLM context
 
-> Propriétaire : code-usage · Figma : B5 (docs/admin/figma/screens/B5.md), fiches AIUsage, ModelUsage · Mis à jour : 2026-09-28 (carte AI settings ; coût facturé / inclus dans l'abonnement Claude)
+> Propriétaire : code-usage · Figma : B5 (docs/admin/figma/screens/B5.md), fiches AIUsage, ModelUsage · Mis à jour : 2026-09-28 (carte AI settings pour toute l'IA du site + Haiku 4.5, FOLLOWUPS #47 ; coût facturé / inclus dans l'abonnement Claude)
 > Possède aussi : `src/app/admin/(shell)/settings/usage/` (page, loading). Données : `src/admin/core/usage/` (même propriétaire).
 
 ## Utilité
@@ -14,8 +14,8 @@ de solde, de plafond ni d'alerte.
 - `ClaudeConnectionCard.tsx` + `ClaudeConnection.module.css` — client : carte « Claude connection » (accès du moteur à
   Claude, sans maquette) ; `ClaudeConnectionCard.test.tsx` (faux client du moteur).
 - `AiSettingsCard.tsx` + `AiSettings.module.css` — client : carte « AI settings » (modèle et niveau de réflexion de
-  l'éditeur IA, sans maquette) ; `AiSettingsCard.test.tsx` (faux client du moteur). Exporte `AI_SETTINGS_TEXT`,
-  `EFFORT_HELP`, `priceHint`.
+  TOUTE l'IA du site : éditeur IA et Ask AI ; sans maquette) ; `AiSettingsCard.test.tsx` (faux client du moteur).
+  Exporte `AI_SETTINGS_TEXT`, `EFFORT_HELP`, `noEffortHelp`, `priceHint`, `settingsLabel`.
 - `UsagePeriodCard.tsx` — client : `AIUsage` du kit, période → `?period=` (router.replace), chargement pendant la transition.
 - `UsageSkeleton.tsx` — état de chargement (route `loading.tsx`). `UsageLoadError.tsx` — journal illisible.
 - `format.ts` — `formatWhen` (Today 14:12 · Yesterday · Sep 24), `formatDay`, `sinceLaunchHint`, `requestText`, `statusNote`.
@@ -31,8 +31,9 @@ de solde, de plafond ni d'alerte.
   droit `ai.access` = Kuartz et client). La page passe `claudeConnection = { adminLocal }` seulement avec `ai.access`
   (`adminLocal` = hôte 127.0.0.1 / localhost, `isLocalHost(requestHost(headers()))`).
 - Carte AI settings : `engineClient.claude.{settings, saveSettings}` (routes `/claude/settings`, droit `ai.access`) ; la page
-  passe `aiSettings = can(role, 'ai.access')`. Modèles et niveaux : `AI_MODELS` / `AI_EFFORTS` du contrat ; prix :
-  `priceOf` de `core/contracts/pricing.ts` (même table que le coût estimé du moteur) ; libellés : `modelLabel`.
+  passe `aiSettings = can(role, 'ai.access')`. Modèles, capacité et phrase : `AI_MODELS` (`supportsEffort`, `hint`),
+  `aiModelOf`, `modelSupportsEffort` ; niveaux : `AI_EFFORTS` du contrat ; prix : `priceOf` de
+  `core/contracts/pricing.ts` (même table que le coût estimé du moteur) ; libellés : `modelLabel`.
 
 ## Comportement
 - Coût FACTURÉ / INCLUS (partout dans B5) : une demande passée par l'abonnement Claude (`access: 'subscription'`, moteur
@@ -67,16 +68,22 @@ de solde, de plafond ni d'alerte.
   Disconnect. ANTHROPIC_API_KEY dans l'env du moteur : Callout « takes priority ». Test automatique après chaque
   enregistrement + bouton « Test connection » ; pied « Last test: Today 14:12 — … » ; échec : Callout d'erreur lisible.
   Moteur injoignable : Callout d'erreur + Retry.
-- AI settings (Kuartz et client ; l'editor ne la voit pas), sous Claude connection : en-tête « AI settings » + « AI editor »
-  + Tag « Default » (rien d'enregistré : EDITOR_MODEL / EDITOR_EFFORT du moteur, sinon Opus 5.5 / Medium) ou « Saved ».
-  « Model » (Select du kit : Opus 5.5 · Fable 5.1 · Sonnet 5, prix « $4 / $20 » en méta et « … per M tokens » dans le
-  champ ; un modèle hors liste venu d'EDITOR_MODEL est montré « (engine default) », désactivé, et Save exige un modèle de
-  la liste) ; « Thinking effort » (SegmentedControl du kit : Low · Medium · High · Extra high · Max, une phrase d'aide
-  par niveau). Ligne « Ask AI isn’t affected: it always uses Haiku 4.5. » (+ valeurs par défaut du moteur si rien
-  d'enregistré). Pied : « Changes apply to the next AI editor request. A request already running keeps its settings. »
-  + Save (primaire, désactivé tant que rien n'a changé, chargement pendant l'envoi) ; après succès « Saved. The next AI
-  editor request uses Fable 5.1 · Extra high. » ; échec : Callout d'erreur lisible (message du moteur), choix gardé.
-  Animations sobres du kit : corps en fondu (`fade`), message et erreur en `slideDown` (AnimatePresence,
+- AI settings (Kuartz et client ; l'editor ne la voit pas), sous Claude connection — UN choix pour TOUTE l'IA du site
+  (éditeur IA ET Ask AI, FOLLOWUPS #47) : en-tête « AI settings » + « AI editor · Ask AI » + Tag « Default » (rien
+  d'enregistré : EDITOR_MODEL / EDITOR_EFFORT du moteur, sinon Opus 5.5 / Medium) ou « Saved ».
+  « Model » (Select du kit : Opus 5.5 · Fable 5.1 · Sonnet 5 · Haiku 4.5, prix « $4 / $20 », « $10 / $50 »,
+  « $2 / $10 », « $1 / $5 » en méta et « Haiku 4.5 · $1 / $5 per M tokens » dans le champ ; aide = phrase du modèle +
+  « Price per million tokens, input / output (Anthropic API pricing). », ex. « Fastest and cheapest. For simple changes
+  and questions. … » ; un modèle hors liste venu d'EDITOR_MODEL est montré « (engine default) », désactivé, et Save exige
+  un modèle de la liste) ; « Thinking effort » (SegmentedControl du kit : Low · Medium · High · Extra high · Max, une
+  phrase d'aide par niveau). Modèle sans effort (Haiku 4.5) : niveau affiché mais DÉSACTIVÉ, aide remplacée par
+  « Haiku 4.5 doesn’t use a thinking effort. The level stays saved for the other models. » (Save envoie l'effort gardé ;
+  un autre modèle le réactive). Ligne « Used by the AI editor and Ask AI. » (+ « Engine default: Opus 5.5 · Medium. »
+  si rien d'enregistré ; « Haiku 4.5 » seul pour un modèle sans effort). Pied : « Changes apply to the next AI editor
+  request and the next Ask AI question. A request already running keeps its settings. » + Save (primaire, désactivé tant
+  que rien n'a changé, chargement pendant l'envoi) ; après succès « Saved. The next AI editor request and Ask AI
+  question use Fable 5.1 · Extra high. » (« … use Haiku 4.5. ») ; échec : Callout d'erreur lisible (message du moteur),
+  choix gardé. Animations sobres du kit : corps en fondu (`fade`), message et erreur en `slideDown` (AnimatePresence,
   `useMotionVariants` → rien en mouvement réduit). Moteur injoignable : Callout + Retry.
 
 ## Forces
@@ -110,8 +117,10 @@ de solde, de plafond ni d'alerte.
 - Texte de la carte Since launch : `sinceLaunchHint` (format.ts) + `format.test.ts`.
 
 ## Tests
-`npx vitest run src/admin/features/usage src/admin/core/usage` — carte AI settings (rendu, prix des trois modèles depuis la
-table unique, Save désactivé sans changement, envoi, « Saved », erreur lisible, moteur injoignable + Retry, modèle hors
+`npx vitest run src/admin/features/usage src/admin/core/usage` (6 fichiers, 63 tests) — carte AI settings (8 tests : rendu
+et textes « AI editor · Ask AI » / « Used by the AI editor and Ask AI. », prix des quatre modèles depuis la table unique,
+menu à quatre modèles, Haiku 4.5 : effort désactivé et expliqué, effort gardé à l'envoi, réactivé par un autre modèle ;
+Save désactivé sans changement, envoi, « Saved », erreur lisible, moteur injoignable + Retry, modèle hors
 liste), placement sous Claude connection et absence sans `aiSettings` (UsageScreen) ; carte Claude connection (local / production, abonnement,
 clé envoyée une fois et jamais affichée, sk-ant-oat refusé avant envoi, échec du test, clé de l'environnement, moteur
 injoignable) ; formats (fuseaux, années, « online since » avec ou sans
@@ -129,7 +138,9 @@ main : `/admin/settings/usage` en kuartz et client (dataset development au 28/09
   Claude connection exige `ai.access` (Kuartz et client), ajouté au contrat le 2026-09-27.
 - Carte Claude connection placée entre les deux cartes du haut et Recent requests (pas de maquette : composants du kit).
 - Carte AI settings (2026-09-28, demande de l'utilisatrice) juste sous Claude connection, même droit ; choix appliqué à la
-  demande SUIVANTE de l'éditeur (le moteur relit ses réglages au départ de chaque demande) ; Ask AI non concerné.
+  demande SUIVANTE de l'éditeur (le moteur relit ses réglages au départ de chaque demande) ET à la question suivante
+  d'Ask AI : le même jour, l'utilisatrice a jugé « Ask AI isn’t affected » comme une erreur (le modèle affiché dans Ask
+  AI doit être celui qu'elle a choisi) et demandé Haiku 4.5 pour le coût minimal (FOLLOWUPS #47).
 - « Since launch » : le COÛT reste le cumul de toutes les demandes FACTURÉES (y compris avant la mise en ligne) ; seule
   la date affichée vient de `launchedAt` (FOLLOWUPS #33).
 - Abonnement Claude (2026-09-28, constat de l'orchestrateur sur le dataset development) : le contrat disait déjà que son

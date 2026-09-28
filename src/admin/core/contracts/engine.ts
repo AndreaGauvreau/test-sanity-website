@@ -82,6 +82,11 @@ export type EngineHealth = {
   version: string
   /** local : dépôt de travail sur cette machine, pas de push ni de déploiement automatique sans configuration. */
   mode: 'local' | 'hosted'
+  /**
+   * `editorModel` : modèle en cours (B5 · AI settings, sinon EDITOR_MODEL). `askModel` : modèle d'Ask AI — la MÊME
+   * valeur depuis le 2026-09-28 (Ask AI suit les réglages de l'IA, FOLLOWUPS #47) ; champ gardé pour compatibilité, lu
+   * par l'en-tête du panneau Ask AI (un moteur resté sur l'ancien code y met encore ASK_MODEL, ce qu'il utilise).
+   */
   claude: { access: ClaudeAccess; editorModel: string; askModel: string }
   sanityWrite: boolean
   preview: { url: string; ready: boolean }
@@ -170,24 +175,58 @@ export const claudeKeyHint = (key: string) => `sk-ant-…${cleanClaudeApiKey(key
 // ─── Réglages de l'IA (B5 · carte « AI settings ») ───────────────────────────
 
 /**
- * Modèles proposés pour l'ÉDITEUR IA (Ask AI reste sur ASK_MODEL, Haiku : non concerné). Tarifs :
- * `PRICES_PER_MTOK` de `pricing.ts` (source unique, lue aussi par le moteur).
+ * Modèles proposés pour TOUTE l'IA du site : l'éditeur IA ET Ask AI suivent le même choix (FOLLOWUPS #47, 2026-09-28 ;
+ * avant, Ask AI restait sur ASK_MODEL). Tarifs : `PRICES_PER_MTOK` de `pricing.ts` (source unique, lue aussi par le
+ * moteur). Haiku 4.5 : id SANS date (l'alias daté `claude-haiku-4-5-20251001` désigne le même modèle).
  */
-export type AiModelId = 'claude-opus-5-5' | 'claude-fable-5-1' | 'claude-sonnet-5'
+export type AiModelId = 'claude-opus-5-5' | 'claude-fable-5-1' | 'claude-sonnet-5' | 'claude-haiku-4-5'
 
 /**
- * Niveau de réflexion (« effort ») : exactement `EffortLevel` de @anthropic-ai/claude-agent-sdk 0.3.283 (sdk.d.ts).
- * D'après le SDK et le skill `claude-api` (2026-09-28), les trois modèles de la liste acceptent les cinq niveaux ; un
- * niveau non pris en charge par un modèle serait ramené en silence par Claude Code au plus proche.
+ * Niveau de réflexion (« effort ») : exactement `EffortLevel` de @anthropic-ai/claude-agent-sdk 0.3.283 (sdk.d.ts), et
+ * `output_config.effort` de l'API Messages. D'après le skill `claude-api` (2026-09-28) : Opus 5.5, Fable 5.1 et Sonnet 5
+ * acceptent les cinq niveaux ; Haiku 4.5 N'ACCEPTE PAS le paramètre (l'envoyer → erreur de l'API) : voir
+ * `modelSupportsEffort`.
  */
 export type AiEffort = 'low' | 'medium' | 'high' | 'xhigh' | 'max'
 
-/** Liste ordonnée des modèles de l'écran (libellés identiques à `modelLabel` de format.ts). */
-export const AI_MODELS: readonly { id: AiModelId; label: string }[] = [
-  { id: 'claude-opus-5-5', label: 'Opus 5.5' },
-  { id: 'claude-fable-5-1', label: 'Fable 5.1' },
-  { id: 'claude-sonnet-5', label: 'Sonnet 5' },
+/** Un modèle proposé par la carte AI settings. */
+export type AiModel = {
+  id: AiModelId
+  /** Libellé identique à `modelLabel` de format.ts. */
+  label: string
+  /**
+   * Prend en charge le paramètre effort (et réfléchit : réflexion adaptative, impossible à désactiver sur Opus 5.5 et
+   * Fable 5.1). false pour Haiku 4.5 : le moteur ne lui envoie JAMAIS d'effort (éditeur et Ask AI) ; l'effort enregistré
+   * est gardé mais ignoré tant qu'il est choisi.
+   */
+  supportsEffort: boolean
+  /** Une phrase pour choisir (anglais, aide du menu Model). */
+  hint: string
+}
+
+/**
+ * Liste ordonnée des modèles de l'écran (positionnement et tarifs : skill `claude-api`, 2026-09-28 — Fable 5.1 = modèle
+ * le plus capable, au-dessus du prix d'Opus ; Haiku 4.5 = le plus rapide et le moins cher, sans réflexion).
+ */
+export const AI_MODELS: readonly AiModel[] = [
+  { id: 'claude-opus-5-5', label: 'Opus 5.5', supportsEffort: true, hint: 'Recommended for most changes and questions.' },
+  { id: 'claude-fable-5-1', label: 'Fable 5.1', supportsEffort: true, hint: 'Most capable and most expensive. Slower: keep it for the hardest changes.' },
+  { id: 'claude-sonnet-5', label: 'Sonnet 5', supportsEffort: true, hint: 'Cheaper than Opus. Good for everyday changes.' },
+  { id: 'claude-haiku-4-5', label: 'Haiku 4.5', supportsEffort: false, hint: 'Fastest and cheapest. For simple changes and questions.' },
 ]
+
+/** Modèle de la liste désigné par cet id exact, ou undefined (modèle hors liste venu de l'environnement du moteur). */
+export const aiModelOf = (model: string): AiModel | undefined => AI_MODELS.find((item) => item.id === model)
+
+/**
+ * Le modèle accepte-t-il le paramètre effort ? Modèle de la liste : sa capacité (`supportsEffort`). Hors liste
+ * (EDITOR_MODEL, ASK_MODEL de l'environnement du moteur) : NON pour la famille Haiku (alias daté compris), oui sinon
+ * (ce que faisait le moteur avant : l'effort était toujours envoyé). Le moteur n'envoie l'effort (option `effort` de
+ * l'Agent SDK, `output_config.effort` de l'API Messages) que si cette fonction dit oui.
+ */
+export function modelSupportsEffort(model: string): boolean {
+  return aiModelOf(model)?.supportsEffort ?? !model.startsWith('claude-haiku-')
+}
 
 /** Liste ordonnée des niveaux, du plus rapide au plus poussé, avec leur libellé lisible (anglais). */
 export const AI_EFFORTS: readonly { id: AiEffort; label: string }[] = [
@@ -198,7 +237,10 @@ export const AI_EFFORTS: readonly { id: AiEffort; label: string }[] = [
   { id: 'max', label: 'Max' },
 ]
 
-/** Réglages choisis depuis l'admin (corps de POST /claude/settings). */
+/**
+ * Réglages choisis depuis l'admin (corps de POST /claude/settings). `effort` est toujours présent, même avec un modèle
+ * sans effort (Haiku 4.5) : il est alors gardé mais ignoré, et resservira avec un autre modèle.
+ */
 export type AiSettings = { model: AiModelId; effort: AiEffort }
 
 /** Valeurs par défaut quand ni l'environnement du moteur (EDITOR_MODEL / EDITOR_EFFORT) ni l'admin n'en donnent. */
@@ -210,8 +252,15 @@ export const DEFAULT_AI_SETTINGS: AiSettings = { model: 'claude-opus-5-5', effor
  */
 export type AiSettingsInEffect = { model: string; effort: AiEffort }
 
+/**
+ * État de la carte AI settings. Depuis le 2026-09-28 (FOLLOWUPS #47), plus de champ `askModel` : Ask AI suit `current`
+ * comme l'éditeur (un moteur resté sur l'ancien code l'envoie encore ; l'admin l'ignore).
+ */
 export type AiSettingsState = {
-  /** Réglages que prendra la PROCHAINE demande de l'éditeur (une demande en cours garde les siens). */
+  /**
+   * Réglages que prendront la PROCHAINE demande de l'éditeur et la PROCHAINE question d'Ask AI (une demande en cours
+   * garde les siens).
+   */
   current: AiSettingsInEffect
   /** Valeurs par défaut du moteur : EDITOR_MODEL / EDITOR_EFFORT, sinon `DEFAULT_AI_SETTINGS`. */
   defaults: AiSettingsInEffect
@@ -219,22 +268,21 @@ export type AiSettingsState = {
   source: 'default' | 'saved'
   /** Date ISO du dernier enregistrement (source = saved). */
   updatedAt?: string
-  /** Modèle d'Ask AI (ASK_MODEL du moteur), NON concerné par ces réglages. */
-  askModel: string
 }
 
 // Routes (droit `ai.access`, revérifié par le moteur) :
 //   GET  /claude/settings                 → AiSettingsState
 //   POST /claude/settings  AiSettings     → AiSettingsState · 400 bad_request (`aiSettingsProblem`)
-// Prise en compte à chaud : chaque NOUVELLE demande de l'éditeur lit les réglages en cours à son départ.
+// Prise en compte à chaud : chaque NOUVELLE demande de l'éditeur lit les réglages en cours à son départ, Ask AI les
+// relit à CHAQUE question. L'effort n'est envoyé à Claude que si `modelSupportsEffort(model)`.
 
 export const isAiModelId = (value: unknown): value is AiModelId => AI_MODELS.some((model) => model.id === value)
 export const isAiEffort = (value: unknown): value is AiEffort => AI_EFFORTS.some((effort) => effort.id === value)
 
 /**
  * Validation STRICTE d'un corps `AiSettings` (anglais, sans jamais citer l'entrée), ou null s'il est valide :
- * un objet avec exactement `model` (de la liste) et `effort` (des cinq niveaux), rien d'autre.
- * Partagée par le moteur et le moteur simulé.
+ * un objet avec exactement `model` (de la liste, Haiku 4.5 compris) et `effort` (des cinq niveaux, exigé même pour un
+ * modèle sans effort : gardé, ignoré), rien d'autre. Partagée par le moteur et le moteur simulé.
  */
 export function aiSettingsProblem(input: unknown): string | null {
   if (typeof input !== 'object' || input === null || Array.isArray(input)) return 'Send a model and a thinking effort.'

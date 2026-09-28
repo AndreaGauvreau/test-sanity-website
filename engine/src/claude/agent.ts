@@ -10,6 +10,7 @@ import {
 import { mkdir } from 'node:fs/promises'
 import path from 'node:path'
 import type { StepKind } from '../../../src/admin/core/contracts'
+import { modelSupportsEffort } from '../../../src/admin/core/contracts/engine'
 import { credentialEnv, type AgentSettings, type ClaudeCredential } from './access'
 import { addTokens, estimateCost, meterUsage, NO_TOKENS, type Tokens, type UsageLike } from './cost'
 import { repoPath } from '../guards/guards'
@@ -89,6 +90,13 @@ export const MIN_RESUME_MS = 60_000
 /** Identifiant de l'application dans l'en-tête User-Agent des appels du SDK. */
 export const CLIENT_APP = 'kuartz-ai-editor/0.1'
 
+/**
+ * Modèle refusé par l'accès (inconnu, ou non inclus : ex. Fable 5.1 hors de l'abonnement). Le modèle se choisit dans
+ * l'admin (B5 · AI settings) pour l'éditeur ET Ask AI : le message y renvoie, jamais à EDITOR_MODEL / ASK_MODEL.
+ */
+export const MODEL_UNAVAILABLE =
+  'The chosen model isn’t available with this Claude access. Choose another model in Site Settings › Usage › AI settings.'
+
 /** Erreurs d'API qu'aucun nouvel essai ne réglera : on arrête tout de suite au lieu d'attendre le délai max. */
 export function fatalApiError(
   error: SDKAssistantMessageError,
@@ -104,7 +112,7 @@ export function fatalApiError(
     case 'billing_error':
       return access.kind === 'api-key' ? 'The Anthropic account of this API key has no credit left.' : 'Billing problem on your Claude subscription.'
     case 'model_not_found':
-      return 'Model unavailable (EDITOR_MODEL): unknown or not included in your access.'
+      return MODEL_UNAVAILABLE
     case 'account_on_hold':
       return 'The Anthropic account in use is on hold.'
     case 'oauth_org_not_allowed':
@@ -204,7 +212,10 @@ export function buildAgentOptions(input: {
   return {
     cwd: run.cwd,
     model: settings.model,
-    effort: settings.effort,
+    // Effort SEULEMENT pour un modèle qui le prend en charge (`modelSupportsEffort` du contrat) : jamais pour Haiku 4.5,
+    // dont l'API refuserait la requête (l'effort choisi dans B5 est alors gardé, ignoré). Jamais de `thinking` : la
+    // réflexion reste adaptative par défaut (impossible à désactiver sur Opus 5.5 et Fable 5.1).
+    ...(modelSupportsEffort(settings.model) ? { effort: settings.effort } : {}),
     maxTurns: settings.maxTurns,
     // Par APPEL de query() : le plafond du cumul d'une demande est tenu par le moteur (2 essais possibles).
     maxBudgetUsd: settings.maxBudgetUsd,

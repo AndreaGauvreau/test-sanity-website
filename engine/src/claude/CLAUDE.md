@@ -1,6 +1,6 @@
 # Pilotage de Claude (moteur IA) — LLM context
 
-> Propriétaire : engine-claude · Figma : D1-D3, G2 (questions, journal, coût), G4 (Ask AI via `complete`) · Mis à jour : 2026-09-28 (tarifs dans les contrats, modèle/effort de l'admin, largeurs de l'aperçu tirées du contrat)
+> Propriétaire : engine-claude · Figma : D1-D3, G2 (questions, journal, coût), G4 (Ask AI via `complete`) · Mis à jour : 2026-09-28 (effort seulement pour les modèles qui le prennent en charge, Haiku 4.5 ; `complete` : modèle / effort des réglages, refus et plafond normalisés, FOLLOWUPS #47 ; tarifs dans les contrats, largeurs de l'aperçu tirées du contrat)
 
 ## Utilité
 Tout ce qui parle à Claude dans le moteur (`engine/`, processus Node séparé, jamais importé par Next) :
@@ -25,7 +25,7 @@ est en anglais ; commentaires et ce fichier en français.
   L'accès réellement utilisé (env + clé enregistrée depuis l'admin + abonnement de la machine) est résolu et RECHARGÉ À
   CHAUD par `engine/src/access` (engine-core, B5), qui s'appuie sur `resolveClaudeAccess` pour l'environnement.
 - `agent.ts` — `createAgentRunner` (query() et lecture du flux), `buildAgentOptions`, `agentEnv`, `createKuartzServer`,
-  `createAgentClock` (pauseClock), `fatalApiError`, `RESULT_ERRORS`, `describeTool`.
+  `createAgentClock` (pauseClock), `fatalApiError`, `RESULT_ERRORS`, `MODEL_UNAVAILABLE`, `describeTool`.
 - `tools.ts` — outils MCP `kuartzTools` (définitions, schémas zod, descriptions en anglais, dont `ASK_CLIENT_DESCRIPTION`) ;
   largeurs citées tirées du contrat `EDITOR_VIEWPORTS` (measure : `MEASURED_VIEWPORTS_TEXT` = 375, 810 et 1280 px ;
   ligne gagnée : Mobile, 375 px), fixes d'une demande à l'autre.
@@ -42,7 +42,8 @@ est en anglais ; commentaires et ce fichier en français.
 - `cost.ts` — `meterUsage`, `estimateCost`, `addCall` (banked/session), `toUsage`, `usageFromTokens` (format `Usage` du contrat).
 - `pricing.ts` — RÉEXPORTE `PRICES_PER_MTOK` (table typée et gelée) et `priceOf` de `src/admin/core/contracts/pricing.ts`
   (source unique, partagée avec l'admin pour la carte AI settings de B5 ; déplacée le 2026-09-28).
-- `complete.ts` — `complete` / `createComplete` (Ask AI), `completeOptions`, `transcriptPrompt`, `CompleteError`.
+- `complete.ts` — `complete` / `createComplete` (Ask AI), `completeOptions`, `messagesBody` (corps exact de l'API
+  Messages), `effortFor`, `STOP_REFUSAL` / `STOP_MAX_TOKENS`, `transcriptPrompt`, `CompleteError`.
 - `fake.ts` — `createFakeAgent`, `fakeScenarios` (faux Claude scriptable, même interface que `RunAgent`), `applyEdit`
   (l'outil Edit réel appliqué à un contenu).
 - `fixtures.ts` — zones et tokens de TEST modelés sur Conduit (mêmes 6 groupes que le vrai tokens.json, valeurs en hex),
@@ -77,7 +78,8 @@ est en anglais ; commentaires et ce fichier en français.
   - `createAskTool({ waitForAnswers(asked) → Promise<ResolvedAnswer[]>, onEvent?, policy?, now?, allowedDomains? }) → AskTool` ; `questionProblems(drafts, policy?, allowedDomains?) → string | null` ; `prepareQuestions(drafts, now?, batchId?, allowedDomains?) → { id, askedAt, questions: Question[] }` ; `parseAnswers(asked, body) → { ok, answers: Answer[], resolved } | { ok: false, error }` ; `describeAnswers(resolved) → string` ; `hardcodedOf`, `acceptsLongerText`
   - `clientMessage(text, allowedDomains = []) → string` ; `describeTool(cwd, name, input, allowedDomains = []) → AgentEvent | null`
   - `addCall(state, call: AgentResult, resumed: string | null) → CostState` ; `toUsage(state, { model, access, durationMs }) → Usage` ; `totalCost(state)`
-  - `complete({ model, system, messages, maxTokens, signal? }, { access, configDir, anthropic?, query?, base?, now? }) → Promise<{ text, usage: Usage, stopReason }>` (lève `CompleteError { fatal }`)
+  - `complete({ model, effort?, system, messages, maxTokens, signal? }, { access, configDir, anthropic?, query?, base?, now? }) → Promise<{ text, usage: Usage, stopReason }>` (lève `CompleteError { fatal }`) ; `stopReason` `refusal` ou `max_tokens` → `text` VIDE, `usage` gardé
+  - `effortFor({ model, effort? }) → AiEffort | undefined` (effort seulement si `modelSupportsEffort(model)`) ; `messagesBody(input)` ; `MODEL_UNAVAILABLE`
   - `createFakeAgent(script: FakeCall[] | (run, i) => FakeCall) → RunAgent & { runs, results, toolErrors }` ; `fakeScenarios.*`
     - étape `{ kind: 'edit', file, find?, replace?, replaceAll?, content? }` ; `applyEdit(current: string | null, oldString,
       newString, replaceAll = false) → { content } | { error }`
@@ -89,7 +91,7 @@ est en anglais ; commentaires et ce fichier en français.
 | Option | Valeur | Pourquoi |
 |---|---|---|
 | `cwd` | clone de travail (branche draft), absolu | Claude ne voit que le site ; chemin vide/relatif refusé (piège 5 du POC) |
-| `model` / `effort` | ceux de la DEMANDE : choisis dans l'admin (B5 · AI settings, `engine/src/access/ai-settings.ts`), sinon `EDITOR_MODEL` (claude-opus-5-5) / `EDITOR_EFFORT` (medium) | main.ts construit les réglages de chaque appel avec le modèle et l'effort lus au départ de la demande (`jobs/run.ts`) ; Opus 5.5 : medium est aussi son défaut |
+| `model` / `effort` | ceux de la DEMANDE : choisis dans l'admin (B5 · AI settings, `engine/src/access/ai-settings.ts`), sinon `EDITOR_MODEL` (claude-opus-5-5) / `EDITOR_EFFORT` (medium). `effort` SEULEMENT si `modelSupportsEffort(model)` (contrat) : ABSENT pour Haiku 4.5 (l'API refuserait) | main.ts construit les réglages de chaque appel avec le modèle et l'effort lus au départ de la demande (`jobs/run.ts`) ; Opus 5.5 : medium est aussi son défaut ; jamais de `thinking` (réflexion adaptative par défaut, impossible à désactiver sur Opus 5.5 / Fable 5.1) |
 | `maxTurns` / `maxBudgetUsd` | 24 / 1.5 | plafonds PAR APPEL de query() (voir Pièges) |
 | `tools` | `['Read','Edit','Glob','Grep']` | ni Bash, ni Write, ni Web |
 | `allowedTools` | les 4 + `mcp__kuartz__set_text`, `…__measure`, `…__ask_client`, FIXE et gelé | cache ; le droit se décide à l'appel (hook) |
@@ -100,7 +102,8 @@ est en anglais ; commentaires et ce fichier en français.
 | `hooks` | `{ PreToolUse: [{ hooks: [guard] }] }` sans matcher | TOUS les outils passent par `checkToolUse` |
 | `abortController`, `resume` | Stop/délai ; id de session au 2e essai | une session = une demande |
 | `env` | `PATH`, `HOME`, UN identifiant (`credentialEnv`), `CLAUDE_CONFIG_DIR` dédié, `CLAUDE_AGENT_SDK_CLIENT_APP=kuartz-ai-editor/0.1`, `MCP_TOOL_TIMEOUT` (question + 60 s) | jamais `...process.env` |
-`disallowedTools`, `canUseTool`, `plugins` : non utilisés (le test vérifie la liste exacte des clés).
+`disallowedTools`, `canUseTool`, `plugins`, `thinking`, `maxThinkingTokens` : non utilisés (le test vérifie la liste
+exacte des clés, avec et sans `effort`).
 
 ### Flux et erreurs
 - `system/api_retry` : erreur fatale (`authentication_failed`, `billing_error`, `model_not_found`, `account_on_hold`,
@@ -195,10 +198,19 @@ formats de l'éditeur (Mobile 375, Tablet 810 = `50.625rem`, Desktop 1280 : une 
 
 ### Ask AI (`complete`)
 Clé API → API Messages, système marqué `cache_control` éphémère, coût calculé aux tarifs. Avec le système actuel
-d'Ask AI (≈ 800 jetons) et Haiku 4.5 (minimum de cache 4 096 jetons), la marque est SANS EFFET : rien n'est écrit ni lu
-en cache (aucun surcoût non plus). Elle ne servirait qu'avec un système plus long ou un autre modèle. Abonnement → query() sans aucun
-outil (`tools: []`, `allowedTools: []`, hook qui refuse tout, `mcpServers: {}`, `settingSources: []`, `maxTurns: 1`,
-`persistSession: false`, prompt personnalisé, `CLAUDE_CODE_MAX_OUTPUT_TOKENS`), historique en transcription.
+d'Ask AI (≈ 800 jetons), la marque est SANS EFFET sous le minimum de cache du modèle (4 096 jetons pour Haiku 4.5) : rien
+n'est écrit ni lu en cache (aucun surcoût non plus). Abonnement → query() sans aucun outil (`tools: []`,
+`allowedTools: []`, hook qui refuse tout, `mcpServers: {}`, `settingSources: []`, `maxTurns: 1`, `persistSession: false`,
+prompt personnalisé, `CLAUDE_CODE_MAX_OUTPUT_TOKENS`), historique en transcription.
+Modèle et effort (FOLLOWUPS #47) : ceux des réglages de l'IA, passés par ask-ai (`CompleteInput.model` / `.effort`).
+L'effort n'est transmis que si `modelSupportsEffort(model)` : `output_config: { effort }` pour l'API Messages (GA, DANS
+output_config, jamais à la racine), option `effort` pour l'Agent SDK ; rien pour Haiku 4.5. JAMAIS de `thinking`
+(disabled et budget_tokens → 400 sur Opus 5.5 / Fable 5.1), ni temperature / top_p / top_k, ni `tool_choice`, ni
+préremplissage. Raison d'arrêt vérifiée AVANT le contenu : `refusal` (API ; Agent SDK : `model_refusal_no_fallback` ou
+`stop_reason`) et `max_tokens` (API ; Agent SDK : erreur `max_output_tokens` ou « exceeded the N output token maximum »)
+rendent `{ text: '', stopReason }` AVEC la consommation (l'appel a coûté) ; l'appelant choisit le message. Modèle
+refusé par l'accès (404 de l'API, `model_not_found` du SDK) : `MODEL_UNAVAILABLE`, « The chosen model isn’t available
+with this Claude access. Choose another model in Site Settings › Usage › AI settings. » (fatal), commun à l'éditeur.
 
 ## Forces
 - Options, env et outils figés par des tests option par option ; aucun appel réel (query et client injectables).
@@ -295,7 +307,8 @@ rien n'est écrit, rien au journal (le vrai runner ne journalise pas les résult
 sans blancs de fin).
 
 ## Tests
-`npx vitest run engine/src/claude` (13 fichiers, 187 tests, ≈ 2 s, aucun réseau). Couvert : options exactes, env, hook
+`npx vitest run engine/src/claude` (13 fichiers, 196 tests, ≈ 2 s, aucun réseau). Couvert : options exactes (effort
+envoyé à Opus 5.5 / Fable 5.1 / Sonnet 5, ABSENT pour Haiku 4.5 et son alias daté, jamais de thinking), env, hook
 (avec le vrai `checkToolUse`), lecture du flux (succès, erreurs de résultat, fatales, interruption, Stop, délai),
 pauseClock, outils MCP fixes, questions (refus, ids, réponses, longer-text, #21), textes (chemins `$key`, lignes,
 fermés, mise en avant optionnelle), coût et tarifs, prompts (sections, ordre, neutralisation, multi-éléments, catalogue
@@ -303,7 +316,9 @@ des couleurs résolu sur le vrai design system passé tel quel, `ds.cssValues` c
 promises acceptées par la politique réelle, fidélité au vrai design system, formats de l'éditeur et largeurs de measure
 = contrat `EDITOR_VIEWPORTS`, plus de 768), largeurs citées par le prompt et l'outil measure (375, 810 et 1280 px), accès (abonnement refusé hors mode local,
 quel que soit NODE_ENV), filtre d'adresses (domaines nus, IDN, punycode, liste blanche, linéarité) dans questions, message
-final et journal, `complete` (faux client Messages et faux query), faux Claude (dont `applyEdit` et l'Edit jugé par le
+final et journal, `complete` (faux client Messages et faux query : corps exact avec `output_config.effort` ou sans,
+option `effort` de l'Agent SDK ou sans, refus et plafond → texte vide + consommation, 404 → `MODEL_UNAVAILABLE`),
+modèle refusé de l'éditeur (`model_not_found` → AI settings), tarifs des quatre modèles de B5, faux Claude (dont `applyEdit` et l'Edit jugé par le
 hook avec `lint` : valeur en dur refusée avant l'écriture, token permis écrit, old_string ambigu, `replaceAll`, `content`). Non couvert : un vrai appel à Claude (interdit pendant la construction).
 Typage : `npx tsc --noEmit -p .` depuis la racine (zéro erreur dans ce dossier au 2026-09-27).
 
@@ -312,10 +327,18 @@ Typage : `npx tsc --noEmit -p .` depuis la racine (zéro erreur dans ce dossier 
   ignoré (AI-02, 2026-09-27). Vaut aussi pour la connexion de la machine (`engine/src/access`).
 - Messages d'accès refusé : ils ne renvoient plus à `engine/.env.local` pour une clé API (elle peut venir de B5) :
   « check the API key (Settings › Usage › Claude connection) » ; connexion de la machine : « run claude in a terminal, then /login ».
+  Modèle refusé (2026-09-28) : plus « (EDITOR_MODEL) » / « (ASK_MODEL) », mais un renvoi à Site Settings › Usage › AI
+  settings, où se choisit le modèle de toute l'IA du site (FOLLOWUPS #47).
+- Effort par modèle (2026-09-28, FOLLOWUPS #47) : décision dans le contrat (`AI_MODELS[].supportsEffort`,
+  `modelSupportsEffort`), appliquée ici seulement (`buildAgentOptions`, `effortFor`) ; Haiku 4.5 ne reçoit jamais
+  d'effort (skill `claude-api` : l'API renvoie une erreur).
+- `complete` ne lève plus d'erreur pour un refus ou un plafond atteint : il rend la raison d'arrêt et la consommation
+  (l'appel a coûté, ask-ai le journalise) ; « exceeded the N output token maximum » de Claude Code devient `max_tokens`.
 - Mise en avant par astérisques désactivée par défaut, activable par champ (`emphasis`) : Conduit n'en a pas.
 - Noms d'outils, hook et politique CSS importés d'engine-guards plutôt que copiés (une seule source).
-- `complete` marque le système `cache_control` éphémère : sans effet aujourd'hui (système d'Ask ≈ 800 jetons, sous le
-  minimum de 4 096 de Haiku 4.5), gardé pour un système plus long.
+- `complete` marque le système `cache_control` éphémère : sans effet tant que le système d'Ask (≈ 800 jetons) reste sous
+  le minimum de cache du modèle choisi (4 096 pour Haiku 4.5 ; 512 à 4 096 selon le modèle, skill `claude-api` — non
+  mesuré pour Opus 5.5 / Fable 5.1 / Sonnet 5), gardé pour un système plus long.
 - Adresses : remplacées par `[link removed]` (plutôt que supprimées sans trace) ; questions contenant une adresse
   REFUSÉES et renvoyées à Claude (le client ne voit rien) ; liste blanche vide par défaut ; pas de dépendance à une liste
   de TLD (heuristique + extensions de fichiers exclues).

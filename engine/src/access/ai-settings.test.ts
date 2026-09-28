@@ -5,7 +5,7 @@ import { mkdtemp, readdir, readFile, rm, stat, writeFile } from 'node:fs/promise
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { afterEach, describe, it } from 'vitest'
-import { aiSettingsProblem, type AiSettings, type EngineUser } from '../../../src/admin/core/contracts'
+import { AI_MODELS, aiSettingsProblem, modelSupportsEffort, type AiSettings, type EngineUser } from '../../../src/admin/core/contracts'
 import { CLIENT, KUARTZ, signedIdentity, TEST_IDENTITY } from '../jobs/testing'
 import { EngineError } from '../server/errors'
 import { createEngineServer, createRouter } from '../server/http'
@@ -38,14 +38,18 @@ async function tempDir() {
 async function makeService(store?: AiSettingsStore, log: string[] = []) {
   const dataDir = await tempDir()
   const used = store ?? openAiSettingsStore({ dataDir, now: () => NOW })
-  const service = createAiSettingsService({ store: used, defaults: DEFAULTS, askModel: 'claude-haiku-4-5', log: (line) => log.push(line) })
+  const service = createAiSettingsService({ store: used, defaults: DEFAULTS, log: (line) => log.push(line) })
   await service.load()
   return { service, dataDir, log }
 }
 
 describe('validation stricte (aiSettingsProblem du contrat)', () => {
-  it('accepte les trois modèles et les cinq niveaux, refuse tout le reste sans citer l’entrée', () => {
-    for (const model of ['claude-opus-5-5', 'claude-fable-5-1', 'claude-sonnet-5']) {
+  it('accepte les quatre modèles (Haiku 4.5 compris) et les cinq niveaux, refuse tout le reste sans citer l’entrée', () => {
+    assert.deepEqual(
+      AI_MODELS.map((model) => model.id),
+      ['claude-opus-5-5', 'claude-fable-5-1', 'claude-sonnet-5', 'claude-haiku-4-5'],
+    )
+    for (const model of ['claude-opus-5-5', 'claude-fable-5-1', 'claude-sonnet-5', 'claude-haiku-4-5']) {
       for (const effort of ['low', 'medium', 'high', 'xhigh', 'max']) assert.equal(aiSettingsProblem({ model, effort }), null)
     }
     const refused: unknown[] = [
@@ -55,8 +59,11 @@ describe('validation stricte (aiSettingsProblem du contrat)', () => {
       {},
       { model: 'claude-opus-5-5' },
       { effort: 'medium' },
+      // Haiku SANS effort : l'effort reste exigé (gardé, ignoré tant que Haiku est choisi).
+      { model: 'claude-haiku-4-5' },
       { model: 'claude-opus-5', effort: 'medium' },
-      { model: 'claude-haiku-4-5', effort: 'medium' },
+      // L'alias daté n'est pas un id de la liste (seul l'id sans date se choisit).
+      { model: 'claude-haiku-4-5-20251001', effort: 'medium' },
       { model: 'CLAUDE-OPUS-5-5', effort: 'medium' },
       { model: 'claude-opus-5-5', effort: 'ultra' },
       { model: 'claude-opus-5-5', effort: 3 },
@@ -68,8 +75,25 @@ describe('validation stricte (aiSettingsProblem du contrat)', () => {
       assert.ok(problem, JSON.stringify(body))
       assert.ok(!problem.includes('<script>') && !problem.includes('ultra') && !problem.includes('CLAUDE'))
     }
-    assert.equal(aiSettingsProblem({ model: 'x', effort: 'medium' }), 'Choose one of these models: Opus 5.5, Fable 5.1, Sonnet 5.')
+    assert.equal(aiSettingsProblem({ model: 'x', effort: 'medium' }), 'Choose one of these models: Opus 5.5, Fable 5.1, Sonnet 5, Haiku 4.5.')
     assert.equal(aiSettingsProblem({ model: 'claude-sonnet-5', effort: 'x' }), 'Choose a thinking effort: low, medium, high, xhigh, max.')
+  })
+
+  it('capacité par modèle : effort pour Opus 5.5, Fable 5.1, Sonnet 5 ; jamais pour Haiku 4.5 (alias daté compris)', () => {
+    assert.deepEqual(
+      AI_MODELS.map((model) => [model.id, model.supportsEffort]),
+      [
+        ['claude-opus-5-5', true],
+        ['claude-fable-5-1', true],
+        ['claude-sonnet-5', true],
+        ['claude-haiku-4-5', false],
+      ],
+    )
+    for (const model of AI_MODELS) assert.equal(modelSupportsEffort(model.id), model.supportsEffort, model.id)
+    // Hors liste (EDITOR_MODEL, ASK_MODEL) : Haiku sous toutes ses formes → non ; autre modèle → oui (comme avant).
+    assert.equal(modelSupportsEffort('claude-haiku-4-5-20251001'), false)
+    assert.equal(modelSupportsEffort('claude-opus-5'), true)
+    assert.match(AI_MODELS.find((model) => model.id === 'claude-haiku-4-5')?.hint ?? '', /^Fastest and cheapest\. For simple changes and questions\.$/)
   })
 })
 
@@ -95,7 +119,7 @@ describe('magasin data/ai-settings.json', () => {
       assert.equal(read.saved, null)
       assert.match(read.problem ?? '', /not valid: the default AI settings apply/)
       const log: string[] = []
-      const service = createAiSettingsService({ store: openAiSettingsStore({ dataDir }), defaults: DEFAULTS, askModel: 'claude-haiku-4-5', log: (line) => log.push(line) })
+      const service = createAiSettingsService({ store: openAiSettingsStore({ dataDir }), defaults: DEFAULTS, log: (line) => log.push(line) })
       await service.load()
       assert.deepEqual(service.state().source, 'default')
       assert.equal(log.length, 1)
@@ -106,26 +130,43 @@ describe('magasin data/ai-settings.json', () => {
 describe('service des réglages', () => {
   it('par défaut : valeurs de l’environnement ; enregistrer applique aussitôt (current() synchrone) et survit au rechargement', async () => {
     const { service, dataDir, log } = await makeService()
-    assert.deepEqual(service.state(), { current: DEFAULTS, defaults: DEFAULTS, source: 'default', askModel: 'claude-haiku-4-5' })
+    // Plus de champ askModel : Ask AI suit `current`, comme l'éditeur (FOLLOWUPS #47).
+    assert.deepEqual(service.state(), { current: DEFAULTS, defaults: DEFAULTS, source: 'default' })
     const state = await service.save({ model: 'claude-sonnet-5', effort: 'xhigh' })
     assert.deepEqual(state, {
       current: { model: 'claude-sonnet-5', effort: 'xhigh' },
       defaults: DEFAULTS,
       source: 'saved',
       updatedAt: NOW.toISOString(),
-      askModel: 'claude-haiku-4-5',
     })
     assert.deepEqual(service.current(), { model: 'claude-sonnet-5', effort: 'xhigh' })
-    assert.match(log.join('\n'), /AI settings saved: claude-sonnet-5, effort xhigh/)
+    assert.match(log.join('\n'), /AI settings saved: claude-sonnet-5, effort xhigh \(next AI editor request and Ask AI question\)/)
     // Nouveau démarrage du moteur : le fichier est relu.
-    const again = createAiSettingsService({ store: openAiSettingsStore({ dataDir }), defaults: DEFAULTS, askModel: 'claude-haiku-4-5' })
+    const again = createAiSettingsService({ store: openAiSettingsStore({ dataDir }), defaults: DEFAULTS })
     await again.load()
     assert.deepEqual(again.current(), { model: 'claude-sonnet-5', effort: 'xhigh' })
   })
 
+  it('Haiku 4.5 : accepté, effort GARDÉ (écrit et relu) mais annoncé ignoré ; revenir à un autre modèle le retrouve', async () => {
+    const { service, dataDir, log } = await makeService()
+    await service.save({ model: 'claude-sonnet-5', effort: 'high' })
+    const haiku = await service.save({ model: 'claude-haiku-4-5', effort: 'high' })
+    assert.deepEqual(haiku.current, { model: 'claude-haiku-4-5', effort: 'high' })
+    assert.match(log.at(-1) ?? '', /AI settings saved: claude-haiku-4-5, no effort \(high kept for the other models\)/)
+    assert.deepEqual(JSON.parse(await readFile(path.join(dataDir, AI_SETTINGS_FILE), 'utf8')), {
+      version: 1,
+      model: 'claude-haiku-4-5',
+      effort: 'high',
+      updatedAt: NOW.toISOString(),
+    })
+    const again = createAiSettingsService({ store: openAiSettingsStore({ dataDir }), defaults: DEFAULTS })
+    await again.load()
+    assert.deepEqual(again.current(), { model: 'claude-haiku-4-5', effort: 'high' })
+  })
+
   it('valeurs par défaut hors liste (EDITOR_MODEL=claude-opus-5) gardées telles quelles', async () => {
     const dataDir = await tempDir()
-    const service = createAiSettingsService({ store: openAiSettingsStore({ dataDir }), defaults: { model: 'claude-opus-5', effort: 'high' }, askModel: 'claude-haiku-4-5' })
+    const service = createAiSettingsService({ store: openAiSettingsStore({ dataDir }), defaults: { model: 'claude-opus-5', effort: 'high' } })
     await service.load()
     assert.deepEqual(service.current(), { model: 'claude-opus-5', effort: 'high' })
   })
@@ -171,5 +212,7 @@ describe('routes /claude/settings (droit ai.access revérifié par le moteur)', 
     assert.equal(saved.status, 200)
     assert.deepEqual(saved.json.current, { model: 'claude-fable-5-1', effort: 'high' })
     assert.deepEqual((await call('GET', KUARTZ)).json.current, { model: 'claude-fable-5-1', effort: 'high' })
+    const haiku = await call('POST', KUARTZ, { model: 'claude-haiku-4-5', effort: 'high' })
+    assert.deepEqual([haiku.status, haiku.json.current, 'askModel' in haiku.json], [200, { model: 'claude-haiku-4-5', effort: 'high' }, false])
   })
 })

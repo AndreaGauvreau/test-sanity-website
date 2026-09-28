@@ -1,4 +1,5 @@
 import type { AskMessage } from '../../../src/admin/core/contracts'
+import { modelSupportsEffort } from '../../../src/admin/core/contracts/engine'
 import type { CompleteMessage } from '../claude'
 
 /**
@@ -7,7 +8,20 @@ import type { CompleteMessage } from '../claude'
  * va dans le dernier message utilisateur, entre balises <site_data>, comme DONNÉES.
  */
 
-export const ASK_MAX_TOKENS = 400
+/**
+ * Plafond de SORTIE d'une réponse, PAR MODÈLE (FOLLOWUPS #47) : la réflexion compte dans les jetons de sortie
+ * (`max_tokens` de l'API, `CLAUDE_CODE_MAX_OUTPUT_TOKENS` de Claude Code) ; l'ancien plafond unique de 400 coupait un
+ * modèle qui réfléchit avant même sa réponse. Modèle à réflexion (effort pris en charge : Opus 5.5, Fable 5.1, Sonnet 5,
+ * tout modèle hors liste non Haiku) : 16 000, la valeur recommandée sans streaming (skill `claude-api`) ; Haiku 4.5 (pas
+ * de réflexion) : 1 024. La BRIÈVETÉ vient du prompt (« 1 to 3 short sentences ») et de la coupe à 700 caractères
+ * (answer.ts), jamais du plafond. Plafond atteint : réponse remplacée par `ASK_MESSAGES.cutOff` (service.ts).
+ */
+export const ASK_MAX_TOKENS_THINKING = 16_000
+export const ASK_MAX_TOKENS_PLAIN = 1_024
+
+export function askMaxTokens(model: string): number {
+  return modelSupportsEffort(model) ? ASK_MAX_TOKENS_THINKING : ASK_MAX_TOKENS_PLAIN
+}
 
 export const ASK_SYSTEM = `You are "Ask AI", a read-only assistant inside the admin of a website built by Kuartz (a web studio). The admin runs on Sanity (content) and Vercel (hosting). You answer short questions about this site and its admin: where things are, how to do something, what is missing (for example "which pages have no meta description?").
 

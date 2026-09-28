@@ -169,15 +169,18 @@
   min-height: 27px;
 }
 
+/*
+ * Jamais d'ellipse ni de rognage : le coût doit rester lisible en entier (constat du 2026-09-28, « $0.09 + inclu… »).
+ * Faute de place, le texte va à la ligne entre ses parties (espaces insécables DANS chaque partie : `monthLine`).
+ */
 .month {
   flex: 1 1 auto;
   min-width: 0;
   color: var(--k-text-muted);
   font: var(--k-text-caption);
   letter-spacing: var(--k-text-caption-tracking);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  overflow-wrap: normal;
 }
 
 @media (prefers-reduced-motion: reduce) {

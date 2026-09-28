@@ -44,7 +44,7 @@ export type AskConversation = {
 
 /**
  * Conversation d'Ask AI, tenue par le fournisseur (elle survit à la fermeture du panneau et aux navigations dans la
- * coque) et gardée en sessionStorage pour l'utilisateur courant. `active` : charge l'en-tête à la première ouverture.
+ * coque) et gardée en sessionStorage pour l'utilisateur courant. `active` : (re)charge l'en-tête à CHAQUE ouverture.
  */
 export function useAskConversation({ active, screen, services }: { active: boolean; screen: string | null; services: AskAiServices }): AskConversation {
   const [state, dispatch] = useReducer(conversationReducer, EMPTY_CONVERSATION)
@@ -79,9 +79,11 @@ export function useAskConversation({ active, screen, services }: { active: boole
     }
   }, [])
 
+  // En-tête (modèle en cours, totaux du mois) relu à CHAQUE ouverture, pas seulement à la première : un modèle choisi
+  // entre-temps dans B5 · AI settings s'affiche aussitôt (FOLLOWUPS #47). Pendant la relecture, l'en-tête précédent reste.
   useEffect(() => {
-    if (active && !info) void loadInfo()
-  }, [active, info, loadInfo])
+    if (active) void loadInfo()
+  }, [active, loadInfo])
 
   // Persistance de session (après restauration seulement).
   useEffect(() => {

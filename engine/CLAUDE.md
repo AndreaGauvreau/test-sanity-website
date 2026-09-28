@@ -10,7 +10,8 @@ détenteur de l'accès à Claude, du jeton d'écriture Sanity « robot » et du 
 serveur par son relais signé (`src/admin/core/engine/`). Il pilote l'aperçu du brouillon (`next dev` du clone, 4042).
 Fait : éditeur IA (`/editor/*`, engine-core), publication et versions (`/publish/*`, `/versions/*`, engine-publish),
 journal `aiUsage` (engine-publish), Ask AI (`/ask`, ask-ai), connexion à Claude et réglages de l'IA (modèle,
-effort) réglés depuis l'admin (`/claude/access*`, `/claude/settings`, B5, engine-core). Les quatre derniers sont branchés par `MODULES` de `main.ts`.
+effort : UN choix pour l'éditeur ET Ask AI, FOLLOWUPS #47) réglés depuis l'admin (`/claude/access*`, `/claude/settings`,
+B5, engine-core). Les quatre derniers sont branchés par `MODULES` de `main.ts`.
 Ne fait pas : retour arrière Vercel en local (501), mode hébergé (non construit, voir « Points sensibles »).
 
 ## Fichiers (racine du moteur)
@@ -31,13 +32,13 @@ Ne fait pas : retour arrière Vercel en local (501), mode hébergé (non constru
 | `src/workspace/` | engine-core | `npm run engine:setup` (clone, main/draft, .env.local de l'aperçu, npm ci) et `sync` |
 | `src/preview/` | engine-core | processus `next dev` de l'aperçu : lancement, sonde, redémarrage, arrêt, éditeur inerte |
 | `src/content/` | engine-core | Sanity : port + client robot, textes de l'éditeur, publication, signal et jeton d'aperçu du moteur |
-| `src/access/` | engine-core | accès à Claude rechargeable à chaud : clé API chiffrée, abonnement de la machine (local), test ; réglages de l'IA (modèle et effort de l'éditeur, `data/ai-settings.json`) (voir son CLAUDE.md) |
+| `src/access/` | engine-core | accès à Claude rechargeable à chaud : clé API chiffrée, abonnement de la machine (local), test ; réglages de l'IA (modèle et effort de toute l'IA du site : éditeur et Ask AI, Haiku 4.5 compris, `data/ai-settings.json`) (voir son CLAUDE.md) |
 | `src/claude/` | engine-claude | Agent SDK, outils MCP fixes, prompts, questions, coût, faux Claude scriptable (voir son CLAUDE.md) |
 | `src/guards/` | engine-guards | design system, hook, lint CSS/TSX, contrôles du rendu (Chrome) (voir son CLAUDE.md) |
 | `src/usage/` | engine-publish | journal `aiUsage` (port `ports.usage`, `getUsageJournal`) |
 | `src/publish/` | engine-publish | `/publish/*`, port `pendingTotal`, `publishServiceOf(context)` |
 | `src/versions/` | engine-publish | `/versions`, rollback (501 en local) |
-| `src/ask/` | ask-ai | `/ask` (Haiku), écrit sa consommation dans le journal commun |
+| `src/ask/` | ask-ai | `/ask` (modèle et effort des réglages de l'IA, relus à chaque question), écrit sa consommation dans le journal commun |
 
 ## Contrats
 - API HTTP : `src/admin/core/contracts/engine.ts` (routes, `EngineErrorBody`, messages anglais).
@@ -57,8 +58,9 @@ Ne fait pas : retour arrière Vercel en local (501), mode hébergé (non constru
 3. `npm run engine` : config validée (refus clair) → espace vérifié → `data/engine.pid` → magasin → accès à Claude
    (`engine/src/access` : env, `data/claude-access.json`, machine) → réglages de l'IA (`data/ai-settings.json`, sinon
    EDITOR_MODEL / EDITOR_EFFORT) → reprise des demandes interrompues → modules →
-   aperçu lancé → écoute. L'accès à Claude et le modèle / l'effort de l'éditeur se règlent ensuite dans l'admin (B5 · Usage › Claude
-   connection, AI settings), SANS redémarrage.
+   aperçu lancé → écoute. L'accès à Claude et le modèle / l'effort de TOUTE l'IA (éditeur et Ask AI) se règlent ensuite
+   dans l'admin (B5 · Usage › Claude connection, AI settings), SANS redémarrage. ASK_MODEL ne sert plus qu'au test de
+   connexion de l'abonnement (Haiku, le moins cher).
 4. Arrêt (SIGINT/SIGTERM) : serveur fermé → demande en cours arrêtée et remise en état (fichiers + textes) → publication
    en cours ATTENDUE (`publishServiceOf(context).idle()`, 30 s au plus, FOLLOWUPS #14) → `stop()` des modules (ordre
    inverse, 30 s chacun) → aperçu arrêté (SIGTERM au groupe, SIGKILL après 5 s) → magasins écrits → pid retiré.
@@ -105,7 +107,9 @@ client est appliquée), `fail`, `budget` ; `auto` = text si « T Text » est coc
   d'ENGINE_SECRET), jamais renvoyée ni journalisée ; ANTHROPIC_API_KEY de l'environnement reste prioritaire.
 - `context.access` et `context.settings` sont des ACCESSEURS (rechargement à chaud) : un module les lit au moment de
   l'appel, jamais à l'enregistrement. L'éditeur lit `settings` UNE fois au départ d'une demande (`jobs/run.ts`) et passe
-  `model` / `effort` au lanceur (`JobRunAgent`) ; /health (`claude.editorModel`) suit le modèle en cours.
+  `model` / `effort` au lanceur (`JobRunAgent`) ; Ask AI (`askModule`) lit `context.settings` à chaque question ; /health
+  (`claude.editorModel` et `claude.askModel`, la même valeur, le second gardé pour compatibilité) suit le modèle en cours.
+  L'effort n'est envoyé qu'aux modèles qui le prennent en charge (jamais à Haiku 4.5 : engine-claude).
 - Sanity : le robot n'écrit que des BROUILLONS (`drafts.<id>`) ; avertissement au démarrage si le dataset est `production`.
   Le port expose aussi les actions `unpublish` / `delete` (`SanityAction`), utilisées par la seule publication.
 - Adresses dans les textes du client (SEC-08) : liste blanche = domaines du site lus au démarrage dans
@@ -125,7 +129,9 @@ client est appliquée), `fail`, `budget` ; `auto` = text si « T Text » est coc
 - `npm run engine` ne recharge pas à chaud : un changement de code ou de `.env.local` demande un redémarrage à la main
   (seuls l'accès à Claude et les réglages de l'IA réglés dans l'admin s'appliquent sans redémarrage). L'admin (next dev),
   lui, se recharge : après un changement du contrat, les deux divergent jusqu'au redémarrage (ex. formats de l'aperçu du
-  2026-09-28 : un moteur resté sur l'ancien code refuse Tablet 810, « Invalid screen size. »).
+  2026-09-28 : un moteur resté sur l'ancien code refuse Tablet 810, « Invalid screen size. » ; réglages de l'IA du
+  2026-09-28, FOLLOWUPS #47 : il refuse Haiku 4.5, « Choose one of these models: Opus 5.5, Fable 5.1, Sonnet 5. », et
+  son Ask AI reste sur ASK_MODEL — l'en-tête du panneau le dit, il lit `askModel` de /health).
 
 ## Comment modifier
 - Nouvelle variable : `SCHEMA` et `EngineConfig` de `config.ts` (message avec le NOM seulement) + test dans

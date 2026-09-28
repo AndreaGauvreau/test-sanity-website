@@ -1,6 +1,6 @@
 # core/engine — LLM context
 
-> Propriétaire : auth-core · Figma : — (sert D1-D3, G1-G4, E1, E2, B5) · Mis à jour : 2026-09-27 (vague 3b-2, FOLLOWUPS #39 ; routes `/claude/access*` ; 2026-09-28 : `/claude/settings`)
+> Propriétaire : auth-core · Figma : — (sert D1-D3, G1-G4, E1, E2, B5) · Mis à jour : 2026-09-27 (vague 3b-2, FOLLOWUPS #39 ; routes `/claude/access*` ; 2026-09-28 : `/claude/settings` ; mocks alignés sur les réglages de l'IA communs, FOLLOWUPS #47)
 > Possède aussi : `src/app/admin/api/engine/[...path]/route.ts` (relais). Voir « Propriété des mocks ».
 
 ## Utilité
@@ -89,10 +89,10 @@ droits ; le gestionnaire reçoit segments, paramètres validés, corps parsé et
 | Fichier | Propriétaire | État au 2026-09-27 |
 |---|---|---|
 | `mock/index.ts`, `mock/health.ts`, `mock/types.ts`, `mock/not-implemented.ts` | auth-core | répartiteur par premier segment ; GET /health = `mockEditorHealth()` (scénario de l'éditeur simulé) |
-| `mock/editor.ts` | **editor-sidebar** | implémenté : `handleEditor` (routes `/editor/*`), cycle d'une demande rejoué à l'horloge, scénarios `ENGINE_MOCK_EDITOR` / `setEditorMockScenario()` (défaut « ready ») ; monde sur `globalThis` |
+| `mock/editor.ts` | **editor-sidebar** | implémenté : `handleEditor` (routes `/editor/*`), cycle d'une demande rejoué à l'horloge, scénarios `ENGINE_MOCK_EDITOR` / `setEditorMockScenario()` (défaut « ready ») ; monde sur `globalThis` ; modèle = réglages de l'IA simulés (`mockAiSettings()` de `mock/claude.ts`) : `EditorState.model` et santé (`editorModel` = `askModel`) suivent le modèle en cours, une demande garde celui de son départ |
 | `mock/publish.ts` | **publish-ui** | implémenté : `handlePublish` (routes `/publish/*`, dont `stage` / `unstage`, et `/versions/*`), scénarios `pending`, `content-only`, `idle`, `publishing`, `published`, `failed`, `pending-fails`, `hosted`, `empty`, `offline` (`ENGINE_MOCK_PUBLISH` ou `POST /admin/publish/mock-scenario`) |
-| `mock/claude.ts` | **code-usage** | implémenté : `handleClaude` (routes `/claude/access*` et `/claude/settings`), mêmes règles que le moteur (validation du contrat : `claudeApiKeyProblem`, `aiSettingsProblem` → 400 ; clé jamais renvoyée), scénarios `ENGINE_MOCK_CLAUDE` = `local` (défaut), `logged-out`, `hosted`, `env-key` ; une clé finissant par `FAIL0` échoue au test ; réglages de l'IA en mémoire (défaut Opus 5.5 / medium, Ask AI Haiku 4.5), `ENGINE_MOCK_CLAUDE_SETTINGS=fail` fait échouer Fable 5.1 + Max (500) pour voir l'erreur de l'écran |
-| `mock/ask.ts` | **ask-ai** | implémenté : `handleAsk` (route `/ask`), réponses et liens du catalogue du rôle, déclencheurs `[mock:error]`, `[mock:slow]` |
+| `mock/claude.ts` | **code-usage** | implémenté : `handleClaude` (routes `/claude/access*` et `/claude/settings`), mêmes règles que le moteur (validation du contrat : `claudeApiKeyProblem`, `aiSettingsProblem` → 400 ; clé jamais renvoyée), scénarios `ENGINE_MOCK_CLAUDE` = `local` (défaut), `logged-out`, `hosted`, `env-key` ; une clé finissant par `FAIL0` échoue au test ; réglages de l'IA en mémoire (défaut Opus 5.5 / medium, Haiku 4.5 accepté), communs à toute l'IA simulée (`mockAiSettings()`, lu par la santé, l'éditeur et Ask AI simulés, FOLLOWUPS #47), `ENGINE_MOCK_CLAUDE_SETTINGS=fail` fait échouer Fable 5.1 + Max (500) pour voir l'erreur de l'écran |
+| `mock/ask.ts` | **ask-ai** | implémenté : `handleAsk` (route `/ask`), réponses et liens du catalogue du rôle, consommation au modèle et au prix des réglages simulés (réflexion simulée selon l'effort, aucune pour Haiku), déclencheurs `[mock:error]`, `[mock:slow]`, `[mock:refusal]`, `[mock:cut]` (messages du vrai moteur) |
 
 Un gestionnaire peut garder un état en mémoire (redémarrage du serveur = remise à zéro). Aucun n'écrit dans Sanity ni git.
 

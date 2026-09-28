@@ -95,14 +95,20 @@ export function usage(partial: Partial<Usage> = {}): Usage {
   }
 }
 
-/** Faux complete : réponse scriptée (texte ou exception), appels enregistrés. */
-export function fakeComplete(reply: string | Error | ((input: CompleteInput) => string | Error)) {
+/** Réponse scriptée : texte (fin normale), exception, ou raison d'arrêt explicite (`refusal`, `max_tokens`…). */
+export type FakeReply = string | Error | { text: string; stopReason: string }
+
+/**
+ * Faux complete : réponse scriptée, appels enregistrés. La consommation porte le modèle DEMANDÉ (comme `complete`).
+ */
+export function fakeComplete(reply: FakeReply | ((input: CompleteInput) => FakeReply)) {
   const calls: CompleteInput[] = []
   const fn = async (input: CompleteInput): Promise<CompleteResult> => {
     calls.push(input)
     const value = typeof reply === 'function' ? reply(input) : reply
     if (value instanceof Error) throw value
-    return { text: value, usage: usage(), stopReason: 'end_turn' }
+    const { text, stopReason } = typeof value === 'string' ? { text: value, stopReason: 'end_turn' } : value
+    return { text, usage: usage({ model: input.model }), stopReason }
   }
   return Object.assign(fn, { calls })
 }

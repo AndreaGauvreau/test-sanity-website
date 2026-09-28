@@ -216,8 +216,10 @@ autorisée du pont), `ENGINE_IDENTITY_PRIVATE_KEY` (Ed25519, signe l'identité e
 `REVALIDATE_SECRET`, `NEXT_PUBLIC_SANITY_PROJECT_ID`, `NEXT_PUBLIC_SANITY_DATASET`, `SANITY_API_READ_TOKEN`,
 `SANITY_API_WRITE_TOKEN`, `ANTHROPIC_API_KEY` et `CLAUDE_CODE_OAUTH_TOKEN` (FACULTATIFS depuis le 2026-09-27 : l'accès se
 règle dans l'admin, B5 › Claude connection ; `ANTHROPIC_API_KEY`, si présente, l'emporte et l'écran le dit ;
-`CLAUDE_CODE_OAUTH_TOKEN` = repli local de l'abonnement), `EDITOR_MODEL` (claude-opus-5-5),
-`EDITOR_EFFORT` (medium), `EDITOR_MAX_TURNS` (24), `EDITOR_MAX_BUDGET_USD` (1.5), `ASK_MODEL` (claude-haiku-4-5-20251001).
+`CLAUDE_CODE_OAUTH_TOKEN` = repli local de l'abonnement), `EDITOR_MODEL` (claude-opus-5-5) et `EDITOR_EFFORT` (medium)
+(valeurs par défaut de TOUTE l'IA du site, éditeur et Ask AI, remplacées par B5 › AI settings, FOLLOWUPS #47),
+`EDITOR_MAX_TURNS` (24), `EDITOR_MAX_BUDGET_USD` (1.5), `ASK_MODEL` (claude-haiku-4-5-20251001 : depuis le 2026-09-28,
+seulement le modèle du test de connexion de l'abonnement ; Ask AI suit les réglages de l'IA).
 
 Aucun secret n'est affiché, collé dans une conversation ni commité. Les jetons Claude et Sanity sont recopiés par
 l'utilisateur lui-même (la clé API Claude peut aussi être collée par l'utilisateur dans l'admin, B5).

@@ -1,3 +1,4 @@
+import type Anthropic from '@anthropic-ai/sdk'
 import assert from 'node:assert/strict'
 import { EventEmitter } from 'node:events'
 import { existsSync } from 'node:fs'
@@ -6,11 +7,15 @@ import os from 'node:os'
 import path from 'node:path'
 import { PassThrough } from 'node:stream'
 import { afterEach, describe, it } from 'vitest'
-import type { EditJob, EditorState, EngineHealth } from '../../src/admin/core/contracts'
+import type { AskResponse, EditJob, EditorState, EngineHealth } from '../../src/admin/core/contracts'
 import { EDITOR_VIEWPORTS } from '../../src/admin/core/contracts/engine'
 import { verifyPreviewToken } from '../../src/admin/core/engine/preview-token'
-import { createFakeAgent, fakeScenarios } from './claude'
+import { accessModule } from './access'
+import { askModule } from './ask'
+import { CONFIG as ASK_CONFIG, fakeReader } from './ask/testing'
+import { createComplete, createFakeAgent, fakeScenarios, type CompleteInput, type MessagesClient } from './claude'
 import { EngineConfigError } from './config'
+import { usageModule } from './usage'
 import { CLIENT, conduitSanity, editRequest, fakePreview, freshSignal, HERO_CSS, LEDE_MUTED, ledeColor, makeWorkspace, signedIdentity, TEST_IDENTITY } from './jobs/testing'
 import { startEngine, type EngineOverrides, type RunningEngine } from './main'
 import type { EngineModule } from './server/modules'
@@ -308,6 +313,69 @@ describe('startEngine', () => {
     assert.deepEqual([bad.status, bad.json.error.code], [400, 'bad_request'])
     const onDisk = JSON.parse(await import('node:fs/promises').then((fs) => fs.readFile(path.join(ws.workspace, 'data', 'ai-settings.json'), 'utf8')))
     assert.deepEqual([onDisk.model, onDisk.effort], ['claude-sonnet-5', 'low'])
+  })
+
+  it('AI settings (B5) : Ask AI suit le modèle et l’effort choisis, à chaud (plus ASK_MODEL) ; jamais d’effort pour Haiku ; /health, réponse et journal au modèle utilisé', async () => {
+    // Vrai `complete` (clé API) sur un FAUX client de l'API Messages : le corps envoyé est celui de la production.
+    const bodies: Anthropic.MessageCreateParamsNonStreaming[] = []
+    const anthropic = (): MessagesClient => ({
+      messages: {
+        create: async (body) => {
+          bodies.push(body)
+          return {
+            content: [{ type: 'text', text: 'ANSWER: In Media, on Home › Hero.\nLINKS: /admin/media\nCHANGE: no', citations: null }],
+            stop_reason: 'end_turn',
+            usage: { input_tokens: 2000, output_tokens: 500, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 },
+          } as Anthropic.Message
+        },
+      },
+    })
+    const claudeDir = await mkdtemp(path.join(os.tmpdir(), 'kz-ask-settings-'))
+    const complete = (input: CompleteInput) => createComplete({ access: { kind: 'api-key', secret: 'sk-ant-api03-test-not-real' }, configDir: claudeDir, anthropic })(input)
+    const sanity = conduitSanity()
+    try {
+      const { call } = await boot(
+        // ASK_MODEL écrit : il ne sert plus qu'au test de connexion, Ask AI ne le lit pas.
+        { EDITOR_MODEL: 'claude-opus-5-5', EDITOR_EFFORT: 'medium', ASK_MODEL: 'claude-haiku-4-5-20251001' },
+        { sanity, modules: [usageModule, askModule({ config: ASK_CONFIG, complete, reader: fakeReader() }), accessModule] },
+      )
+      const ask = async () => {
+        const res = await call('POST', '/ask', { question: 'Where is the hero image used?', history: [] })
+        assert.equal(res.status, 200, JSON.stringify(res.json))
+        return res.json as AskResponse
+      }
+      const models = async () => {
+        const { claude } = (await call('GET', '/health')).json as EngineHealth
+        return [claude.editorModel, claude.askModel]
+      }
+      // 1. Rien d'enregistré : Opus 5.5 / medium, comme l'éditeur (avant : Haiku, ASK_MODEL).
+      assert.deepEqual(await models(), ['claude-opus-5-5', 'claude-opus-5-5'])
+      const opus = await ask()
+      assert.deepEqual([opus.usage.model, opus.usage.costUsd], ['claude-opus-5-5', 0.018])
+      // 2. Haiku 4.5 choisi dans l'admin : dès la question suivante, sans redémarrage.
+      assert.equal((await call('POST', '/claude/settings', { model: 'claude-haiku-4-5', effort: 'high' })).status, 200)
+      assert.deepEqual(await models(), ['claude-haiku-4-5', 'claude-haiku-4-5'])
+      const haiku = await ask()
+      assert.deepEqual([haiku.usage.model, haiku.usage.costUsd], ['claude-haiku-4-5', 0.0045])
+      // 3. Fable 5.1 / Extra high.
+      assert.equal((await call('POST', '/claude/settings', { model: 'claude-fable-5-1', effort: 'xhigh' })).status, 200)
+      assert.equal((await ask()).usage.model, 'claude-fable-5-1')
+      // Corps réellement envoyés : effort DANS output_config pour Opus / Fable, RIEN pour Haiku ; plafond par modèle.
+      assert.deepEqual(
+        bodies.map((body) => [body.model, body.max_tokens, body.output_config ?? null]),
+        [
+          ['claude-opus-5-5', 16_000, { effort: 'medium' }],
+          ['claude-haiku-4-5', 1_024, null],
+          ['claude-fable-5-1', 16_000, { effort: 'xhigh' }],
+        ],
+      )
+      for (const body of bodies) assert.equal('thinking' in body, false)
+      // Journal aiUsage commun (Sanity simulé) : un document par question, au modèle réellement utilisé.
+      const logged = Object.values(sanity.docs).filter((doc) => doc._id.startsWith('aiUsage.ask_'))
+      assert.deepEqual(logged.map((doc) => doc.model).sort(), ['claude-fable-5-1', 'claude-haiku-4-5', 'claude-opus-5-5'])
+    } finally {
+      await rm(claudeDir, { recursive: true, force: true })
+    }
   })
 
   it('FOLLOWUPS #14 : l’arrêt attend le crochet stop des modules avant d’écrire le magasin', async () => {

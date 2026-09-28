@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { describe, it } from 'vitest'
 import type { AgentSettings, ClaudeCredential } from './access'
-import { agentEnv, createAgentClock, createAgentRunner, describeTool, fatalApiError, type AgentEvent, type AgentRun, type QueryFn } from './agent'
+import { agentEnv, createAgentClock, createAgentRunner, describeTool, fatalApiError, MODEL_UNAVAILABLE, type AgentEvent, type AgentRun, type QueryFn } from './agent'
 import { ALLOWED_TOOLS } from './names'
 
 const configDir = mkdtempSync(path.join(tmpdir(), 'kz-claude-'))
@@ -95,6 +95,40 @@ describe('createAgentRunner — options de query() (validées au POC)', () => {
       'abortController', 'allowedTools', 'cwd', 'effort', 'env', 'hooks', 'maxBudgetUsd', 'maxTurns', 'mcpServers', 'model',
       'permissionMode', 'resume', 'settingSources', 'strictMcpConfig', 'systemPrompt', 'tools',
     ])
+  })
+
+  it('effort par modèle (B5 · AI settings) : envoyé à Opus 5.5, Fable 5.1, Sonnet 5 ; JAMAIS à Haiku 4.5 ; jamais de thinking', async () => {
+    for (const [model, effort] of [
+      ['claude-opus-5-5', 'low'],
+      ['claude-fable-5-1', 'max'],
+      ['claude-sonnet-5', 'xhigh'],
+    ] as const) {
+      const { query, calls } = scripted([success()])
+      await createAgentRunner({ ...SETTINGS, model, effort }, { query })(run())
+      assert.equal(calls[0].options.model, model)
+      assert.equal(calls[0].options.effort, effort, model)
+    }
+    // Haiku 4.5 (id de la liste, puis alias daté venu d'EDITOR_MODEL) : ni `effort` (l'API refuserait), ni `thinking`.
+    for (const model of ['claude-haiku-4-5', 'claude-haiku-4-5-20251001']) {
+      const { query, calls } = scripted([success()])
+      await createAgentRunner({ ...SETTINGS, model, effort: 'high' }, { query })(run())
+      const options = calls[0].options
+      assert.equal(options.model, model)
+      assert.equal('effort' in options, false, model)
+      assert.deepEqual(Object.keys(options).sort(), [
+        'abortController', 'allowedTools', 'cwd', 'env', 'hooks', 'maxBudgetUsd', 'maxTurns', 'mcpServers', 'model',
+        'permissionMode', 'resume', 'settingSources', 'strictMcpConfig', 'systemPrompt', 'tools',
+      ])
+    }
+  })
+
+  it('modèle refusé par l’accès (model_not_found) : message qui renvoie à AI settings, jamais à EDITOR_MODEL', () => {
+    for (const access of [API_KEY, OAUTH]) {
+      const message = fatalApiError('model_not_found', access)
+      assert.equal(message, MODEL_UNAVAILABLE)
+      assert.match(String(message), /Site Settings › Usage › AI settings/)
+      assert.doesNotMatch(String(message), /EDITOR_MODEL|ASK_MODEL/)
+    }
   })
 
   it('serveur kuartz : outils toujours chargés, délai d’outil couvrant la question', async () => {

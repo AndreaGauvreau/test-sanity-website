@@ -20,14 +20,26 @@ class AdminAuthError extends Error {
 }
 
 describe('loadAskAiInfo (server action du panneau)', () => {
-  it('modèle de la santé du moteur + totaux du mois ; jamais le jeton', async () => {
+  it('modèle EN COURS de la santé du moteur (réglages de l’IA, B5) + totaux du mois ; jamais le jeton', async () => {
     const info = await loadAskAiInfo({
       requireSession: async () => SESSION,
       health: async () => MOCK_HEALTH,
       monthTotals: async () => ({ inputTokens: 1_200_000, outputTokens: 147_000, costUsd: 4.8 }),
     })
-    expect(info).toEqual({ ok: true, userId: 'dev-client', model: 'claude-haiku-4-5-20251001', month: { inputTokens: 1_200_000, outputTokens: 147_000, costUsd: 4.8, includedUsd: 0 } })
+    expect(info).toEqual({ ok: true, userId: 'dev-client', model: 'claude-opus-5-5', month: { inputTokens: 1_200_000, outputTokens: 147_000, costUsd: 4.8, includedUsd: 0 } })
     expect(JSON.stringify(info)).not.toContain('sk-user-token')
+  })
+
+  it('modèle : `claude.askModel` (Haiku 4.5 choisi dans B5) ; repli sur `editorModel` s’il manque', async () => {
+    const deps = (claude: EngineHealth['claude']) => ({
+      requireSession: async () => SESSION,
+      health: async (): Promise<EngineHealth> => ({ ...MOCK_HEALTH, claude }),
+      monthTotals: async () => ({ inputTokens: 0, outputTokens: 0, costUsd: 0 }),
+    })
+    const haiku = await loadAskAiInfo(deps({ access: 'api-key', editorModel: 'claude-haiku-4-5', askModel: 'claude-haiku-4-5' }))
+    expect(haiku.ok && haiku.model).toBe('claude-haiku-4-5')
+    const missing = await loadAskAiInfo(deps({ access: 'api-key', editorModel: 'claude-sonnet-5', askModel: '' }))
+    expect(missing.ok && missing.model).toBe('claude-sonnet-5')
   })
 
   it('totaux du mois : coût facturé et part incluse dans l’abonnement Claude transmis séparément', async () => {

@@ -165,7 +165,7 @@ describe('UsageScreen', () => {
     const fetchMock = vi.fn(async (url: string) =>
       Response.json(
         String(url).endsWith('/claude/settings')
-          ? { current: { model: 'claude-opus-5-5', effort: 'medium' }, defaults: { model: 'claude-opus-5-5', effort: 'medium' }, source: 'default', askModel: 'claude-haiku-4-5' }
+          ? { current: { model: 'claude-opus-5-5', effort: 'medium' }, defaults: { model: 'claude-opus-5-5', effort: 'medium' }, source: 'default' }
           : { mode: 'hosted', subscriptionAllowed: false, access: 'none', source: 'none', saved: null, envApiKey: false },
       ),
     )

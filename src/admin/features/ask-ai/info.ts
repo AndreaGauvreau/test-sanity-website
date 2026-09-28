@@ -2,8 +2,11 @@ import type { Session } from '../../core/contracts/session'
 import type { EngineHealth } from '../../core/contracts/engine'
 
 /**
- * Données de l'en-tête et du pied du panneau Ask AI (G4), côté SERVEUR : modèle utilisé (santé du moteur :
- * `claude.askModel`, ex. « Haiku 4.5 ») et consommation IA du mois de tout le site (« This month: … », B5).
+ * Données de l'en-tête et du pied du panneau Ask AI (G4), côté SERVEUR : modèle EN COURS (santé du moteur :
+ * `claude.askModel`, ex. « Opus 5.5 » — le modèle choisi dans B5 · AI settings, commun à l'éditeur et à Ask AI depuis le
+ * 2026-09-28, FOLLOWUPS #47 ; un moteur resté sur l'ancien code y met ASK_MODEL, ce qu'il utilise vraiment ; repli sur
+ * `editorModel` si le champ manque) et consommation IA du mois de tout le site (« This month: … », B5). Relu à chaque
+ * ouverture du panneau et après chaque réponse (useAskConversation).
  * Logique à dépendances injectées (testée sans Next) ; la server action (`actions.ts`) la lie aux vrais modules.
  * Rien de sensible dans le résultat : id public de l'utilisateur (pour rattacher la conversation de session), rôle,
  * modèle, totaux.
@@ -51,7 +54,7 @@ export async function loadAskAiInfo(deps: AskAiInfoDeps): Promise<AskAiInfo> {
   // Moteur injoignable ou journal illisible : le panneau reste utilisable, sans modèle ni pied.
   const [health, month] = await Promise.allSettled([deps.health(session), deps.monthTotals()])
   if (month.status === 'rejected') deps.log?.(`[admin/ask-ai] month usage unavailable: ${month.reason instanceof Error ? month.reason.message : 'error'}`)
-  const model = health.status === 'fulfilled' ? health.value.claude?.askModel || null : null
+  const model = health.status === 'fulfilled' ? health.value.claude?.askModel || health.value.claude?.editorModel || null : null
   const totals =
     month.status === 'fulfilled'
       ? {

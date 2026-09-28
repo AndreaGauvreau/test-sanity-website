@@ -58,8 +58,9 @@ describe('meterUsage — jetons d’un appel interrompu', () => {
 describe('estimateCost', () => {
   const million = (part: keyof Tokens): Tokens => ({ ...NO_TOKENS, [part]: 1_000_000 })
 
-  it('les trois modèles de B5 · AI settings ont un tarif (coût estimé) et un libellé', () => {
-    const expected = { 'claude-opus-5-5': [4, 20], 'claude-fable-5-1': [10, 50], 'claude-sonnet-5': [2, 10] } as const
+  it('les quatre modèles de B5 · AI settings (Haiku 4.5 compris) ont un tarif (coût estimé) et un libellé', () => {
+    const expected = { 'claude-opus-5-5': [4, 20], 'claude-fable-5-1': [10, 50], 'claude-sonnet-5': [2, 10], 'claude-haiku-4-5': [1, 5] } as const
+    assert.deepEqual(Object.keys(expected), AI_MODELS.map((model) => model.id))
     for (const model of AI_MODELS) {
       assert.deepEqual([estimateCost(model.id, million('input')), estimateCost(model.id, million('output'))], expected[model.id])
       assert.equal(modelLabel(model.id), model.label)

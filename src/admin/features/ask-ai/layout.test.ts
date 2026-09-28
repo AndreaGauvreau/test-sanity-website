@@ -33,3 +33,14 @@ describe('Ask AI — position et couche du panneau (#41)', () => {
     expect(root).toMatch(/--kz-topbar-height:\s*\d+px;/)
   })
 })
+
+describe('Ask AI — pied « This month » (FOLLOWUPS #47)', () => {
+  it('jamais d’ellipse ni de rognage (le coût reste entier) : retour à la ligne permis', () => {
+    const css = read('src/admin/features/ask-ai/AskAiPanel.module.css')
+    const start = css.indexOf('.month {')
+    expect(start).toBeGreaterThan(-1)
+    const rule = css.slice(start, css.indexOf('}', start))
+    expect(rule).toMatch(/white-space:\s*normal;/)
+    expect(rule).not.toMatch(/text-overflow|nowrap|overflow:\s*hidden|line-clamp/)
+  })
+})

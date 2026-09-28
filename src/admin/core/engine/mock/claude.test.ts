@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it } from 'vitest'
 
-import { handleClaude, resetClaudeMock } from './claude'
+import { handleClaude, mockAiSettings, resetClaudeMock } from './claude'
+import { mockEditorHealth } from './editor'
+import { handleMockEngineRequest } from './index'
 import type { MockEngineRequest } from './types'
 
 /** Connexion à Claude simulée (ENGINE_MOCK=1) : mêmes règles que le moteur, la clé ne revient jamais. Clés de TEST. */
@@ -36,14 +38,24 @@ describe('mock /claude/access', () => {
 })
 
 describe('mock /claude/settings (réglages de l’IA)', () => {
-  it('valeurs par défaut du contrat, enregistrement, relecture ; Ask AI annoncé sur Haiku', async () => {
-    expect(await handleClaude(req('GET', 'claude/settings'))).toMatchObject({
+  it('valeurs par défaut du contrat, enregistrement, relecture ; plus de champ askModel (Ask AI suit les réglages)', async () => {
+    expect(await handleClaude(req('GET', 'claude/settings'))).toEqual({
       status: 200,
-      json: { current: { model: 'claude-opus-5-5', effort: 'medium' }, defaults: { model: 'claude-opus-5-5', effort: 'medium' }, source: 'default', askModel: 'claude-haiku-4-5' },
+      json: { current: { model: 'claude-opus-5-5', effort: 'medium' }, defaults: { model: 'claude-opus-5-5', effort: 'medium' }, source: 'default' },
     })
     const saved = await handleClaude(req('POST', 'claude/settings', { model: 'claude-sonnet-5', effort: 'xhigh' }))
     expect(saved).toMatchObject({ status: 200, json: { current: { model: 'claude-sonnet-5', effort: 'xhigh' }, source: 'saved', updatedAt: expect.any(String) } })
     expect(await handleClaude(req('GET', 'claude/settings'))).toMatchObject({ json: { current: { model: 'claude-sonnet-5', effort: 'xhigh' } } })
+  })
+
+  it('Haiku 4.5 accepté (effort gardé) ; santé simulée : le modèle en cours pour l’éditeur ET Ask AI', async () => {
+    expect(mockEditorHealth().claude).toMatchObject({ editorModel: 'claude-opus-5-5', askModel: 'claude-opus-5-5' })
+    const saved = await handleClaude(req('POST', 'claude/settings', { model: 'claude-haiku-4-5', effort: 'high' }))
+    expect(saved).toMatchObject({ status: 200, json: { current: { model: 'claude-haiku-4-5', effort: 'high' }, source: 'saved' } })
+    expect(mockAiSettings()).toEqual({ model: 'claude-haiku-4-5', effort: 'high' })
+    // GET /health simulé (répartiteur) = santé de l'éditeur simulé : le même modèle partout.
+    const health = await handleMockEngineRequest(req('GET', 'health'))
+    expect(health).toMatchObject({ status: 200, json: { claude: { editorModel: 'claude-haiku-4-5', askModel: 'claude-haiku-4-5' } } })
   })
 
   it('validation stricte comme le moteur : 400 sans rien changer', async () => {

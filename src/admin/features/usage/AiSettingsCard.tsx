@@ -2,7 +2,16 @@
 
 import { useCallback, useEffect, useId, useMemo, useState } from 'react'
 
-import { AI_EFFORTS, AI_MODELS, isAiModelId, type AiEffort, type AiSettingsInEffect, type AiSettingsState } from '@/admin/core/contracts/engine'
+import {
+  AI_EFFORTS,
+  AI_MODELS,
+  aiModelOf,
+  isAiModelId,
+  modelSupportsEffort,
+  type AiEffort,
+  type AiSettingsInEffect,
+  type AiSettingsState,
+} from '@/admin/core/contracts/engine'
 import { modelLabel } from '@/admin/core/contracts/format'
 import { priceOf } from '@/admin/core/contracts/pricing'
 import { EngineClientError, engineClient } from '@/admin/core/engine/client'
@@ -31,13 +40,18 @@ export type AiSettingsCardProps = {
 
 export const AI_SETTINGS_TEXT = {
   title: 'AI settings',
+  scope: 'AI editor · Ask AI',
   model: 'Model',
   effort: 'Thinking effort',
   modelHelp: 'Price per million tokens, input / output (Anthropic API pricing).',
-  nextRequest: 'Changes apply to the next AI editor request. A request already running keeps its settings.',
+  usedBy: 'Used by the AI editor and Ask AI.',
+  nextRequest: 'Changes apply to the next AI editor request and the next Ask AI question. A request already running keeps its settings.',
   unreachable: 'Couldn’t read the AI settings from the AI engine.',
   chooseModel: 'Choose a model from the list to save.',
 } as const
+
+/** Aide du niveau de réflexion quand le modèle choisi n'en a pas (Haiku 4.5) : le niveau reste enregistré. */
+export const noEffortHelp = (model: string) => `${modelLabel(model)} doesn’t use a thinking effort. The level stays saved for the other models.`
 
 /** Ce que fait chaque niveau, en une phrase (anglais, interface). */
 export const EFFORT_HELP: Record<AiEffort, string> = {
@@ -61,11 +75,18 @@ export function priceHint(model: string): string | null {
 const effortLabel = (effort: AiEffort) => AI_EFFORTS.find((item) => item.id === effort)?.label ?? effort
 const sameSettings = (a: AiSettingsInEffect, b: AiSettingsInEffect) => a.model === b.model && a.effort === b.effort
 
+/** « Fable 5.1 · Extra high » ; « Haiku 4.5 » seul pour un modèle sans effort (l'effort gardé n'y sert pas). */
+export function settingsLabel(settings: AiSettingsInEffect): string {
+  const model = modelLabel(settings.model)
+  return modelSupportsEffort(settings.model) ? `${model} · ${effortLabel(settings.effort)}` : model
+}
+
 /**
  * B5 · carte « AI settings » (Kuartz et client, droit ai.access ; pas de maquette : composants du kit, même carte que
- * « Claude connection ») : MODÈLE et NIVEAU DE RÉFLEXION de l'éditeur IA, enregistrés par le moteur
- * (`data/ai-settings.json`) et pris par la PROCHAINE demande, sans redémarrage. Ask AI n'est pas concerné (ASK_MODEL).
- * Save désactivé tant que rien n'a changé ; erreur lisible ; aucune donnée secrète.
+ * « Claude connection ») : MODÈLE et NIVEAU DE RÉFLEXION de TOUTE l'IA du site — l'éditeur IA et Ask AI (FOLLOWUPS
+ * #47) —, enregistrés par le moteur (`data/ai-settings.json`) et pris par la PROCHAINE demande ou question, sans
+ * redémarrage. Modèle sans effort (Haiku 4.5) : le choix du niveau est désactivé (et gardé). Save désactivé tant que
+ * rien n'a changé ; erreur lisible ; aucune donnée secrète.
  */
 export function AiSettingsCard({ client = engineClient }: AiSettingsCardProps) {
   const [state, setState] = useState<AiSettingsState | null>(null)
@@ -106,6 +127,9 @@ export function AiSettingsCard({ client = engineClient }: AiSettingsCardProps) {
 
   const dirty = !!state && !!draft && !sameSettings(draft, state.current)
   const savable = dirty && !!draft && isAiModelId(draft.model)
+  // Modèle sans effort (Haiku 4.5) : niveau affiché mais désactivé ; il reste enregistré pour les autres modèles.
+  const effortSupported = !draft || modelSupportsEffort(draft.model)
+  const listedModel = draft ? aiModelOf(draft.model) : undefined
 
   const change = (patch: Partial<AiSettingsInEffect>) => {
     setDraft((previous) => (previous ? { ...previous, ...patch } : previous))
@@ -138,7 +162,7 @@ export function AiSettingsCard({ client = engineClient }: AiSettingsCardProps) {
         <h2 id={titleId} className={styles.title}>
           {AI_SETTINGS_TEXT.title}
         </h2>
-        <span className={styles.scope}>AI editor</span>
+        <span className={styles.scope}>{AI_SETTINGS_TEXT.scope}</span>
         {status ? (
           <Tag tone={status.tone} dot>
             {status.label}
@@ -174,24 +198,29 @@ export function AiSettingsCard({ client = engineClient }: AiSettingsCardProps) {
               const price = priceHint(value)
               return price ? `${label} · ${price} per M tokens` : label
             }}
-            helper={isAiModelId(draft.model) ? AI_SETTINGS_TEXT.modelHelp : AI_SETTINGS_TEXT.chooseModel}
+            helper={listedModel ? `${listedModel.hint} ${AI_SETTINGS_TEXT.modelHelp}` : AI_SETTINGS_TEXT.chooseModel}
           />
 
-          <Field label={AI_SETTINGS_TEXT.effort} labelId={`${titleId}-effort`} helper={EFFORT_HELP[draft.effort]} helperId={`${titleId}-effort-help`}>
+          <Field
+            label={AI_SETTINGS_TEXT.effort}
+            labelId={`${titleId}-effort`}
+            helper={effortSupported ? EFFORT_HELP[draft.effort] : noEffortHelp(draft.model)}
+            helperId={`${titleId}-effort-help`}
+          >
             <SegmentedControl<AiEffort>
               aria-labelledby={`${titleId}-effort`}
               aria-describedby={`${titleId}-effort-help`}
               items={AI_EFFORTS.map((effort) => ({ value: effort.id, label: effort.label }))}
               value={draft.effort}
               onValueChange={(effort) => change({ effort })}
-              disabled={busy === 'save'}
+              disabled={busy === 'save' || !effortSupported}
               className={styles.segments}
             />
           </Field>
 
           <p className={styles.note}>
-            Ask AI isn’t affected: it always uses {modelLabel(state.askModel)}.
-            {state.source === 'default' ? ` Engine default: ${modelLabel(state.defaults.model)} · ${effortLabel(state.defaults.effort)}.` : null}
+            {AI_SETTINGS_TEXT.usedBy}
+            {state.source === 'default' ? ` Engine default: ${settingsLabel(state.defaults)}.` : null}
           </p>
 
           <AnimatePresence initial={false}>
@@ -215,9 +244,7 @@ export function AiSettingsCard({ client = engineClient }: AiSettingsCardProps) {
                 animate="animate"
                 exit="exit"
               >
-                {justSaved
-                  ? `Saved. The next AI editor request uses ${modelLabel(state.current.model)} · ${effortLabel(state.current.effort)}.`
-                  : AI_SETTINGS_TEXT.nextRequest}
+                {justSaved ? `Saved. The next AI editor request and Ask AI question use ${settingsLabel(state.current)}.` : AI_SETTINGS_TEXT.nextRequest}
               </motion.span>
             </AnimatePresence>
             <Button type="submit" variant="primary" size="small" loading={busy === 'save'} disabled={!savable || busy !== null}>

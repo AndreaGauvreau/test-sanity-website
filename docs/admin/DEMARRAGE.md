@@ -1,6 +1,6 @@
 # Démarrer l'admin et le moteur IA (local)
 
-> État au 2026-09-27 · branche `dashboard`. Architecture : `ARCHITECTURE.md`. Suivi des points ouverts : `FOLLOWUPS.md`.
+> État au 2026-09-28 · branche `dashboard`. Architecture : `ARCHITECTURE.md`. Suivi des points ouverts : `FOLLOWUPS.md`.
 
 ## Lancer
 
@@ -48,19 +48,27 @@ Si un moteur local a publié du code (Publish depuis l'admin), ces commits sont 
      `ANTHROPIC_API_KEY` (prioritaire sur tout, l'écran le signale ; redémarrage du moteur nécessaire) ou, en repli local,
      `CLAUDE_CODE_OAUTH_TOKEN` (sortie de `claude setup-token`, les DEUX lignes).
    Le test d'une clé (`GET /v1/models`) est gratuit mais ne vérifie pas le crédit ; celui de l'abonnement fait un tour
-   minimal de Claude (Haiku).
+   minimal de Claude avec `ASK_MODEL` (Haiku 4.5, le moins cher) — c'est désormais le seul usage de cette variable.
 2. Vérifier que `ENGINE_FAKE_CLAUDE` est commenté dans `engine/.env.local` (sinon Claude est simulé) et `ENGINE_MOCK=0`
    dans `.env.local` (sinon l'admin parle au moteur simulé).
 3. Ouvrir `/admin/pages/home` → « ✦ Open in AI editor ». La santé du moteur doit indiquer l'accès (`api-key` ou
    `subscription`) sans avertissement de faux Claude (relancer `npm run engine` seulement après avoir changé `engine/.env.local`).
 4. Réglages par défaut : `claude-opus-5-5`, effort `medium`, 24 tours, 1,5 $ par appel et plafond du cumul par demande
    (`EDITOR_MAX_REQUEST_USD`), 2 essais au plus. Chaque demande écrit un document `aiUsage` visible en B5.
-   Le MODÈLE et le NIVEAU DE RÉFLEXION de l'éditeur se changent dans l'admin (Kuartz ou client) : **Site Settings ›
-   Usage › AI settings** — Opus 5.5 (4 $ / 20 $ par million de jetons), Fable 5.1 (10 $ / 50 $), Sonnet 5 (2 $ / 10 $) ;
-   effort Low, Medium, High, Extra high, Max → Save. Rien à redémarrer : la demande SUIVANTE les prend (une demande en
-   cours garde les siens). Enregistré par le moteur dans `<ENGINE_WORKSPACE>/data/ai-settings.json` ; sans ce fichier,
-   `EDITOR_MODEL` / `EDITOR_EFFORT` de `engine/.env.local` (sinon Opus 5.5 / medium) restent les valeurs par défaut.
-   Ask AI n'est pas concerné (toujours `ASK_MODEL`, Haiku 4.5).
+   Le MODÈLE et le NIVEAU DE RÉFLEXION de TOUTE l'IA du site — l'éditeur IA ET Ask AI (depuis le 2026-09-28,
+   FOLLOWUPS #47) — se changent dans l'admin (Kuartz ou client) : **Site Settings › Usage › AI settings** — Opus 5.5
+   (4 $ / 20 $ par million de jetons), Fable 5.1 (10 $ / 50 $), Sonnet 5 (2 $ / 10 $), Haiku 4.5 (1 $ / 5 $ : le plus
+   rapide et le moins cher, pour les changements et questions simples ; pas de niveau de réflexion, le choix d'effort
+   est alors désactivé et gardé pour les autres modèles) ; effort Low, Medium, High, Extra high, Max → Save. Rien à
+   redémarrer : la demande SUIVANTE de l'éditeur et la question SUIVANTE d'Ask AI les prennent (une demande en cours
+   garde les siens) ; l'en-tête d'Ask AI affiche le modèle en cours. Enregistré par le moteur dans
+   `<ENGINE_WORKSPACE>/data/ai-settings.json` ; sans ce fichier, `EDITOR_MODEL` / `EDITOR_EFFORT` de `engine/.env.local`
+   (sinon Opus 5.5 / medium) restent les valeurs par défaut — pour l'éditeur ET Ask AI : sans choix enregistré, Ask AI
+   passe donc d'Haiku 4.5 à Opus 5.5 (plus cher) ; choisir Haiku 4.5 dans la carte pour le coût minimal.
+   `ASK_MODEL` ne sert plus qu'au test de connexion de l'abonnement. Après la mise à jour du code : redémarrer
+   `npm run engine` (un moteur resté sur l'ancien code refuse Haiku 4.5 et garde Ask AI sur `ASK_MODEL`).
+   Plafond de sortie d'une réponse d'Ask AI : 16 000 jetons pour un modèle qui réfléchit (la réflexion compte), 1 024
+   pour Haiku 4.5 ; un refus de Claude ou un plafond atteint donne un message clair, et la consommation reste comptée.
 
 ## Ce qui a été vérifié en réel (moteur réel + faux Claude, dataset development)
 

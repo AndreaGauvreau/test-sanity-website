@@ -12,8 +12,11 @@ export type AskUsageEntry = {
   requestId: string
   user: EngineUser
   usage: Usage
-  /** answered | refused (demande de modification refusée). */
-  status: 'answered' | 'refused'
+  /**
+   * answered | refused (demande de modification refusée) | failed (Claude a refusé de répondre ou a atteint son plafond
+   * de sortie : l'appel a coûté, rien d'utilisable n'est montré ; B5 affiche « Question · Failed »).
+   */
+  status: 'answered' | 'refused' | 'failed'
   /** Écran de l'admin ouvert (« /admin/media »). */
   page?: string
   createdAt: string

@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import adminConfig from '../../../../admin.config'
 import zonesFile from '../../../../editor/zones.json'
-import { sumUsage } from '../../contracts/format'
+import { modelLabel, sumUsage } from '../../contracts/format'
 import { MEASURED_VIEWPORTS, VIEWPORT_WIDTHS } from '../../contracts/engine'
 import type {
   Answer,
@@ -23,6 +23,7 @@ import type {
 } from '../../contracts/engine'
 import type { EngineUser } from '../../contracts/session'
 import { engineErrorBody } from '../errors'
+import { mockAiSettings } from './claude'
 import { MOCK_HEALTH } from './health'
 // Import circulaire assumé (publish.ts importe aussi ce fichier) : rien n'est appelé au chargement des modules.
 import { publishMock } from './publish'
@@ -97,6 +98,8 @@ type Scenario = 'ask' | 'direct' | 'fail' | 'reject'
 
 type Sim = {
   job: EditJob
+  /** Modèle lu au DÉPART de la demande (B5 · AI settings simulé), comme le vrai moteur : un changement ensuite n'y fait rien. */
+  model: string
   scenario: Scenario
   /** pre : avant la question ; post : après la réponse (ou directement). */
   phase: 'pre' | 'post'
@@ -124,7 +127,8 @@ export const MOCK_CONTENT_DRAFTS = 2
 export const MOCK_QUESTION_TTL_MS = 15 * 60 * 1000
 const THREAD_LIMIT = 50
 const ACTIVE = new Set(['queued', 'running', 'waiting'])
-const MODEL = { id: 'claude-opus-5-5', label: 'Opus 5.5' }
+/** Modèle en cours de l'IA simulée (B5 · AI settings simulé, `mock/claude.ts`), comme `deps.settings` du vrai moteur. */
+const currentModel = () => mockAiSettings().model
 
 // ─── Scénarios nommés (santé du moteur) ─────────────────────────────────────────────────────────────────
 
@@ -162,13 +166,15 @@ export const MOCK_EDITOR_MESSAGES = {
  * Santé annoncée par l'éditeur simulé (EditorState.health) : MOCK_HEALTH (auth-core) corrigé par le scénario.
  * « ready » est TOUJOURS configuré (un MOCK_HEALTH sans accès Claude passe en 'api-key', comme l'usage simulé) ;
  * `ok` suit la règle du vrai moteur (engine/src/server/health.ts) : accès Claude, aperçu prêt, branche draft.
+ * Modèles : celui des réglages de l'IA simulés EN COURS, le même pour l'éditeur et Ask AI (FOLLOWUPS #47).
  */
 export function mockEditorHealthFor(scenario: MockEditorScenario): EngineHealth {
   const base = structuredClone(MOCK_HEALTH)
   const configured = base.claude.access === 'none' ? 'api-key' : base.claude.access
+  const model = currentModel()
   const health: EngineHealth = {
     ...base,
-    claude: { ...base.claude, access: scenario === 'no-claude' ? 'none' : configured },
+    claude: { ...base.claude, access: scenario === 'no-claude' ? 'none' : configured, editorModel: model, askModel: model },
     sanityWrite: scenario !== 'no-sanity-token',
     preview: { ...base.preview, ready: scenario !== 'preview-starting' },
   }
@@ -211,7 +217,7 @@ function previewFor(path: string): EditorState['preview'] {
   return { url: `${origin}/admin/editor/harness?page=${encodeURIComponent(pageIdOf(path))}`, origin }
 }
 
-function usageOf(kind: 'request' | 'adjustment' | 'partial' | 'rejected', durationMs: number, access: Usage['access']): Usage {
+function usageOf(kind: 'request' | 'adjustment' | 'partial' | 'rejected', durationMs: number, access: Usage['access'], model: string): Usage {
   const table = {
     request: [20_900, 1_600, 0.09],
     adjustment: [12_400, 620, 0.05],
@@ -220,7 +226,7 @@ function usageOf(kind: 'request' | 'adjustment' | 'partial' | 'rejected', durati
   } as const
   const [input, output, cost] = table[kind]
   return {
-    model: MODEL.id,
+    model,
     inputTokens: input,
     outputTokens: output,
     cacheReadTokens: Math.round(input * 0.6),
@@ -342,8 +348,10 @@ export function createEditorMock(
     delete job.question
     const duration = at - Date.parse(job.startedAt ?? job.createdAt)
     const change = world.changes.get(job.changeId)
+    // Demande simulée lancée par un code précédent (monde gardé au rechargement à chaud) : sans modèle enregistré.
+    const model = sim.model ?? currentModel()
     if (status === 'done') {
-      job.usage = usageOf(job.kind === 'adjustment' ? 'adjustment' : 'request', duration, usageAccess())
+      job.usage = usageOf(job.kind === 'adjustment' ? 'adjustment' : 'request', duration, usageAccess(), model)
       if (change) {
         change.status = 'to-validate'
         change.summary = job.summary
@@ -354,7 +362,7 @@ export function createEditorMock(
       }
       return
     }
-    job.usage = usageOf(status === 'rejected' ? 'rejected' : 'partial', duration, usageAccess())
+    job.usage = usageOf(status === 'rejected' ? 'rejected' : 'partial', duration, usageAccess(), model)
     if (!change) return
     if (job.kind === 'adjustment' && sim.previous) {
       // L'ajustement est retiré ; la modification d'avant reste à valider.
@@ -568,7 +576,8 @@ export function createEditorMock(
       pending: pending(),
       thread,
       conversationUsage: sumUsage(usages),
-      model: MODEL,
+      // Modèle en cours (celui de la PROCHAINE demande), comme le vrai moteur (`deps.settings.model`).
+      model: { id: currentModel(), label: modelLabel(currentModel()) },
     }
     return { status: 200, json: snapshot(state) }
   }
@@ -642,7 +651,7 @@ export function createEditorMock(
       hardcoded: [],
       attempts: 1,
     }
-    const sim: Sim = { job, scenario: pickScenario(request, kind), phase: 'pre', phaseAt: t, applied: 0 }
+    const sim: Sim = { job, model: currentModel(), scenario: pickScenario(request, kind), phase: 'pre', phaseAt: t, applied: 0 }
     if (current && kind === 'adjustment') {
       sim.previous = { summary: current.summary, checks: current.checks }
       current.status = 'working'

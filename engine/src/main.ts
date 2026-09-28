@@ -101,6 +101,7 @@ export async function startEngine(env: EngineEnv, overrides: EngineOverrides = {
       store: openAccessStore({ dataDir: config.paths.data, secret: config.secret }),
       machineLogin: machineLoginOf(env),
       probe: systemProbe(env, { configDir: testConfigDirOf(config.paths.claude) }),
+      // ASK_MODEL ne sert plus qu'à ce test (le modèle le moins cher, Haiku 4.5) : Ask AI suit les réglages de l'IA.
       testModel: config.models.ask,
       testConfigDir: testConfigDirOf(config.paths.claude),
       log,
@@ -113,15 +114,15 @@ export async function startEngine(env: EngineEnv, overrides: EngineOverrides = {
   }
   const currentAccess = () => claudeAccess.current()
   // Réglages de l'agent : ceux de l'environnement (EDITOR_*), dont le modèle et l'effort ne sont que les valeurs PAR
-  // DÉFAUT — l'admin (B5 · AI settings, data/ai-settings.json) les remplace à chaud. `currentSettings()` est relu au
-  // début de chaque demande (accesseur `settings` de l'éditeur) : une demande lancée garde son modèle et son effort.
+  // DÉFAUT — l'admin (B5 · AI settings, data/ai-settings.json) les remplace à chaud, pour TOUTE l'IA du site (éditeur et
+  // Ask AI, FOLLOWUPS #47). `currentSettings()` est relu au début de chaque demande (accesseur `settings` de l'éditeur :
+  // une demande lancée garde son modèle et son effort) et à chaque question d'Ask AI (`context.settings`).
   const baseSettings: AgentSettings = readAgentSettings(env as SettingsEnv, { configDir: config.paths.claude })
   const aiSettings =
     overrides.aiSettings ??
     createAiSettingsService({
       store: openAiSettingsStore({ dataDir: config.paths.data }),
       defaults: { model: baseSettings.model, effort: baseSettings.effort },
-      askModel: config.models.ask,
       log,
     })
   await aiSettings.load()
@@ -195,11 +196,14 @@ export async function startEngine(env: EngineEnv, overrides: EngineOverrides = {
     get access() {
       return currentAccess()
     },
-    // Accesseur : /health suit le modèle choisi dans l'admin (B5 · AI settings).
+    // Accesseurs : /health suit le modèle choisi dans l'admin (B5 · AI settings). Ask AI utilise le même modèle :
+    // `askModel` (gardé pour compatibilité, lu par l'en-tête du panneau Ask AI) vaut désormais `editorModel`.
     get editorModel() {
       return currentSettings().model
     },
-    askModel: config.models.ask,
+    get askModel() {
+      return currentSettings().model
+    },
     sanityWrite: texts.available,
     preview: () => ({ url: config.preview.origin, ready: preview.status().ready }),
     repo,

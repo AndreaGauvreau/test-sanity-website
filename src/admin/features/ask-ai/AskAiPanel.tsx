@@ -17,9 +17,10 @@ import styles from './AskAiPanel.module.css'
 
 /**
  * Panneau Ask AI (Figma G4 `359:2358` + composant « Ask AI panel » `340:1586`) : 360 px, bg/elevated, Elevation/Popover.
- * En-tête « Ask AI » + modèle (logo Claude + « Haiku 4.5 ») + ✕ ; « Questions only — it doesn’t change anything. » ;
- * fil (question en Message, réponse, liens « Open Media ↗ », consommation) ; champ « Ask about this site… » + envoyer
- * (⌘ ↵) ; pied « This month: … » + « Usage ↗ ». Présentation + clavier : l'état vient de useAskConversation.
+ * En-tête « Ask AI » + modèle EN COURS (logo Claude + « Opus 5.5 » : celui de B5 · AI settings, commun à toute l'IA du
+ * site, FOLLOWUPS #47) + ✕ ; « Questions only — it doesn’t change anything. » ; fil (question en Message, réponse,
+ * liens « Open Media ↗ », consommation) ; champ « Ask about this site… » + envoyer (⌘ ↵) ; pied « This month: … » (va
+ * à la ligne, le coût n'est JAMAIS tronqué) + « Usage ↗ ». Présentation + clavier : l'état vient de useAskConversation.
  */
 
 export const ASK_AI_TEXT = {
@@ -54,16 +55,22 @@ function isSendShortcut(event: KeyboardEvent<HTMLTextAreaElement>): boolean {
   return event.key === 'Enter' && (event.metaKey || event.ctrlKey) && !event.shiftKey && !event.altKey && !event.nativeEvent.isComposing
 }
 
+/** Espaces insécables : une partie du pied ne se coupe jamais en deux (« $0.10 + included » reste entier). */
+const unbreakable = (part: string) => part.replace(/ /g, '\u00a0')
+
 /**
  * Pied « This month: 1.2M input · 147k output · $4.80 » : coût FACTURÉ ; ce qui est passé par l'abonnement Claude
- * s'affiche « Included » (« $0.10 + included » avec du facturé), le détail dans l'infobulle.
+ * s'affiche « Included » (« $0.10 + included » avec du facturé), le détail dans l'infobulle. Jamais d'ellipse : faute de
+ * place, la ligne passe à la ligne ENTRE ses parties (« This month: », « 127k input · », « 3k output · », le coût),
+ * jamais au milieu de l'une d'elles ; le coût est donc toujours lisible en entier.
  */
-function monthLine(info: AskAiInfo | null): { text: string; title?: string } | null {
+export function monthLine(info: AskAiInfo | null): { text: string; title?: string } | null {
   if (!info) return { text: `This month: ${ASK_AI_TEXT.loading}` }
   if (!info.ok || !info.month) return null
   const m = { ...info.month, includedUsd: info.month.includedUsd ?? 0 }
+  const parts = ['This month:', `${formatTokens(m.inputTokens)} input ·`, `${formatTokens(m.outputTokens)} output ·`, formatCostShort(m)]
   return {
-    text: `This month: ${formatTokens(m.inputTokens)} input · ${formatTokens(m.outputTokens)} output · ${formatCostShort(m)}`,
+    text: parts.map(unbreakable).join(' '),
     title: `This month: ${formatUsageLine(m)}`,
   }
 }

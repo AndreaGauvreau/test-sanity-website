@@ -86,6 +86,12 @@ export type EngineConfig = {
     /** Jeton d'écriture « robot » : sans lui, la portée Text de l'éditeur est indisponible. */
     writeToken: string | null
   }
+  /**
+   * `ask` = ASK_MODEL (défaut claude-haiku-4-5-20251001). Depuis le 2026-09-28 (FOLLOWUPS #47), il ne sert plus qu'au
+   * TEST DE CONNEXION de l'abonnement (« Test connection » de B5 : un tour minimal, le modèle le moins cher). Ask AI suit
+   * les réglages de l'IA (B5 · AI settings, `context.settings`), comme l'éditeur. Nom de variable gardé (compatibilité
+   * des `engine/.env.local` existants).
+   */
   models: { ask: string }
   /**
    * Plafond du CUMUL d'une demande (tous essais), en dollars. null = celui de l'agent (EDITOR_MAX_BUDGET_USD, plafond
@@ -235,6 +241,7 @@ const SCHEMA = z.object({
     .optional()
     .transform((value) => trimmed(value) || null)
     .refine((value) => value === null || !/\s/.test(value), 'SANITY_API_WRITE_TOKEN cannot contain spaces.'),
+  // Modèle du test de connexion de l'abonnement SEULEMENT (Ask AI suit B5 · AI settings, voir `EngineConfig.models`).
   ASK_MODEL: z
     .string()
     .optional()

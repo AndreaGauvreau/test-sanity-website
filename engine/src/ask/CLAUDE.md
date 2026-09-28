@@ -1,21 +1,22 @@
 # Ask AI dans le moteur (`engine/src/ask`) — LLM context
 
-> Propriétaire : ask-ai · Figma : G4 (docs/admin/figma/states/G4.md) · Mis à jour : 2026-09-27 (corrections vague 3)
+> Propriétaire : ask-ai · Figma : G4 (docs/admin/figma/states/G4.md) · Mis à jour : 2026-09-28 (modèle et effort des réglages de l'IA, plafond de sortie par modèle, refus / plafond atteint, FOLLOWUPS #47)
 > Panneau de l'admin : `src/admin/features/ask-ai/` (voir son CLAUDE.md).
 
 ## Utilité
 Route `POST /ask` du moteur (AskRequest → AskResponse, contrat `core/contracts/engine.ts`) : une question courte sur le site
-et l'admin → une réponse courte de Claude (ASK_MODEL, Haiku 4.5), des liens vers des écrans de l'admin, la consommation.
+et l'admin → une réponse courte de Claude (modèle et effort de B5 · AI settings, les mêmes que l'éditeur ; plus
+ASK_MODEL depuis le 2026-09-28), des liens vers des écrans de l'admin, la consommation.
 LECTURE SEULE : aucun outil, aucune écriture hormis le journal `aiUsage` (feature `ask`). Les demandes de modification
 sont refusées avec le texte du Figma et un lien vers l'éditeur IA. Indépendant du verrou de l'éditeur (ni git, ni brouillon).
 
 ## Fichiers
 - `index.ts` — API publique du module.
 - `routes.ts` — `registerAskRoutes(router, deps | service)`, `askModule(options?)` (EngineModule, dans `MODULES` de main.ts), `createAskReader` (client de LECTURE), `loadAdminConfig`.
-- `service.ts` — `createAskService(deps)` : validation, une question à la fois par utilisateur, limite de débit, contexte (cache 30 s par rôle), appel `complete`, réponse, journal. `ASK_MESSAGES`.
+- `service.ts` — `createAskService(deps)` : validation, une question à la fois par utilisateur, limite de débit, contexte (cache 30 s par rôle), appel `complete` (modèle, effort et plafond lus à chaque question), réponse (refus / plafond → message clair), journal. `ASK_MESSAGES`.
 - `request.ts` — `parseAskRequest` (zod) : question 1-1000 (points de code), historique ≤ 10 (textes ≤ 4000), écran `/admin…`.
 - `context.ts` — `buildSiteQuery` (une requête GROQ, types et ids en paramètres), `buildSiteData` (structure, comptes, SEO, réglages, médias et utilisations), `renderSiteData` (texte cité par `quoteData`).
-- `prompt.ts` — `ASK_SYSTEM` (FIXE), `ASK_MAX_TOKENS` (400), `normalizeHistory`, `buildAskMessages`.
+- `prompt.ts` — `ASK_SYSTEM` (FIXE), `askMaxTokens(model)` (plafond de sortie PAR MODÈLE : `ASK_MAX_TOKENS_THINKING` 16 000 pour un modèle qui réfléchit, `ASK_MAX_TOKENS_PLAIN` 1 024 pour Haiku 4.5 ; l'ancien `ASK_MAX_TOKENS` = 400 coupait la réflexion), `normalizeHistory`, `buildAskMessages`.
 - `answer.ts` — `splitModelOutput` (ANSWER / LINKS / CHANGE), `cleanAnswer` (nettoyage + filtre commun des adresses), `siteDomains` (liste blanche), `finalizeAnswer` (liens du catalogue, refus fixe).
 - `usage.ts` — `AskUsageRecorder` (port), `askUsageDoc` (AiUsageDoc), `sanityAskUsageRecorder` (repli : écriture directe par le port Sanity du robot quand le journal commun n'existe pas).
 - `testing.ts` — aides de test (manifeste réel, faux Sanity, faux complete).
@@ -24,26 +25,30 @@ sont refusées avec le texte du Figma et un lien vers l'éditeur IA. Indépendan
 
 ## Contrats
 - Entrées : `AskRequest` (corps), `EngineUser` signé (routeur d'engine-core, droit `ai.ask` revérifié), `AdminConfig`
-  (`src/admin.config.ts`), `createComplete({ access, configDir })` → `complete({ model, system, messages, maxTokens, signal })`
-  → `{ text, usage, stopReason }` / `CompleteError` (engine-claude), `quoteData` et `sanitizeClientText(text, allowedDomains)`
+  (`src/admin.config.ts`), `context.settings` (modèle et effort EN COURS, accesseur d'engine-core), `createComplete({ access, configDir })` → `complete({ model, effort, system, messages, maxTokens, signal })`
+  → `{ text, usage, stopReason }` / `CompleteError` (engine-claude, qui n'envoie l'effort qu'aux modèles qui le prennent en charge), `quoteData` et `sanitizeClientText(text, allowedDomains)`
   (engine-claude, `engine/src/claude`), `askUsageRecorderOf(context)` (engine-publish, `engine/src/usage`), `Router` /
   `EngineContext` / `EngineModule` (engine-core), `EngineError` (server/errors.ts).
 - Sorties : `POST /ask` → 200 `AskResponse` ; 400 `bad_request` (question, historique, corps) ; 409 `busy` (question en
   cours pour cet utilisateur, ou > 20 questions en 10 min) ; 503 `unavailable` (pas d'accès Claude, erreur de Claude :
   message de `CompleteError`, jamais de secret) ; 401/403/404/413/415 par le routeur.
-- Journal : un document PRIVÉ `aiUsage.ask_<16 hex>` par réponse (feature `ask`, status `answered` | `refused`, page = écran
-  ouvert, user sans e-mail, `Usage` complet), écrit par le journal COMMUN d'engine-publish (secours local
+- Journal : un document PRIVÉ `aiUsage.ask_<16 hex>` par réponse (feature `ask`, status `answered` | `refused` |
+  `failed` — refus de Claude ou plafond atteint, B5 affiche « · Failed » —, page = écran ouvert, user sans e-mail,
+  `Usage` complet au modèle RÉELLEMENT utilisé), écrit par le journal COMMUN d'engine-publish (secours local
   `data/usage-pending.jsonl` + rejeu si Sanity échoue ou sans jeton d'écriture).
 
 ## Câblage
 Branché : `engine/src/main.ts` → `MODULES = [usageModule, publishModule, versionsModule, askModule(), accessModule]`. `askModule()` DOIT
 rester après `usageModule` (il lit le journal commun à l'enregistrement). Il prend dans le contexte : `context.access`
 RELU À CHAQUE QUESTION (accesseur sur l'accès rechargeable d'`engine/src/access` : une clé ou l'abonnement choisis dans
-B5 servent aussitôt, sans redémarrage ; absent → 503 avec `ASK_MESSAGES.noAccess`), `context.config.models.ask` (ASK_MODEL), `context.config.sanity.readToken`
-(jeton de LECTURE) et `context.config.paths.claude` (+ `/ask`, CLAUDE_CONFIG_DIR de la voie abonnement).
+B5 servent aussitôt, sans redémarrage ; absent → 503 avec `ASK_MESSAGES.noAccess`), `context.settings.model` /
+`.effort` RELUS À CHAQUE QUESTION (accesseurs passés au service : le modèle et l'effort choisis dans B5 · AI settings,
+les mêmes que l'éditeur, FOLLOWUPS #47 ; ASK_MODEL ne sert plus qu'au test de connexion de l'abonnement),
+`context.config.sanity.readToken` (jeton de LECTURE) et `context.config.paths.claude` (+ `/ask`, CLAUDE_CONFIG_DIR de la voie abonnement).
 Journal, par ordre de préférence : `askModule({ usage })` (tests) → journal commun `askUsageRecorderOf(context)` →
 `sanityAskUsageRecorder(context.sanity)` (moteur sans `usageModule`) → aucun (avertissement au démarrage).
-Bas niveau : `registerAskRoutes(context.router, { config, complete, model, reader, usage })`.
+Bas niveau : `registerAskRoutes(context.router, { config, complete, model, effort?, reader, usage })` (`model` / `effort`
+peuvent être des accesseurs : le service les lit une fois par question).
 L'admin a la route dans sa liste blanche (`core/engine/routes.ts`, délai 60 s) et le client `engineClient.ask`.
 
 ## Comportement
@@ -57,7 +62,14 @@ L'admin a la route dans sa liste blanche (`core/engine/routes.ts`, délai 60 s) 
    contexte du manifeste seul (« live content data is unavailable »).
 3. Messages : historique normalisé (commence par une question, rôles alternés, question sans réponse retirée) puis
    `<site_data>…</site_data>` + « Question from the user: … ». Système `ASK_SYSTEM` identique pour tous (cache).
-4. Réponse : format `ANSWER / LINKS / CHANGE` ; texte nettoyé (markdown, URL à schéma et `www.`, HTML retirés ; chemins de
+   Appel : modèle et effort en cours (lus une fois par question), plafond `askMaxTokens(model)` (16 000 si le modèle
+   réfléchit — la réflexion compte dans la sortie —, 1 024 pour Haiku 4.5 ; la brièveté vient du prompt et de la coupe
+   à 700 caractères).
+4. Raison d'arrêt vérifiée AVANT le texte : `refusal` → « Claude declined to answer this question. Try asking it another
+   way. » ; `max_tokens` → « The answer was cut off: Claude hit its length limit. Ask a shorter, more precise
+   question. » (`ASK_MESSAGES.declined` / `.cutOff`) : réponse 200 sans lien, avec la consommation, journal `failed` ;
+   le texte du modèle n'est jamais lu.
+5. Réponse : format `ANSWER / LINKS / CHANGE` ; texte nettoyé (markdown, URL à schéma et `www.`, HTML retirés ; chemins de
    l'admin → nom de l'écran), PUIS filtre commun `sanitizeClientText` (SEC-08 : domaines nus, IDN, punycode, e-mails, IPv4,
    points désamorcés, adresses coupées par un caractère invisible → « [link removed] », sauf les domaines du site :
    `siteDomains(config.site)` = `site.domain` + hôte de `site.url` s'il n'est ni une IP ni `localhost`) ; ≤ 700 caractères
@@ -65,22 +77,27 @@ L'admin a la route dans sa liste blanche (`core/engine/routes.ts`, délai 60 s) 
    `CHANGE: yes` ou réponse qui prétend avoir modifié → « I can’t change anything. To edit a text on the page, open it in the
    AI editor. » + « Open <page> in AI editor » (page ouverte si elle a l'éditeur, sinon Home), ou « You can make this change
    yourself in the admin. » + le lien proposé (réglage, CMS…).
-5. Journal (`recordAsk`, journal commun) : son échec est journalisé mais ne bloque jamais la réponse.
+6. Journal (`recordAsk`, journal commun) : son échec est journalisé mais ne bloque jamais la réponse.
 
 ## Forces
 - Défense en profondeur contre l'injection : aucun outil ; données citées par `quoteData` et balisées ; prompt qui les
   déclare données ; sortie filtrée (liens en liste blanche du rôle, texte passé au filtre d'adresses COMMUN à tout texte
   montré au client, le même que les questions et le message final de l'éditeur) ; refus au texte fixe (le modèle ne
   peut ni prétendre avoir modifié, ni rédiger la modification).
-- Tout est injectable (complete, lecteur Sanity, journal, horloge) : 42 tests sans réseau ni Claude, dont la route sur un
-  vrai serveur à identité signée Ed25519.
-- Consommation jamais perdue : le journal commun garde le document en local si Sanity est indisponible.
+- Tout est injectable (complete, lecteur Sanity, journal, horloge, réglages de l'IA) : 44 tests sans réseau ni Claude,
+  dont la route sur un vrai serveur à identité signée Ed25519.
+- Consommation jamais perdue : le journal commun garde le document en local si Sanity est indisponible ; un refus ou une
+  réponse coupée (l'appel a coûté) est journalisé `failed`.
 
 ## Faiblesses et limites connues
-- Aucun appel réel à Haiku n'a eu lieu (interdit pendant la construction) : la tenue du format ANSWER/LINKS/CHANGE est à
-  vérifier au premier passage réel (le parseur tolère un texte sans balises).
-- Prompt système court : sous le minimum de cache de Haiku 4.5, le `cache_control` est sans effet (coût ≈ 2 k jetons
-  d'entrée par question, surtout le contexte).
+- Aucun appel réel à Claude n'a eu lieu pour Ask AI (interdit pendant la construction) : la tenue du format
+  ANSWER/LINKS/CHANGE est à vérifier au premier passage réel, pour CHAQUE modèle de B5 (le parseur tolère un texte sans
+  balises).
+- Modèle qui réfléchit (Opus 5.5, Fable 5.1, Sonnet 5, effort élevé) : réponse plus lente et plus chère que Haiku ; les
+  délais restent ceux d'avant (relais de l'admin 60 s pour `/ask`, API Messages 60 s dans `complete`) — un effort Max
+  sur Fable 5.1 peut les dépasser (non mesuré).
+- Prompt système court : sous le minimum de cache du modèle (4 096 pour Haiku 4.5), le `cache_control` est sans effet
+  (coût ≈ 2 k jetons d'entrée par question, surtout le contexte).
 - Médias : 40 images listées au plus (les plus récentes) ; utilisations : 6 par image ; section exacte seulement pour les
   pages et les réglages (pas le champ fin, ex. « background »).
 - Limite de débit et « une question à la fois » en mémoire du processus (remis à zéro au redémarrage).
@@ -119,14 +136,19 @@ L'admin a la route dans sa liste blanche (`core/engine/routes.ts`, délai 60 s) 
   la liste blanche d'Ask est `siteDomains` (answer.ts) + test « siteDomains ».
 - Nouveau champ du journal : `AskUsageEntry` (usage.ts) + l'entrée passée par `service.ts` ; le document est bâti par
   `askRecorderFor` d'engine/src/usage (engine-publish) — demande de contrat si le champ doit y arriver.
+- Changer le plafond de sortie : `askMaxTokens` (prompt.ts) + test service « plafond de sortie PAR MODÈLE » ; un modèle
+  qui réfléchit ne descend pas sous quelques milliers de jetons (la réflexion compte dans la sortie).
 
 ## Tests
-`npx vitest run engine/src/ask` (4 fichiers, 42 tests, < 1 s). Couvert : requête GROQ paramétrée, contexte (brouillon
+`npx vitest run engine/src/ask` (4 fichiers, 44 tests, < 1 s). Couvert : requête GROQ paramétrée, contexte (brouillon
 prioritaire, comptes, médias et utilisations, rôles, Sanity en panne, citations neutralisées, scripts sans code, taille
 bornée), format et filtrage des liens, nettoyage du texte, refus, validation, historique, erreurs (503, 409, 400),
-journal (document du contrat, échec non bloquant, journal commun avec secours local), cache du contexte, route `POST /ask`
-signée Ed25519 (200, 400, 404), `askModule` (enregistrement, modèle ASK_MODEL, 503 sans accès), SEC-08 (domaine nu,
+plafond de sortie par modèle (16 000 / 1 024) et effort transmis, refus de Claude / plafond atteint (message clair,
+aucun lien, journal `failed`), journal (document du contrat, échec non bloquant, journal commun avec secours local, au
+modèle des réglages), cache du contexte, route `POST /ask` signée Ed25519 (200, 400, 404), `askModule` (enregistrement,
+modèle et effort relus à chaque question — Opus 5.5 → Haiku 4.5 → Sonnet 5 —, 503 sans accès), SEC-08 (domaine nu,
 IDN, punycode, e-mail, IPv4, point désamorcé, caractère invisible, adresse recollée par le nettoyage, domaine du site gardé).
+De bout en bout (corps réels de l'API Messages, /health, journal) : `engine/src/main.test.ts`.
 Non couvert : un vrai appel à Claude et une vraie lecture Sanity.
 
 ## Décisions et « À trancher »
@@ -135,6 +157,9 @@ Non couvert : un vrai appel à Claude et une vraie lecture Sanity.
 - Journal : le journal commun d'engine-publish (FOLLOWUPS #34) ; `sanityAskUsageRecorder` n'est plus qu'un repli.
 - SEC-08 : un seul filtre d'adresses pour tout texte montré au client (engine-claude) ; Ask garde en plus son retrait des
   URL à schéma (sans marque) et y ajoute la liste blanche du site.
+- Modèle (2026-09-28, demande de l'utilisatrice, FOLLOWUPS #47) : celui des réglages de l'IA de B5, comme l'éditeur ; plus
+  Haiku imposé (ASK_MODEL ne sert plus qu'au test de connexion). Refus / plafond atteint : réponse 200 au message clair
+  (et consommation montrée) plutôt qu'une erreur 503, pour que l'appel payé reste visible et journalisé.
 
 ## Demandes de contrat
 Aucune.

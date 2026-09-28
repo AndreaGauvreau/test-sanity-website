@@ -20,7 +20,8 @@ export const PRICES_PER_MTOK: Readonly<Record<string, Price>> = Object.freeze({
   'claude-opus-5-5': Object.freeze({ input: 4, output: 20, cacheRead: 0.2, cacheWrite: 5 }),
   'claude-sonnet-5': Object.freeze({ input: 2, output: 10, cacheRead: 0.2, cacheWrite: 2.5 }),
   'claude-haiku-4-5-20251001': Object.freeze({ input: 1, output: 5, cacheRead: 0.1, cacheWrite: 1.25 }),
-  // Alias sans date du même modèle (ASK_MODEL peut porter l'un ou l'autre).
+  // Id sans date du même modèle : celui de `AI_MODELS` (B5 · AI settings) ; ASK_MODEL (test de connexion) peut porter
+  // l'un ou l'autre.
   'claude-haiku-4-5': Object.freeze({ input: 1, output: 5, cacheRead: 0.1, cacheWrite: 1.25 }),
   // Repris du POC (mêmes sources) : si EDITOR_MODEL les désigne.
   'claude-opus-5': Object.freeze({ input: 5, output: 25, cacheRead: 0.5, cacheWrite: 6.25 }),

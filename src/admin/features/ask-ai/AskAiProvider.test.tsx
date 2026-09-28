@@ -118,6 +118,44 @@ describe('Ask AI — coût facturé / abonnement Claude', () => {
     const { dialog } = await openPanel(user)
     expect(within(dialog).getByText('This month: 142k input · 3.1k output · $0.10 + included')).toBeTruthy()
   })
+
+  it('pied : le coût n’est JAMAIS tronqué — il ne se coupe qu’entre ses parties (espaces insécables dedans), jamais d’ellipse', async () => {
+    const s = services({
+      getInfo: vi.fn<AskAiServices['getInfo']>(async () => ({
+        ok: true,
+        userId: 'dev-client',
+        model: 'claude-opus-5-5',
+        month: { inputTokens: 127_000, outputTokens: 3_000, costUsd: 0.09, includedUsd: 0.3 },
+      })),
+    })
+    const { user } = renderAsk(s)
+    const { dialog } = await openPanel(user)
+    // Texte complet (le coût entier), lu tel quel.
+    const footer = within(dialog).getByText('This month: 127k input · 3k output · $0.09 + included')
+    const text = footer.textContent ?? ''
+    expect(text).not.toContain('…')
+    // Coupures permises seulement ENTRE les parties : 3 espaces ordinaires, le coût d'un seul tenant.
+    expect(text.split(' ')).toEqual(['This\u00a0month:', '127k\u00a0input\u00a0·', '3k\u00a0output\u00a0·', '$0.09\u00a0+\u00a0included'])
+    expect(footer.getAttribute('title')).toBe('This month: 127k input · 3k output · $0.09 billed + ≈ $0.30 at API prices, included in your Claude subscription')
+  })
+})
+
+describe('Ask AI — en-tête : modèle EN COURS (B5 · AI settings, commun à toute l’IA du site)', () => {
+  it('affiche le modèle choisi et le relit à chaque ouverture (Opus 5.5 → Haiku 4.5 choisi entre-temps)', async () => {
+    const getInfo = vi
+      .fn<AskAiServices['getInfo']>()
+      .mockResolvedValueOnce({ ...INFO, model: 'claude-opus-5-5' })
+      .mockResolvedValue({ ...INFO, model: 'claude-haiku-4-5' })
+    const { user } = renderAsk(services({ getInfo }))
+    const first = await openPanel(user)
+    expect(within(first.dialog).getByText('Opus 5.5')).toBeTruthy()
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    const second = await openPanel(user)
+    await within(second.dialog).findByText('Haiku 4.5')
+    expect(within(second.dialog).queryByText('Opus 5.5')).toBeNull()
+    expect(getInfo).toHaveBeenCalledTimes(2)
+  })
 })
 
 describe('Ask AI — panneau', () => {
@@ -125,6 +163,7 @@ describe('Ask AI — panneau', () => {
     const { user } = renderAsk()
     const { dialog } = await openPanel(user)
     expect(within(dialog).getByText('Questions only — it doesn’t change anything.')).toBeTruthy()
+    // Modèle de `info` (santé du moteur) : ici l'alias daté de Haiku 4.5.
     expect(within(dialog).getByText('Haiku 4.5')).toBeTruthy()
     expect(within(dialog).getByText('This month: 1.2M input · 147k output · $4.80')).toBeTruthy()
     expect(within(dialog).getByRole('link', { name: 'Usage' }).getAttribute('href')).toBe('/admin/settings/usage')

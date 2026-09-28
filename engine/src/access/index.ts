@@ -18,8 +18,9 @@ export function registerAccessRoutes(router: Router, service: ClaudeAccessServic
 }
 
 /**
- * Réglages de l'IA (B5 · « AI settings ») : modèle et niveau de réflexion de l'éditeur. Même droit `ai.access` ; le
- * service est créé par `startEngine` (main.ts) avant l'éditeur, qui le relit au début de chaque demande.
+ * Réglages de l'IA (B5 · « AI settings ») : modèle et niveau de réflexion de toute l'IA du site (éditeur IA et Ask AI).
+ * Même droit `ai.access` ; le service est créé par `startEngine` (main.ts) avant l'éditeur, qui le relit au début de
+ * chaque demande ; Ask AI le relit à chaque question (`context.settings`).
  */
 export function registerAiSettingsRoutes(router: Router, service: AiSettingsService): void {
   router.add({ method: 'GET', path: '/claude/settings', capability: 'ai.access', handler: async () => ({ json: service.state() }) })

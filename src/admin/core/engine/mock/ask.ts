@@ -1,20 +1,31 @@
 import adminConfig from '../../../../admin.config'
-import type { AskMessage, AskResponse, Usage } from '../../contracts/engine'
+import { modelSupportsEffort, type AiEffort, type AskMessage, type AskResponse, type Usage } from '../../contracts/engine'
+import { priceOf } from '../../contracts/pricing'
 import { askRoutes, editorHref, resolveAskLinks, screenOf } from '../../../features/ask-ai/links'
 import { engineErrorBody } from '../errors'
+import { mockAiSettings } from './claude'
 import type { MockEngineResponse, MockHandler } from './types'
 
 /**
  * Ask AI simulé (POST /ask, ENGINE_MOCK=1, jamais en production) — propriétaire : ask-ai.
  * Réponses réalistes pour construire et vérifier le panneau G4 sans moteur ni Claude : question → réponse courte +
  * liens (catalogue réel du rôle, `features/ask-ai/links.ts`), demande de modification → refus du Figma, consommation
- * plausible (Haiku 4.5, 1 $ / 5 $ par million).
- * Déclencheurs de développement dans la question : « [mock:error] » (503), « [mock:slow] » (réponse en 4 s).
+ * plausible. Modèle : celui des réglages de l'IA simulés EN COURS (`mockAiSettings()`, relu à chaque question, comme
+ * le vrai moteur, FOLLOWUPS #47), à son prix (`priceOf`) ; un modèle qui réfléchit ajoute des jetons de sortie selon
+ * l'effort, Haiku 4.5 aucun.
+ * Déclencheurs de développement dans la question : « [mock:error] » (503), « [mock:slow] » (réponse en 4 s),
+ * « [mock:refusal] » (Claude refuse de répondre), « [mock:cut] » (plafond de sortie atteint) — ces deux derniers
+ * renvoient le message du vrai moteur (`ASK_MESSAGES.declined` / `.cutOff` d'engine/src/ask/service.ts).
  * Mêmes limites que le vrai moteur : question 1-1000 caractères, historique ≤ 10.
  */
 
-const MODEL = 'claude-haiku-4-5-20251001'
 export const MOCK_REFUSAL = 'I can’t change anything. To edit a text on the page, open it in the AI editor.'
+/** Mêmes textes que `ASK_MESSAGES.declined` / `ASK_MESSAGES.cutOff` du moteur (engine/src/ask/service.ts). */
+export const MOCK_DECLINED = 'Claude declined to answer this question. Try asking it another way.'
+export const MOCK_CUT_OFF = 'The answer was cut off: Claude hit its length limit. Ask a shorter, more precise question.'
+
+/** Jetons de réflexion simulés d'une réponse courte, par effort (modèle qui réfléchit seulement). */
+const THINKING_TOKENS: Record<AiEffort, number> = { low: 120, medium: 400, high: 900, xhigh: 1600, max: 2800 }
 
 type Scenario = { test: RegExp; answer: string; links: string[]; refused?: boolean }
 
@@ -71,16 +82,22 @@ const FALLBACK: Scenario = {
   links: [],
 }
 
-function usageFor(question: string, history: readonly AskMessage[], answer: string): Usage {
+/**
+ * Consommation plausible au modèle et à l'effort EN COURS : réponse + réflexion simulée (modèle qui réfléchit). `output` :
+ * jetons de sortie imposés (refus, plafond atteint).
+ */
+function usageFor(question: string, history: readonly AskMessage[], answer: string, output?: number): Usage {
+  const { model, effort } = mockAiSettings()
   const inputTokens = 2050 + Math.round((question.length + history.reduce((n, m) => n + m.text.length, 0)) / 4)
-  const outputTokens = 150 + Math.round(answer.length)
+  const outputTokens = output ?? 150 + Math.round(answer.length) + (modelSupportsEffort(model) ? THINKING_TOKENS[effort] : 0)
+  const price = priceOf(model) ?? { input: 1, output: 5 }
   return {
-    model: MODEL,
+    model,
     inputTokens,
     outputTokens,
     cacheReadTokens: 0,
     cacheWriteTokens: 0,
-    costUsd: (inputTokens * 1 + outputTokens * 5) / 1_000_000,
+    costUsd: (inputTokens * price.input + outputTokens * price.output) / 1_000_000,
     costKind: 'billed',
     access: 'none',
     durationMs: 700,
@@ -121,6 +138,15 @@ export function createAskMock(options: HandleAskOptions = {}): MockHandler {
       return { status: 503, json: engineErrorBody('unavailable', 'Claude is busy (rate limit): try again in a moment.') }
     }
     await delay(question.includes('[mock:slow]') ? 4000 : 700)
+
+    // Pas de réponse utilisable (comme le vrai moteur) : message clair, consommation comptée, aucun lien.
+    if (question.includes('[mock:refusal]')) {
+      return { status: 200, json: { answer: MOCK_DECLINED, links: [], refusedChange: false, usage: usageFor(question, history, '', 30) } satisfies AskResponse }
+    }
+    if (question.includes('[mock:cut]')) {
+      const cap = modelSupportsEffort(mockAiSettings().model) ? 16_000 : 1_024
+      return { status: 200, json: { answer: MOCK_CUT_OFF, links: [], refusedChange: false, usage: usageFor(question, history, '', cap) } satisfies AskResponse }
+    }
 
     const routes = askRoutes(adminConfig, request.user.role)
     const scenario = SCENARIOS.find((s) => s.test.test(question)) ?? FALLBACK
