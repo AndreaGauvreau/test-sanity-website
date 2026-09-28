@@ -53,8 +53,9 @@ export const ENGINE_ROUTES: readonly EngineRouteDef[] = [
   // Versions (E2)
   { method: 'GET', pattern: ['versions'], capability: 'publish.run' },
   { method: 'POST', pattern: ['versions', ':number', 'rollback'], capability: 'versions.rollback', timeoutMs: 30_000 },
-  // Ask AI (G4)
-  { method: 'POST', pattern: ['ask'], capability: 'ai.ask', timeoutMs: 60_000 },
+  // Ask AI (G4) : 180 s — le modèle choisi dans AI settings peut réfléchir longtemps (Fable 5.1 ou effort élevé) ;
+  // l'appel à l'API Messages s'arrête avant (150 s, engine/src/claude/complete.ts).
+  { method: 'POST', pattern: ['ask'], capability: 'ai.ask', timeoutMs: 180_000 },
   // Connexion à Claude (B5 · carte « Claude connection ») : Kuartz et client. Le test d'un abonnement lance un tour
   // minimal de Claude Code (jusqu'à ≈ 60 s).
   { method: 'GET', pattern: ['claude', 'access'], capability: 'ai.access' },

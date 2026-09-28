@@ -106,8 +106,11 @@ export type CompleteDeps = {
   now?: () => number
 }
 
-/** Délai d'un appel de l'API Messages (le SDK réessaie 2 fois les 408/409/429/5xx). */
-const API_TIMEOUT_MS = 60_000
+/**
+ * Délai d'un appel de l'API Messages (le SDK réessaie 2 fois les 408/409/429/5xx). 150 s : un modèle qui réfléchit
+ * (Fable 5.1, effort élevé) peut dépasser la minute ; le relais de l'admin coupe Ask AI à 180 s (core/engine/routes.ts).
+ */
+const API_TIMEOUT_MS = 150_000
 
 const textOf = (message: Anthropic.Message) =>
   message.content
