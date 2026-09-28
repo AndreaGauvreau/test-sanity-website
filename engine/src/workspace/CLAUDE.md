@@ -36,6 +36,9 @@ commit de base).
 / publication attend, si draft ≠ main, si la copie est sale ; `fetch` puis avance rapide de draft et main ; divergence
 refusée avec les commandes exactes à lancer dans la source (`git fetch <clone> +main:refs/remotes/engine/main` puis
 `git merge engine/main`) ; réinstallation si `package-lock.json` a changé.
+Changement de branche de la source (ex. `dashboard` fusionnée dans `main` puis supprimée) : `setup` fait suivre la
+nouvelle branche au clone si elle contient tout son `main` (message « The source branch changed from … »), sinon refus
+avec les options (ENGINE_SOURCE_BRANCH, rapatrier les commits, recréer).
 Cas typique en local (ENGINE_GIT_PUSH=0) : une publication de code avance le `main` du clone, jamais la source ; la sync
 suivante diverge tant que ces commits ne sont pas ramenés (vu le 2026-09-28 avec la publication-1).
 

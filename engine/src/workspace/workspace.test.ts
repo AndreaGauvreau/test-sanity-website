@@ -109,6 +109,30 @@ describe('setupWorkspace', () => {
     await assert.rejects(setupWorkspace(configFor({ ENGINE_SOURCE_BRANCH: 'nope' }), deps()), /does not exist/)
   })
 
+  it('la source passe sur une autre branche qui contient tout le clone (dashboard → main) : le clone la suit', async () => {
+    const repo = await setupWorkspace(config, deps())
+    git(source, 'checkout', '--quiet', '-b', 'main')
+    git(source, 'branch', '--quiet', '-D', 'dashboard')
+    await setupWorkspace(config, deps())
+    assert.equal((await readMeta(config))?.sourceBranch, 'main')
+    assert.ok(lines.some((line) => /changed from "dashboard" to "main"/.test(line)))
+    // La sync suit désormais main.
+    await writeFile(path.join(source, 'after.txt'), 'a')
+    git(source, 'add', '--all')
+    git(source, 'commit', '--quiet', '-m', 'after')
+    assert.equal((await syncWorkspace(config, deps())).changed, true)
+    assert.equal(await repo.head(), git(source, 'rev-parse', 'main'))
+  })
+
+  it('la nouvelle branche ne contient pas le main du clone : refus, rien ne change', async () => {
+    const repo = await setupWorkspace(config, deps())
+    git(repo.dir, 'commit', '--quiet', '--allow-empty', '-m', 'published in the engine only')
+    git(repo.dir, 'branch', '--force', 'main', 'draft')
+    git(source, 'checkout', '--quiet', '-b', 'main')
+    await assert.rejects(setupWorkspace(config, deps()), /doesn't contain everything the clone has/)
+    assert.equal((await readMeta(config))?.sourceBranch, 'dashboard')
+  })
+
   it('refuse un dossier repo/ qui n’est pas un clone de la source', async () => {
     await mkdir(config.paths.repo, { recursive: true })
     git(config.paths.repo, 'init', '--quiet')

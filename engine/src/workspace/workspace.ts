@@ -182,9 +182,26 @@ export async function setupWorkspace(config: EngineConfig, deps: WorkspaceDeps =
     throw new WorkspaceError(`${repo} is not a clone of ENGINE_SOURCE_REPO: move it away, then run the setup again.`)
   }
   if (meta && meta.sourceBranch !== branch) {
-    throw new WorkspaceError(
-      `The clone follows branch "${meta.sourceBranch}", not "${branch}": set ENGINE_SOURCE_BRANCH=${meta.sourceBranch} or recreate the workspace.`,
-    )
+    // La source a changé de branche (ex. travail fusionné dans main, ancienne branche supprimée, 2026-09-28) : le clone
+    // suit la nouvelle branche si elle contient déjà tout son main — rien n'est perdu, la prochaine sync avance en
+    // avance rapide. Sinon (commits du clone absents de la nouvelle branche), refus : un développeur tranche.
+    const target = `refs/remotes/origin/${branch}`
+    const fetched = (await branchExists(sourceRepo, branch))
+      ? await work.run(['fetch', '--quiet', 'origin', `+refs/heads/${branch}:${target}`], { timeoutMs: 600_000 }).then(
+          () => true,
+          () => false,
+        )
+      : false
+    const cloneMain = fetched ? await work.run(['rev-parse', 'main']).catch(() => '') : ''
+    if (!cloneMain || !(await work.isAncestor(cloneMain, target))) {
+      throw new WorkspaceError(
+        `The clone follows branch "${meta.sourceBranch}", not "${branch}", and "${branch}" doesn't contain everything the ` +
+          `clone has: set ENGINE_SOURCE_BRANCH=${meta.sourceBranch}, merge the engine's commits into "${branch}", or recreate the workspace.`,
+      )
+    }
+    log(`The source branch changed from "${meta.sourceBranch}" to "${branch}": the clone now follows "${branch}".`)
+    meta = { ...meta, sourceBranch: branch }
+    await writeMeta(config, meta)
   }
   if (!(await branchExists(repo, 'draft'))) await work.run(['branch', 'draft', 'HEAD'])
   if (!(await branchExists(repo, 'main'))) await work.run(['branch', 'main', 'draft'])
