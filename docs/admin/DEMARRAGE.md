@@ -1,24 +1,27 @@
 # Démarrer l'admin et le moteur IA (local)
 
-> État au 2026-09-28 · branche `dashboard`. Architecture : `ARCHITECTURE.md`. Suivi des points ouverts : `FOLLOWUPS.md`.
+> État au 2026-09-28 · branche `main` (seule branche). Architecture : `ARCHITECTURE.md`. Suivi : `FOLLOWUPS.md`.
 
 ## Lancer
 
-Trois terminaux, depuis `~/Tools/sanity-test` (rien n'est inscrit dans le PM2 de `~/Tools`) :
+Une seule commande, depuis `~/Tools/sanity-test` (rien n'est inscrit dans le PM2 de `~/Tools`) :
 
 ```bash
-npm run dev            # site + admin + Studio → http://127.0.0.1:4040 (/admin, /studio)
-npm run engine         # moteur IA → 127.0.0.1:4043 ; lance et surveille l'aperçu du brouillon (4042)
+npm run dev    # site + admin + Studio → http://127.0.0.1:4040 (/admin, /studio) ET moteur IA → 4043 (aperçu 4042)
 ```
 
-Première fois seulement, ou après de nouveaux commits (moteur arrêté) :
+`npm run dev` (`scripts/dev.ts`) : mise en place du clone du moteur (`engine:setup`, idempotente : clone et `npm ci` la
+première fois seulement), synchronisation sur tes commits (`engine:setup -- sync`), puis site et moteur ensemble, sorties
+préfixées `[site]` / `[ai]`. `Ctrl+C` arrête tout (le moteur arrête l'aperçu). Le moteur n'est PAS lancé si
+`ENGINE_MOCK=1` (moteur simulé), si `engine/.env.local` manque ou si un moteur répond déjà sur `ENGINE_PORT`. Une sync
+refusée (demande IA en attente, publication locale à rapatrier…) n'empêche pas de démarrer : la raison s'affiche et le
+moteur part sur le clone tel quel. Si le moteur s'arrête seul, le site continue : corriger puis `npm run engine`.
 
-```bash
-npm run engine:setup           # clone de travail dans ../sanity-test-engine (npm ci une fois)
-npm run engine:setup -- sync   # avance main/draft du clone sur la branche source, si rien n'attend
-```
+Commandes séparées, si besoin : `npm run dev:site` (site seul), `npm run engine` (moteur seul),
+`npm run engine:setup` / `npm run engine:setup -- sync` (moteur arrêté).
 
-Le clone ne voit que le code COMMITÉ de la source : committer avant `sync`.
+Le clone ne voit que le code COMMITÉ de la source : committer avant de relancer. Si la source change de branche
+(ex. `dashboard` fusionnée dans `main`), le clone suit la nouvelle branche tout seul quand elle contient tout son `main`.
 
 Si un moteur local a publié du code (Publish depuis l'admin), ces commits sont dans le clone mais pas dans la source :
 `sync` refuse alors (« … commit(s) that the source branch doesn't have ») et affiche les commandes pour les ramener
