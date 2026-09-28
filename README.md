@@ -32,8 +32,12 @@ Port 4040, lié à `127.0.0.1` comme le reste de `~/Tools` (les tests Payload oc
 
 ```bash
 npm install          # déjà fait
-npm run dev          # http://localhost:4040
+npm run dev          # tout : site + admin + Studio (4040) et moteur IA (4043, aperçu 4042)
 ```
+
+`npm run dev` prépare aussi le clone du moteur (mise en place, synchronisation sur tes commits) avant de le lancer ;
+`Ctrl+C` arrête tout. Le moteur n'est pas lancé si `ENGINE_MOCK=1`, si `engine/.env.local` manque ou s'il tourne déjà.
+Détails : `docs/admin/DEMARRAGE.md`.
 
 Première fois seulement (déjà fait lors du setup) :
 
@@ -127,7 +131,9 @@ Google Tag Manager `GTM-KK83GHRF`, qui charge GA4 `G-DE4VPDJ8CS` (Google Tag sur
 
 | Script | Rôle |
 | --- | --- |
-| `npm run dev` | site + admin + Studio en dev, port 4040 |
+| `npm run dev` | TOUT en une commande : site + admin + Studio (4040) et moteur IA (4043), clone préparé et synchronisé ; `Ctrl+C` arrête tout |
+| `npm run dev:site` | site + admin + Studio seulement (sans moteur IA) |
+| `npm run engine` | moteur IA seul (4043), s'il faut le relancer à part |
 | `npm run prod` | build de production (cache de données vidé) + serveur |
 | `npm run studio` | le même Studio hors de Next (port 3333), aperçu live sur le site local |
 | `npm run deploy:studio` | met en ligne le Studio sur `kuartz-sanity-test.sanity.studio` (login Sanity requis pour y accéder) |
