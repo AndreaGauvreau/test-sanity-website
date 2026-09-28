@@ -15,6 +15,7 @@ import { createEditorService } from './jobs/service'
 import { loadSiteDomains } from './jobs/site'
 import type { JobRunAgent } from './jobs/types'
 import { createPreviewProcess, type SpawnFn } from './preview/process'
+import { reclaimPreviewPort, systemReclaimDeps, type ReclaimDeps } from './preview/reclaim'
 import { askModule } from './ask'
 import { publishModule, publishServiceOf } from './publish'
 import { usageModule } from './usage'
@@ -30,7 +31,9 @@ import { checkWorkspace, engineRunning, PID_FILE, WorkspaceError } from './works
  * Processus du moteur IA (`npm run engine` → tsx --env-file=engine/.env.local engine/src/main.ts).
  * Démarrage : configuration validée → espace de travail vérifié → magasin ouvert → reprise des demandes interrompues →
  * aperçu (next dev du clone) lancé et surveillé → serveur HTTP sur 127.0.0.1:ENGINE_PORT.
- * Arrêt (SIGINT/SIGTERM) : plus de nouvelles requêtes, demande en cours arrêtée et remise en état, aperçu arrêté.
+ * Arrêt (SIGINT/SIGTERM, et SIGHUP quand son terminal se ferme) : plus de nouvelles requêtes, demande en cours arrêtée
+ * et remise en état, aperçu arrêté. Un aperçu laissé par un moteur précédent tué sans s'arrêter (port de l'aperçu pris
+ * par un next dev du clone) est arrêté avant de lancer le nôtre (preview/reclaim.ts).
  */
 
 /**
@@ -49,6 +52,8 @@ export type EngineOverrides = {
   listenPort?: number
   spawnPreview?: SpawnFn
   previewFetch?: typeof fetch
+  /** Récupération d'un aperçu orphelin (tests : fausses sondes) ; défaut : lsof / ps, seulement avec le vrai next dev. */
+  reclaimPreview?: ReclaimDeps
   visual?: Preview
   signal?: PreviewSignal
   runAgent?: JobRunAgent
@@ -272,6 +277,10 @@ export async function startEngine(env: EngineEnv, overrides: EngineOverrides = {
     log(`module ${module.name} registered`)
   }
 
+  // Aperçu orphelin d'un moteur précédent (terminal fermé, kill -9) : arrêté s'il tourne dans NOTRE clone, jamais un
+  // autre programme. Seulement avec le vrai next dev (les tests qui simulent l'aperçu passent leurs propres sondes).
+  const reclaimDeps = overrides.reclaimPreview ?? (overrides.spawnPreview ? null : systemReclaimDeps((line) => log(`[preview] ${line}`)))
+  if (reclaimDeps) await reclaimPreviewPort({ port: config.preview.port, repoDir: repo.dir }, reclaimDeps)
   preview.start()
   const server = createEngineServer({ router, secret: config.secret, identityPublicKey: config.identityPublicKey, log })
   await new Promise<void>((resolve, reject) => {
@@ -326,6 +335,8 @@ if (process.argv[1] && /engine[\\/]src[\\/]main\.ts$/.test(process.argv[1])) {
       }
       process.on('SIGINT', () => shutdown('SIGINT'))
       process.on('SIGTERM', () => shutdown('SIGTERM'))
+      // Terminal fermé : sans ce gestionnaire, Node s'arrêtait net et laissait l'aperçu (détaché) orphelin.
+      process.on('SIGHUP', () => shutdown('SIGHUP'))
       process.on('exit', () => engine.context.preview.stopSync())
     })
     .catch((error: unknown) => {

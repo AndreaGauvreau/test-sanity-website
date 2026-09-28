@@ -2,7 +2,7 @@ import type Anthropic from '@anthropic-ai/sdk'
 import assert from 'node:assert/strict'
 import { EventEmitter } from 'node:events'
 import { existsSync } from 'node:fs'
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, realpath, rm, writeFile } from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 import { PassThrough } from 'node:stream'
@@ -20,6 +20,7 @@ import { CLIENT, conduitSanity, editRequest, fakePreview, freshSignal, HERO_CSS,
 import { startEngine, type EngineOverrides, type RunningEngine } from './main'
 import type { EngineModule } from './server/modules'
 import type { ChildLike, SpawnFn } from './preview/process'
+import type { ReclaimDeps } from './preview/reclaim'
 
 /**
  * Câblage complet du moteur (startEngine) sur un espace de travail temporaire : aperçu simulé (faux processus, fausse
@@ -202,6 +203,32 @@ describe('startEngine', () => {
     await engine!.stop('test')
     assert.equal(existsSync(path.join(ws.workspace, 'data', 'engine.pid')), false)
     assert.equal(engine!.context.preview.status().state, 'stopped')
+    engine = null
+  })
+
+  it('aperçu orphelin d’un moteur précédent (next dev du clone sur le port de l’aperçu) : arrêté, puis le nôtre est lancé', async () => {
+    let repoDir = ''
+    let orphan = true
+    const events: string[] = []
+    const reclaimPreview: ReclaimDeps = {
+      listenerOf: async (port) => {
+        events.push(`probe ${port}`)
+        return orphan ? { pid: 777, pgid: 776, cwd: await realpath(repoDir) } : null
+      },
+      killGroup: (pgid, signal) => {
+        events.push(`${signal} ${pgid}`)
+        orphan = false
+      },
+      sleep: async () => {},
+      log: () => {},
+    }
+    const { spawn } = await boot({}, { reclaimPreview }, async (workspace) => {
+      repoDir = path.join(workspace, 'repo')
+    })
+    assert.equal(events[0], 'probe 4942')
+    assert.ok(events.includes('SIGTERM 776'), events.join(', '))
+    assert.equal(spawn.children.length, 1, 'notre aperçu est lancé après')
+    await engine!.stop('test')
     engine = null
   })
 

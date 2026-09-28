@@ -1,9 +1,9 @@
-import { spawn, type ChildProcess } from 'node:child_process'
+import { execFileSync, spawn, type ChildProcess } from 'node:child_process'
 import { existsSync, readFileSync } from 'node:fs'
 import net from 'node:net'
 import path from 'node:path'
 import readline from 'node:readline'
-import { devPlan, parseDotenv, portOf, prefixLine, type Painter } from './dev/plan'
+import { devPlan, parseDotenv, portOf, prefixLine, type EnginePortOwner, type Painter } from './dev/plan'
 
 /**
  * `npm run dev` : TOUT l'environnement local en une seule commande.
@@ -12,7 +12,9 @@ import { devPlan, parseDotenv, portOf, prefixLine, type Painter } from './dev/pl
  * Avant le moteur : `engine:setup` (idempotent : clone, dépendances, .env.local de l'aperçu) puis `engine:setup -- sync`
  * (avance le clone sur les commits de la source quand rien n'attend). Un refus de sync (demande en cours, publication
  * locale à rapatrier…) n'empêche pas de démarrer : son message s'affiche et le moteur part sur le clone tel quel.
- * Le moteur n'est pas lancé si ENGINE_MOCK=1, si engine/.env.local manque ou si un moteur répond déjà (scripts/dev/plan.ts).
+ * Le moteur n'est pas lancé si ENGINE_MOCK=1, si engine/.env.local manque ou si un AUTRE programme tient son port
+ * (scripts/dev/plan.ts). Un moteur précédent de CE projet encore lancé (autre terminal, ancien code) n'est jamais
+ * réutilisé : il est arrêté proprement (SIGTERM) puis remplacé, pour que le moteur tourne toujours avec le code actuel.
  * Ctrl+C arrête tout proprement (le moteur arrête l'aperçu). Site seul : `npm run dev:site` ; moteur seul : `npm run engine`.
  *
  * Les fichiers .env ne sont que LUS (ENGINE_MOCK, ports) : chaque processus charge les siens (Next : .env.local ; moteur :
@@ -50,6 +52,56 @@ function portBusy(port: number): Promise<boolean> {
     socket.once('error', () => done(false))
     socket.setTimeout(1_000, () => done(false))
   })
+}
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
+/**
+ * Le processus tourne-t-il encore ? EPERM : il existe, mais pas à nous. Un zombie (terminé, pas encore ramassé par son
+ * parent) compte comme arrêté : sinon l'attente de l'ancien moteur ne finissait jamais.
+ */
+function alive(pid: number): boolean {
+  try {
+    process.kill(pid, 0)
+  } catch (error) {
+    return (error as NodeJS.ErrnoException).code === 'EPERM'
+  }
+  try {
+    return !execFileSync('ps', ['-o', 'stat=', '-p', String(pid)], { encoding: 'utf8', timeout: 2_000 }).trim().startsWith('Z')
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Qui tient le port du moteur : un moteur de CE projet si `<ENGINE_WORKSPACE>/data/engine.pid` désigne un processus
+ * vivant lancé sur engine/src/main.ts ; autre chose sinon.
+ */
+function enginePortOwner(workspace: string | undefined): EnginePortOwner {
+  if (!workspace || !path.isAbsolute(workspace)) return { kind: 'other' }
+  let pid = NaN
+  try {
+    pid = Number(readFileSync(path.join(workspace, 'data', 'engine.pid'), 'utf8').trim())
+  } catch {
+    return { kind: 'other' }
+  }
+  if (!Number.isInteger(pid) || pid <= 0 || pid === process.pid || !alive(pid)) return { kind: 'other' }
+  let command = ''
+  try {
+    command = execFileSync('ps', ['-o', 'command=', '-p', String(pid)], { encoding: 'utf8', timeout: 3_000 })
+  } catch {
+    return { kind: 'other' }
+  }
+  return /engine[\\/]src[\\/]main\.ts/.test(command) ? { kind: 'engine', pid } : { kind: 'other' }
+}
+
+/** Attend que `done()` soit vrai (au plus `timeoutMs`). */
+async function waitFor(done: () => Promise<boolean> | boolean, timeoutMs: number): Promise<boolean> {
+  for (let waited = 0; waited < timeoutMs; waited += 250) {
+    if (await done()) return true
+    await sleep(250)
+  }
+  return done()
 }
 
 const children = new Set<ChildProcess>()
@@ -111,18 +163,41 @@ async function main() {
   const engineEnv = readEnvFile(ENGINE_ENV)
   const sitePort = portOf(process.env.PORT) ?? 4040
   const enginePort = portOf(engineEnv?.ENGINE_PORT)
+  let enginePortBusy = enginePort !== null && (await portBusy(enginePort))
+  let owner = enginePortBusy ? enginePortOwner(engineEnv?.ENGINE_WORKSPACE) : undefined
+  if (enginePort !== null && enginePortBusy && owner?.kind !== 'engine') {
+    // Un moteur qui finit de s'arrêter (Ctrl+C à l'instant) a pu retirer son engine.pid : on lui laisse 10 s.
+    enginePortBusy = !(await waitFor(async () => !(await portBusy(enginePort)), 10_000))
+    owner = enginePortBusy ? enginePortOwner(engineEnv?.ENGINE_WORKSPACE) : undefined
+  }
   const plan = devPlan({
     sitePort,
     sitePortBusy: await portBusy(sitePort),
     mock: siteEnv.ENGINE_MOCK === '1',
     engineEnvFile: engineEnv !== null,
     enginePort,
-    enginePortBusy: enginePort !== null && (await portBusy(enginePort)),
+    enginePortBusy,
+    enginePortOwner: owner,
   })
   for (const note of plan.notes) say(note)
   if (plan.abort) process.exit(1)
 
   let startEngine = plan.startEngine
+  if (startEngine && plan.replaceEngine && enginePort !== null) {
+    const previous = plan.replaceEngine
+    try {
+      process.kill(previous, 'SIGTERM')
+    } catch {
+      // Déjà parti.
+    }
+    say(`Waiting for the previous AI engine (pid ${previous}) to stop cleanly…`)
+    const stopped = await waitFor(async () => !alive(previous) && !(await portBusy(enginePort)), STOP_TIMEOUT_MS)
+    if (stopping) return
+    if (!stopped) {
+      say(`The previous AI engine (pid ${previous}) did not stop in time: starting the site without the AI engine.`)
+      startEngine = false
+    }
+  }
   if (startEngine) {
     say('Preparing the AI engine workspace (clone, sync with your commits)…')
     const setup = [`--env-file=${ENGINE_ENV}`, 'engine/src/workspace/setup.ts']

@@ -30,6 +30,12 @@ export function portOf(value: string | undefined): number | null {
   return port >= 1024 && port <= 65535 ? port : null
 }
 
+/**
+ * Qui tient le port du moteur quand il est pris : un moteur de CE projet (pid lu dans `<ENGINE_WORKSPACE>/data/engine.pid`,
+ * processus vivant lancé sur engine/src/main.ts), ou autre chose.
+ */
+export type EnginePortOwner = { kind: 'engine'; pid: number } | { kind: 'other' }
+
 export type DevPlanInput = {
   sitePort: number
   sitePortBusy: boolean
@@ -40,6 +46,8 @@ export type DevPlanInput = {
   /** ENGINE_PORT d'engine/.env.local (null : absent ou invalide). */
   enginePort: number | null
   enginePortBusy: boolean
+  /** Propriétaire du port du moteur quand il est pris (ignoré sinon). */
+  enginePortOwner?: EnginePortOwner
 }
 
 export type DevPlan = {
@@ -47,6 +55,12 @@ export type DevPlan = {
   abort: boolean
   /** Mise en place du clone, synchronisation, puis moteur. */
   startEngine: boolean
+  /**
+   * Pid d'un moteur précédent de ce projet à arrêter AVANT (SIGTERM, arrêt propre) : `npm run dev` lance toujours le
+   * moteur avec le code actuel, il ne réutilise jamais un moteur déjà lancé (constat du 2026-09-28 : le moteur réutilisé
+   * était l'ancien, arrêté juste après — plus de moteur du tout).
+   */
+  replaceEngine?: number
   /** Messages à afficher avant de lancer (anglais, comme les journaux du moteur et de Next). */
   notes: string[]
 }
@@ -64,7 +78,19 @@ export function devPlan(input: DevPlanInput): DevPlan {
   if (!input.engineEnvFile) return siteOnly('engine/.env.local is missing: starting without the AI engine (see docs/admin/DEMARRAGE.md).')
   if (input.enginePort === null) return siteOnly('ENGINE_PORT is missing or invalid in engine/.env.local: starting without the AI engine.')
   if (input.enginePortBusy) {
-    return siteOnly(`An AI engine already answers on port ${input.enginePort}: using it instead of starting another one.`)
+    if (input.enginePortOwner?.kind === 'engine') {
+      const pid = input.enginePortOwner.pid
+      return {
+        abort: false,
+        startEngine: true,
+        replaceEngine: pid,
+        notes: [`A previous AI engine (pid ${pid}) is still running: stopping it so this run starts the engine with the current code.`],
+      }
+    }
+    return siteOnly(
+      `Port ${input.enginePort} is used by another program (not this project's AI engine): free it or change ENGINE_PORT. ` +
+        'Starting without the AI engine.',
+    )
   }
   return { abort: false, startEngine: true, notes: [] }
 }

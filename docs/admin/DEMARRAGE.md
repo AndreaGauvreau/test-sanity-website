@@ -12,8 +12,10 @@ npm run dev    # site + admin + Studio → http://127.0.0.1:4040 (/admin, /studi
 
 `npm run dev` (`scripts/dev.ts`) : mise en place du clone du moteur (`engine:setup`, idempotente : clone et `npm ci` la
 première fois seulement), synchronisation sur tes commits (`engine:setup -- sync`), puis site et moteur ensemble, sorties
-préfixées `[site]` / `[ai]`. `Ctrl+C` arrête tout (le moteur arrête l'aperçu). Le moteur n'est PAS lancé si
-`ENGINE_MOCK=1` (moteur simulé), si `engine/.env.local` manque ou si un moteur répond déjà sur `ENGINE_PORT`. Une sync
+préfixées `[site]` / `[ai]`. `Ctrl+C` arrête tout (le moteur arrête l'aperçu). Un moteur précédent de ce projet encore
+lancé (autre terminal, ancien code) est arrêté proprement puis remplacé — jamais réutilisé ; un aperçu orphelin (4042)
+laissé par un moteur tué est récupéré au démarrage du moteur. Le moteur n'est PAS lancé si `ENGINE_MOCK=1` (moteur
+simulé), si `engine/.env.local` manque ou si un AUTRE programme tient `ENGINE_PORT`. Une sync
 refusée (demande IA en attente, publication locale à rapatrier…) n'empêche pas de démarrer : la raison s'affiche et le
 moteur part sur le clone tel quel. Si le moteur s'arrête seul, le site continue : corriger puis `npm run engine`.
 

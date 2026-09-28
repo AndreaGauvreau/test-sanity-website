@@ -1,6 +1,6 @@
 # Aperçu du brouillon (`engine/src/preview`) — LLM context
 
-> Propriétaire : engine-core · Figma : D1-D3 (iframe de l'éditeur) · Mis à jour : 2026-09-27
+> Propriétaire : engine-core · Figma : D1-D3 (iframe de l'éditeur) · Mis à jour : 2026-09-28
 
 ## Utilité
 Lance et surveille `next dev -H 127.0.0.1 -p ENGINE_PREVIEW_PORT` dans le clone de travail (branche draft, mode
@@ -10,6 +10,9 @@ Tourne en réel sur 127.0.0.1:4042 (lancé par `npm run engine`) : 403 sans jeto
 ## Fichiers
 - `process.ts` — `createPreviewProcess(settings)` → `start`, `stop`, `stopSync`, `status`, `waitReady`, `logs` ; `previewEnv` ; `INERT_EDITOR_ENV`.
 - `process.test.ts` — faux processus, fausse sonde.
+- `reclaim.ts` — `reclaimPreviewPort` : au démarrage du moteur, arrête un aperçu ORPHELIN (next dev dont le dossier de
+  travail est le clone, laissé par un moteur tué sans s'arrêter) qui tient ENGINE_PREVIEW_PORT ; jamais un autre
+  programme (message clair) ; `systemListenerOf` (lsof + ps), `systemReclaimDeps`. Tests : `reclaim.test.ts`.
 
 ## Contrats
 `status()` → `{ state: stopped|starting|ready|crashed|failed, ready, url (origine sans secret), pid, restarts, lastExit,
@@ -23,6 +26,8 @@ Environnement MINIMAL (PATH, HOME, TMPDIR, LANG, LC_ALL, USER, TZ + `NEXT_TELEME
 Sanity ni ENGINE_SECRET. Processus détaché (groupe) ; sonde HTTP chaque seconde avec le cookie `kz_preview` (toute
 réponse < 500 = prêt), puis toutes les 10 s une fois prêt. Plantage → redémarrage après 1, 2, 5, 10, 30 s ; au-delà de
 5 plantages en 5 min → `failed`. Arrêt : SIGTERM au groupe, SIGKILL après 5 s ; `stopSync` à la sortie du moteur.
+Démarrage du moteur : `reclaimPreviewPort` AVANT `start()` (constat du 2026-09-28 : un terminal fermé laissait l'aperçu
+orphelin sur 4042) ; le moteur gère aussi SIGHUP (terminal fermé) comme SIGINT / SIGTERM.
 Lignes de next dev gardées (200) ; erreurs et « ready » reprises au journal du moteur. Sans `node_modules/.bin/next`
 dans le clone : `failed` « run npm run engine:setup ».
 
