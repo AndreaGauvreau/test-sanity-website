@@ -32,13 +32,22 @@ const IMAGE_GAP = 16
 const PREVIEWS = 440
 const FAVICONS = 2 * 180 + 16
 
-/** Largeur utile de .layout pour une largeur d'écran (plafonnée à 1 120 comme ContentArea). */
-const inner = (viewport: number) => Math.min(viewport - SIDEBAR - PAD_X, 1120)
+/** Largeur utile de .layout pour une largeur d'écran (toute la zone : plus de plafond, 2026-09-28). */
+const inner = (viewport: number) => viewport - SIDEBAR - PAD_X
 
 describe('B2 · mise en page étroite (FOLLOWUPS #26)', () => {
   it('les deux rangées passent à la ligne au lieu de déborder', () => {
     expect(rule('layout')).toMatch(/flex-wrap:\s*wrap/)
     expect(rule('imageRow')).toMatch(/flex-wrap:\s*wrap/)
+  })
+
+  it('toute la largeur : pas de plafond (demande de l’utilisatrice, 2026-09-28)', () => {
+    expect(rule('layout')).not.toMatch(/max-width/)
+  })
+
+  it('à 2 560 px : le formulaire s’élargit, les aperçus restent à droite', () => {
+    const formBasis = px(rule('form'), 'flex')
+    expect(inner(2560) - GAP - PREVIEWS).toBeGreaterThan(formBasis)
   })
 
   it('à 1 024 px : aperçus sous le formulaire, favicons à côté d’une colonne de libellés lisible', () => {

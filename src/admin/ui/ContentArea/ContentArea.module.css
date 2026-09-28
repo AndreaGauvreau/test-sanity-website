@@ -1,4 +1,8 @@
-/* Figma « content » (B1, C3, C5, E1) : V, pad 28 40 40 40 (C1/C2 : 24 40), gap 16 / 20 / 24, 1 120 px utiles. */
+/*
+ * Figma « content » (B1, C3, C5, E1) : V, pad 28 40 40 40 (C1/C2 : 24 40), gap 16 / 20 / 24.
+ * Toute la largeur de la zone (pas de plafond) : le Figma prévoyait 1 120 px utiles, retirés à la demande de
+ * l'utilisatrice (2026-09-28). Vérifié par ContentArea.test.ts.
+ */
 .content {
   display: flex;
   flex-direction: column;
@@ -6,11 +10,6 @@
   width: 100%;
   min-width: 0;
   padding: 28px var(--k-space-40) var(--k-space-40) var(--k-space-40);
-}
-
-.content[data-width='default'] {
-  /* 1 120 px utiles + 2 × 40 de marge ; aligné à gauche comme dans la coque du Figma. */
-  max-width: calc(1120px + 2 * var(--k-space-40));
 }
 
 .content[data-padding='tabs'] {

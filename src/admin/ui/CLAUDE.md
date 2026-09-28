@@ -164,7 +164,7 @@ import '@/admin/ui/base.css'
 | `TopBar` (pur) + `topBarStatusText()` | Barre du haut 48 px | `state: PublishState`, `pendingCount`, `statusText`, `statusAction` (emplacement « See error », après le texte d'état et Review), `reviewHref`/`onReview`, `autosaveText` (null = masqué), `siteUrl` (View site ↗), `publish` (slot PublishButton), `linkAs` | TopBar.md, G3 |
 | `PageHeader` (pur) | En-tête d'écran (h1) | `title`, `meta`, `description`, `actions` (gap 12), `tools` (toolbar, gap 4), `toolsLabel`, `tabs`, `headingLevel` | PageHeader.md |
 | `SectionHeader` (pur) | Titre de section (h2) | `title`, `description`, `action`, `headingLevel` 1-4 (1 = titre d'écran sans Page header, B3 Code ; même rendu Heading 4 ; B5 Usage a un Page header → `PageHeader`), `titleId` | SectionHeader.md |
-| `ContentArea` (pur) | Zone de contenu de la coque | `gap` 16/20/24, `padding` default (28 40 40) / tabs (24 40), `width` default (1 120 utiles) / full, `as` | écrans B1, C3, C5 |
+| `ContentArea` (pur) | Zone de contenu de la coque | `gap` 16/20/24, `padding` default (28 40 40) / tabs (24 40), `as` ; toute la largeur (plafond Figma de 1 120 retiré le 2026-09-28, propriété `width` supprimée) | écrans B1, C3, C5 |
 
 **Overlays**
 

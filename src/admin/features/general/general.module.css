@@ -6,6 +6,8 @@
  * colonne des aperçus passe SOUS le formulaire (flex-wrap, sans media query : suit la largeur réelle de la zone) ;
  * de même, dans une rangée d'images, les favicons / l'image sociale passent sous les libellés (méta 160 min).
  * Seuils : aperçus à droite dès ~1 272 px d'écran, sous le formulaire en dessous (1 024 compris).
+ * Toute la largeur, comme ContentArea (plafond Figma de 1 120 px retiré à la demande de l'utilisatrice, 2026-09-28) :
+ * le formulaire (fill) s'élargit, la colonne des aperçus garde ses 440.
  */
 .layout {
   display: flex;
@@ -13,7 +15,6 @@
   align-items: flex-start;
   gap: var(--k-space-32);
   width: 100%;
-  max-width: calc(1120px + 2 * var(--k-space-40));
   min-width: 0;
   padding: 28px var(--k-space-40) var(--k-space-40) var(--k-space-40);
 }
