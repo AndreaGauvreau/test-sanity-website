@@ -26,14 +26,16 @@ export function buildShellSidebarProps(input: {
   config: Pick<AdminConfig, 'site' | 'pages' | 'collections'>
   session: Pick<PublicSession, 'user' | 'role' | 'dev'>
   counts: CollectionCounts
+  /** Logo du site (favicon, adresse du CDN déjà dimensionnée par `siteLogoSrc`) ; absent → icône globe. */
+  siteLogo?: string
   hubUrlEnv?: string | null
   devState?: { available: boolean; roles: readonly AdminRole[] } | null
 }): ShellSidebarProps {
-  const { config, session, counts, hubUrlEnv, devState } = input
+  const { config, session, counts, siteLogo, hubUrlEnv, devState } = input
   const role = session.role
   const imageUrl = session.user.imageUrl && /^https:\/\//.test(session.user.imageUrl) ? session.user.imageUrl : undefined
   return {
-    site: { name: config.site.name, domain: config.site.domain },
+    site: { name: config.site.name, domain: config.site.domain, ...(siteLogo ? { logo: siteLogo } : {}) },
     sections: buildShellNav(config, role, counts),
     routes: toShellRouteConfig(config),
     user: { name: displayName(session.user.name, ROLE_LABEL[role], session.dev), roleLabel: ROLE_LABEL[role], imageUrl, tone: TONE[role] },

@@ -4,6 +4,7 @@ import { usePathname } from 'next/navigation'
 import { useMemo } from 'react'
 
 import type { AdminRole } from '@/admin/core/contracts/roles'
+import { useSiteLogo } from '@/admin/core/site-logo'
 import { useAskAi } from '@/admin/features/ask-ai/AskAiProvider'
 import { IconButton, Sidebar, Tag, type AvatarTone, type SidebarNavItem, type SidebarSection } from '@/admin/ui'
 
@@ -23,7 +24,8 @@ export type ShellSidebarUser = {
 }
 
 export type ShellSidebarProps = {
-  site: { name: string; domain: string }
+  /** `logo` : favicon du site (serveur, au chargement) ; suivi sans rechargement par `useSiteLogo`. */
+  site: { name: string; domain: string; logo?: string }
   sections: ShellNavSection[]
   routes: ShellRouteConfig
   user: ShellSidebarUser
@@ -63,6 +65,8 @@ export function ShellSidebar({ site, sections, routes, user, askAi, hubUrl, devR
   const pathname = usePathname()
   const { open } = useAskAi()
   const location = useMemo(() => resolveShellLocation(pathname, routes), [pathname, routes])
+  // Favicon du site : valeur du serveur au chargement, puis la dernière mise à jour faite dans B2 · General.
+  const logo = useSiteLogo(site.logo)
 
   const kitSections: SidebarSection[] = useMemo(
     () =>
@@ -77,7 +81,7 @@ export function ShellSidebar({ site, sections, routes, user, askAi, hubUrl, devR
   return (
     <Sidebar
       className={styles.sidebar}
-      site={{ name: site.name, domain: site.domain, screen: location.screen ?? undefined }}
+      site={{ name: site.name, domain: site.domain, screen: location.screen ?? undefined, logo }}
       sections={kitSections}
       user={{ name: user.name, role: user.roleLabel, avatar: user.imageUrl, tone: user.tone }}
       onAskAI={askAi ? open : undefined}

@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type ReactNode } from 'react'
 
 import { autosave } from '@/admin/core/autosave'
+import { siteLogo } from '@/admin/core/site-logo'
+import { pickSiteFavicon } from '@/admin/core/site-logo-src'
 import { validateFieldValue, visibleLength } from '@/admin/core/sanity/validate'
 import {
   AnimatePresence,
@@ -110,6 +112,18 @@ export function GeneralForm({ view, canEdit, actions = DEFAULT_ACTIONS }: Genera
       }),
     [],
   )
+
+  // Logo de la sidebar = favicon du site (dark d'abord, l'admin est sombre) : mis à jour dès qu'un envoi ou un retrait
+  // réussit (ou est annulé), sans recharger la coque (core/site-logo.ts). Pas au montage : le serveur l'a déjà.
+  const logoFavicon = pickSiteFavicon({ dark: images.faviconDark?.url, light: images.faviconLight?.url })
+  const logoMounted = useRef(false)
+  useEffect(() => {
+    if (!logoMounted.current) {
+      logoMounted.current = true
+      return
+    }
+    siteLogo.set(logoFavicon)
+  }, [logoFavicon])
 
   useEffect(() => {
     // Départ de la page ou de l'écran : ce qui attend part tout de suite.

@@ -1,5 +1,5 @@
 /** @vitest-environment jsdom */
-import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
+import { act, cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MotionGlobalConfig } from 'motion/react'
 import type { ReactNode } from 'react'
@@ -29,6 +29,7 @@ vi.mock('@/admin/features/ask-ai/AskAiProvider', () => ({
 
 const { ShellSidebar, LOGOUT_ENDPOINT } = await import('./ShellSidebar')
 const { buildShellSidebarProps } = await import('./sidebar-props')
+const { siteLogo } = await import('@/admin/core/site-logo')
 
 const counts = { blog: 12, testimonials: 3, faq: 9 }
 
@@ -59,6 +60,45 @@ afterEach(() => {
   cleanup()
   vi.unstubAllGlobals()
   MotionGlobalConfig.skipAnimations = false
+})
+
+describe('ShellSidebar · logo du site (favicon)', () => {
+  const FAVICON = 'https://cdn.sanity.io/images/p/development/fav1-64x64.png'
+  const NEW_FAVICON = 'https://cdn.sanity.io/images/p/development/fav2-64x64.png'
+  afterEach(() => siteLogo.reset())
+
+  it('favicon lu par le serveur au chargement, puis mis à jour sans rechargement quand B2 le change ; retiré → globe', async () => {
+    nav.pathname = '/admin'
+    const props = buildShellSidebarProps({
+      config: adminConfig,
+      session: { user: { id: 'u', name: 'Marie', email: 'm@c.com' }, role: 'client', dev: false },
+      counts,
+      siteLogo: `${FAVICON}?w=56&h=56&fit=max&auto=format`,
+    })
+    expect(props.site.logo).toBe(`${FAVICON}?w=56&h=56&fit=max&auto=format`)
+    const { container } = render(
+      <div data-kz-admin="">
+        <ToastProvider>
+          <ShellSidebar {...props} />
+        </ToastProvider>
+      </div>,
+    )
+    const logo = () => container.querySelector('aside img, nav img, img')?.getAttribute('src') ?? null
+    expect(logo()).toBe(`${FAVICON}?w=56&h=56&fit=max&auto=format`)
+    act(() => siteLogo.set(NEW_FAVICON))
+    expect(logo()).toBe(`${NEW_FAVICON}?w=56&h=56&fit=max&auto=format`)
+    act(() => siteLogo.set(null))
+    expect(logo()).toBeNull()
+  })
+
+  it('sans favicon : pas de logo (icône globe), et `site.logo` absent des props', () => {
+    const props = buildShellSidebarProps({
+      config: adminConfig,
+      session: { user: { id: 'u', name: 'Marie', email: 'm@c.com' }, role: 'client', dev: false },
+      counts,
+    })
+    expect('logo' in props.site).toBe(false)
+  })
 })
 
 describe('ShellSidebar', () => {

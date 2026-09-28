@@ -19,6 +19,7 @@ site Kuartz. Le site n'est connu que par `src/admin.config.ts` (type `AdminConfi
 | `core/engine/` | Client du moteur IA, relais signé, moteur simulé (`ENGINE_MOCK`) | — |
 | `core/usage/` | Journal `aiUsage` : lecture et agrégats | B5, G4 |
 | `core/autosave.ts` | État « Draft saved automatically » partagé (fichier seul, pas de CLAUDE.md propre : contrat de l'orchestrateur, commenté en tête) | Top bar |
+| `core/site-logo.ts` + `core/site-logo-src.ts` | Logo de la sidebar = favicon du site (dark d'abord) : adresse CDN 56 px (pur) et mise à jour sans rechargement depuis B2 (fichiers seuls, contrat de l'orchestrateur, commentés en tête) | Sidebar, B2 |
 | `ui/` | Kit du Design System (tokens `--k-*`, icônes, composants) | tous |
 | `shell/` | Coque : Sidebar, Top bar, garde < 1024 px | tous |
 | `features/overview`, `general`, `team` | Réglages | B1, B2, B4 |

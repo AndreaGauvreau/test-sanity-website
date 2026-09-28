@@ -20,6 +20,11 @@ Ask AI (ask-ai).
 
 ## Fichiers
 
+- `site-logo.ts` — SERVEUR : `getSiteLogo()` / `fetchSiteLogo(client)` : favicon de siteSettings (perspective `drafts`,
+  dark d'abord, sinon light) → `site.logo` de la sidebar (28 px, adresse du CDN 56 px, `core/site-logo-src.ts`) ; échec ou
+  délai (2,5 s) → undefined → icône globe. `ShellSidebar` lit `useSiteLogo(site.logo)` (`core/site-logo.ts`) : B2 le met
+  à jour sans rechargement (le layout ne se recalcule pas à la navigation client). Tests : `site-logo.test.ts`,
+  `ShellSidebar.test.tsx` (« logo du site »). Demande de l'utilisatrice, 2026-09-28.
 - `admin-icon.ts` — PUR : `ADMIN_ICON_SVG` (copie exacte de l'icône DS `admin.svg`) et `ADMIN_ICON_URL` (URL `data:`),
   déclarée dans `metadata.icons` du layout /admin (plus de 404 /favicon.ico ; pas de `icon.svg` : le proxy redirigerait
   vers A1 sans cookie). Test : `admin-icon.test.ts` (dérive contre le DS + métadonnées du layout).

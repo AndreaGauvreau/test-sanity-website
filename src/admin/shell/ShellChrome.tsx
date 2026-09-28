@@ -7,24 +7,28 @@ import { AskAiProvider } from '@/admin/features/ask-ai/AskAiProvider'
 import { PublishStatusBar } from '@/admin/features/publish/PublishStatusBar'
 
 import { getCollectionCounts } from './counts'
+import { getSiteLogo } from './site-logo'
 import { ShellFrame } from './ShellFrame'
 import { ShellSidebar, type ShellSidebarProps } from './ShellSidebar'
 import { buildShellSidebarProps } from './sidebar-props'
 
 /**
- * SERVEUR : props de la sidebar pour une session (comptes des collections et état de dev en parallèle). Les comptes
+ * SERVEUR : props de la sidebar pour une session (comptes des collections, état de dev et logo du site en parallèle). Les comptes
  * ne lèvent jamais (null si Sanity est lent ou en erreur). La session complète ne quitte pas le serveur :
  * `buildShellSidebarProps` ne garde que nom, image https et libellé du rôle.
  */
 export async function loadShellSidebarProps(session: Session): Promise<ShellSidebarProps> {
-  const [counts, devState] = await Promise.all([
+  const [counts, devState, siteLogo] = await Promise.all([
     getCollectionCounts(adminConfig.collections),
     session.dev ? getDevLoginState() : Promise.resolve(null),
+    // Favicon du site en logo de la sidebar (jamais bloquant : undefined → globe).
+    getSiteLogo(),
   ])
   return buildShellSidebarProps({
     config: adminConfig,
     session: toPublicSession(session),
     counts,
+    siteLogo,
     hubUrlEnv: process.env.KUARTZ_HUB_URL,
     devState,
   })

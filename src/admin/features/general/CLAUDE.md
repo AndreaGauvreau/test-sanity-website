@@ -48,6 +48,9 @@ Ne fait pas : les scripts (`siteSettings.scripts`, B3, feature code), le SEO d'u
 
 ## Comportement (LLM context B2)
 
+- Favicon → logo de la sidebar : après un envoi ou un retrait réussi (ou annulé), `siteLogo.set(dark ?? light)`
+  (`core/site-logo.ts`) met à jour le logo en haut de la sidebar sans recharger la coque ; rien au montage (le serveur
+  l'a déjà lu).
 - Titre et description : validation immédiate côté client (`validateFieldValue` avec le FieldDef) puis envoi 600 ms après
   la dernière frappe (ou à la sortie du champ, ou au départ de la page : `pagehide` + démontage). Seule la dernière valeur part.
 - Compteur « 25 / 60 » ; au-delà de la limite : chiffre en `--k-interactive-warning` (pas d'orange dans le DS), saisie non
