@@ -104,7 +104,9 @@ export function toMediaAsset(asset: AssetDoc, refs: readonly ReferencingDoc[], d
     createdAt: asset._createdAt ?? '',
     altText: asset.altText ?? '',
     thumb: isImage ? imageUrl(asset._id, deps.env, { w: 368, h: 248, fit: 'crop' }) : null,
-    preview: isImage ? imageUrl(asset._id, deps.env, { w: 576, h: 340, fit: 'crop' }) : null,
+    // Aperçus dans le ratio de l'image (`fit=max` : jamais recadrés, jamais agrandis) : fiche (288 px, @2x) et Modal.
+    preview: isImage ? imageUrl(asset._id, deps.env, { w: 576, h: 576, fit: 'max' }) : null,
+    full: isImage ? imageUrl(asset._id, deps.env, { w: 2400, h: 2400, fit: 'max' }) : null,
     url: asset.url ?? '',
     usages: usagesOf(asset._id, refs, deps.config, deps.siteUrl),
   }

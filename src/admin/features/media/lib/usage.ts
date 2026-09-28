@@ -54,6 +54,18 @@ export function findAssetPaths(doc: Json, assetId: string): AssetPath[] {
   return out
 }
 
+/**
+ * Où la miniature de l'Usage tooltip montre le média (lib/usage-preview.ts) :
+ * - `page` : page publique, chemin RELATIF (« /blog/x », même origine que l'admin) → la vraie page en petit ;
+ * - `favicon` : favicon des réglages → aperçu d'onglet du kit (FaviconPreview), au thème du champ ;
+ * - `social` : image de partage (SEO d'une page, réglages, modèle SEO d'article) → aperçu du kit (SocialPreview).
+ * Absent : repli (l'image seule, entourée).
+ */
+export type UsagePreview =
+  | { kind: 'page'; path: string }
+  | { kind: 'favicon'; theme: 'light' | 'dark' }
+  | { kind: 'social'; domain: string; title: string; description?: string }
+
 export type UsagePlaceView = {
   id: string
   /** « Blog › How to cut dock wait times — Cover image » */
@@ -62,6 +74,8 @@ export type UsagePlaceView = {
   adminHref?: string
   /** Page publique (« View ↗ » de l'Usage tooltip). */
   siteHref?: string
+  /** Miniature de l'Usage tooltip. */
+  preview?: UsagePreview
 }
 
 export type ReferencingDoc = Record<string, unknown> & { _id: string; _type: string }
@@ -96,46 +110,92 @@ function slugOf(doc: ReferencingDoc, field: string | undefined): string | null {
   return typeof v?.current === 'string' ? v.current : null
 }
 
+/** Texte non vide au chemin pointé (« seo.metaTitle ») du document, sinon undefined. */
+function textAt(doc: ReferencingDoc, path: string | undefined): string | undefined {
+  if (!path) return undefined
+  let v: unknown = doc
+  for (const key of path.split('.')) v = v && typeof v === 'object' ? (v as Record<string, unknown>)[key] : undefined
+  return typeof v === 'string' && v.trim() ? v.trim() : undefined
+}
+
+/** Modèle SEO d'article : « {{title}} — Conduit » → « Title — Conduit » (libellés des variables du manifeste). */
+function fillTemplate(text: string | undefined, variables: readonly { token: string; label: string }[]): string | undefined {
+  return text?.replace(/\{\{\s*([A-Za-z_][A-Za-z0-9_]*)\s*\}\}/g, (all, token: string) => variables.find((v) => v.token === token)?.label ?? all)
+}
+
+/** Aperçu réseaux sociaux (SocialPreview) : domaine du site, titre et description connus du document. */
+function social(config: AdminConfig, title: string, description: string | undefined): UsagePreview {
+  return { kind: 'social', domain: config.site.domain, title, ...(description ? { description } : {}) }
+}
+
 /** Nomme une utilisation d'après le manifeste. `doc` : version affichée (brouillon s'il existe). */
 export function describeUsage(doc: ReferencingDoc, names: readonly string[], config: AdminConfig, siteUrl: string): Omit<UsagePlaceView, 'id'> {
   const publishedId = doc._id.replace(/^drafts\./, '')
   const site = (path: string | null) => (path ? `${siteUrl.replace(/\/$/, '')}${path}` : undefined)
+  // Miniature « page vivante » (`preview.kind === 'page'`) : chemin RELATIF, que l'admin affiche sur sa propre
+  // origine (le site et l'admin sont la même application Next) ; `siteHref` reste l'URL publique de « View ↗ ».
 
   const collection = config.collections.find((c) => c.type === doc._type)
   if (collection) {
     const field = labelFromFields(collection.fields, names) ?? humanize(names[names.length - 1] ?? 'image')
+    const path = articlePathFor(collection.articlePath, slugOf(doc, collection.slugField))
     return {
       label: `${collection.label} › ${titleOf(doc, collection.titleField)} — ${field}`,
       adminHref: `/admin/cms/${collection.id}/${publishedId}`,
-      siteHref: site(articlePathFor(collection.articlePath, slugOf(doc, collection.slugField))),
+      siteHref: site(path),
+      ...(path ? { preview: { kind: 'page', path } } : {}),
     }
   }
 
-  const page = config.pages.find((p) => p.document?.id === publishedId)
-  if (page) {
+  const pageDef = config.pages.find((p) => p.document?.id === publishedId)
+  if (pageDef) {
     const [first, ...rest] = names
     if (first === 'seo') {
-      return { label: `${page.label} › SEO — Social image`, adminHref: `/admin/pages/${page.id}/seo`, siteHref: site(page.path) }
+      // Image de partage : absente du corps de la page (balise og:image) → aperçu réseaux sociaux.
+      return {
+        label: `${pageDef.label} › SEO — Social image`,
+        adminHref: `/admin/pages/${pageDef.id}/seo`,
+        siteHref: site(pageDef.path),
+        preview: social(config, textAt(doc, pageDef.seo?.metaTitle) ?? pageDef.label, textAt(doc, pageDef.seo?.metaDescription)),
+      }
     }
-    const section = page.sections.find((s) => s.name === first)
+    const section = pageDef.sections.find((s) => s.name === first)
     const field = section ? (labelFromFields(section.fields, rest) ?? humanize(rest[rest.length - 1] ?? first)) : humanize(first ?? 'image')
     return {
-      label: section ? `${page.label} › ${section.label} — ${field}` : `${page.label} — ${field}`,
-      adminHref: `/admin/pages/${page.id}`,
-      siteHref: site(page.path),
+      label: section ? `${pageDef.label} › ${section.label} — ${field}` : `${pageDef.label} — ${field}`,
+      adminHref: `/admin/pages/${pageDef.id}`,
+      siteHref: site(pageDef.path),
+      preview: { kind: 'page', path: pageDef.path },
     }
   }
 
   if (publishedId === config.settings.id) {
-    return { label: `Site settings — ${humanize(names[names.length - 1] ?? 'image')}`, adminHref: '/admin/settings/general', siteHref: site('/') }
+    // Réglages : pas de page où voir le fichier ; favicon dans un onglet, image de partage en carte, sinon repli.
+    const field = names[names.length - 1]
+    const preview: UsagePreview | undefined =
+      field === 'faviconLight'
+        ? { kind: 'favicon', theme: 'light' }
+        : field === 'faviconDark'
+          ? { kind: 'favicon', theme: 'dark' }
+          : field === 'socialImage'
+            ? social(config, textAt(doc, 'title') ?? config.site.name, textAt(doc, 'description'))
+            : undefined
+    return {
+      label: `Site settings — ${humanize(field ?? 'image')}`,
+      adminHref: '/admin/settings/general',
+      siteHref: site('/'),
+      ...(preview ? { preview } : {}),
+    }
   }
 
   const template = config.articleSeoTemplates.find((t) => t.document.id === publishedId)
   if (template) {
     const listing = config.pages.find((p) => p.article?.collection === template.collection)
+    const title = fillTemplate(textAt(doc, 'metaTitle'), template.variables) ?? `${listing ? listing.label : 'Article'} article`
     return {
       label: `${listing ? listing.label : 'Article'} › Article page — SEO image`,
       adminHref: listing ? `/admin/pages/${listing.id}/slug/seo` : undefined,
+      preview: social(config, title, fillTemplate(textAt(doc, 'metaDescription'), template.variables)),
     }
   }
 

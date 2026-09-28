@@ -24,8 +24,10 @@ export type MediaAsset = {
   altText: string
   /** Vignette (images) ; null pour les fichiers. */
   thumb: string | null
-  /** Aperçu plus grand (fiche à droite). */
+  /** Aperçu plus grand, NON recadré (fiche à droite, miniatures de l'Usage tooltip) : 576 px au plus. */
   preview: string | null
+  /** Image pour le grand aperçu (Modal), non recadrée : 2 400 px au plus. */
+  full: string | null
   /** Fichier d'origine (téléchargement). */
   url: string
   usages: UsagePlaceView[]

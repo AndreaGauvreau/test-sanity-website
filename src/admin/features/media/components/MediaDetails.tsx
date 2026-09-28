@@ -1,21 +1,24 @@
 'use client'
 
 import Link from 'next/link'
-import { useRef, useState } from 'react'
+import { useRef, useState, type CSSProperties } from 'react'
 
 import { Icon, Input, LockBadge, ToolLink, ToolLinks, type IconName } from '@/admin/ui'
 import { useFieldSaver } from '@/admin/features/cms/components/useFieldSaver'
 
 import { assetMetaLine, isDeletable, lockReason, type MediaAsset } from '../lib/assets'
+import { previewRatio } from '../lib/preview'
 import { updateAltTextAction } from '../server/actions'
+import { MediaLightbox } from './MediaLightbox'
 import { downloadUrl } from './upload'
 import styles from './MediaLibrary.module.css'
 
 /**
- * Fiche à droite de la médiathèque (C5) : aperçu (+ cadenas si le fichier est utilisé), nom, méta, texte
- * alternatif (sur l'asset : vaut pour toutes les utilisations, enregistré pendant la frappe), « Used in N places »
- * (lignes cliquables vers l'écran concerné), actions en icônes collées (`ToolLinks` du kit) : Replace, Download,
- * Delete (rouge, désactivé si le fichier est utilisé, explication au survol).
+ * Fiche à droite de la médiathèque (C5) : aperçu dans le ratio du fichier (+ cadenas s'il est utilisé ; clic,
+ * Entrée ou Espace : grand aperçu en Modal pour une image ou une vidéo), nom, méta, texte alternatif (sur l'asset :
+ * vaut pour toutes les utilisations, enregistré pendant la frappe), « Used in N places » (lignes cliquables vers
+ * l'écran concerné), actions en icônes collées (`ToolLinks` du kit) : Replace, Download, Delete (rouge, désactivé si
+ * le fichier est utilisé, explication au survol).
  */
 export function MediaDetails({
   asset,
@@ -41,13 +44,34 @@ export function MediaDetails({
   const deletable = isDeletable(asset)
   const accept = asset.kind === 'image' ? 'image/*' : asset.kind === 'video' ? 'video/mp4,video/webm,video/quicktime' : '.pdf,.txt,.csv,.zip'
   const icon: IconName = asset.kind === 'image' ? 'image' : asset.kind === 'video' ? 'play' : 'file'
+  // Grand aperçu : image (aperçu disponible) ou vidéo (fichier lisible) ; PDF et autres fichiers : pas de Modal.
+  const canPreview = asset.kind === 'image' ? !!asset.preview : asset.kind === 'video' ? !!asset.url : false
+  const [lightbox, setLightbox] = useState(false)
+  const previewButton = useRef<HTMLButtonElement | null>(null)
+  const ratio = previewRatio(asset)
+  const media = asset.preview ? <img src={asset.preview} alt="" className={styles.previewImage} /> : <Icon name={icon} size={18} />
 
   return (
     <aside className={styles.details} aria-label={`Details of ${asset.name}`}>
-      <div className={styles.preview}>
-        {asset.preview ? <img src={asset.preview} alt={asset.altText} className={styles.previewImage} /> : <Icon name={icon} size={18} />}
+      {/* Ratio du fichier (dimensions de l'asset), hauteur plafonnée dans le CSS ; sans dimensions : cadre du Figma. */}
+      <div className={styles.preview} style={ratio ? ({ '--preview-ratio': ratio } as CSSProperties) : undefined}>
+        {canPreview ? (
+          <button
+            ref={previewButton}
+            type="button"
+            className={styles.previewButton}
+            aria-label={`Preview ${asset.name}`}
+            aria-haspopup="dialog"
+            onClick={() => setLightbox(true)}
+          >
+            {media}
+          </button>
+        ) : (
+          media
+        )}
         {used > 0 ? <LockBadge label={lockReason(used)} className={styles.previewLock} /> : null}
       </div>
+      {canPreview ? <MediaLightbox asset={asset} open={lightbox} onClose={() => setLightbox(false)} triggerRef={previewButton} /> : null}
       <h2 className={styles.name}>{asset.name}</h2>
       <p className={styles.meta}>{assetMetaLine(asset)}</p>
       {asset.kind === 'image' ? (

@@ -53,22 +53,49 @@ describe('describeUsage (libellés du manifeste)', () => {
       label: 'Blog › How to cut dock wait times — Cover image',
       adminHref: '/admin/cms/blog/post-1',
       siteHref: 'https://conduit.com/blog/how-to',
+      // Miniature : chemin RELATIF (iframe de même origine que l'admin), pas l'URL publique.
+      preview: { kind: 'page', path: '/blog/how-to' },
     })
     expect(describeUsage(doc, ['content'], adminConfig, SITE).label).toBe('Blog › How to cut dock wait times — Body image')
+    // Sans slug : pas de page publique, donc pas de miniature vivante.
+    expect(describeUsage({ _id: 'post-2', _type: 'post', title: 'Draft' }, ['image'], adminConfig, SITE).preview).toBeUndefined()
   })
   it('page : section et champ ; SEO', () => {
-    const doc = { _id: 'dockSchedulingPage', _type: 'dockSchedulingPage' }
-    expect(describeUsage(doc, ['hero', 'background'], adminConfig, SITE)).toMatchObject({ label: 'Home › Hero — Background', adminHref: '/admin/pages/home', siteHref: 'https://conduit.com/' })
-    expect(describeUsage(doc, ['seo', 'ogImage'], adminConfig, SITE)).toMatchObject({ label: 'Home › SEO — Social image', adminHref: '/admin/pages/home/seo' })
+    const doc = { _id: 'dockSchedulingPage', _type: 'dockSchedulingPage', seo: { metaTitle: 'Dock scheduling, solved', metaDescription: 'Book docks in minutes.' } }
+    expect(describeUsage(doc, ['hero', 'background'], adminConfig, SITE)).toMatchObject({
+      label: 'Home › Hero — Background',
+      adminHref: '/admin/pages/home',
+      siteHref: 'https://conduit.com/',
+      preview: { kind: 'page', path: '/' },
+    })
+    // Image de partage : pas dans le corps de la page → carte réseaux sociaux (titre et description SEO de la page).
+    expect(describeUsage(doc, ['seo', 'ogImage'], adminConfig, SITE)).toMatchObject({
+      label: 'Home › SEO — Social image',
+      adminHref: '/admin/pages/home/seo',
+      preview: { kind: 'social', domain: 'conduit.com', title: 'Dock scheduling, solved', description: 'Book docks in minutes.' },
+    })
+    expect(describeUsage({ _id: 'dockSchedulingPage', _type: 'dockSchedulingPage' }, ['seo', 'ogImage'], adminConfig, SITE).preview).toEqual({
+      kind: 'social',
+      domain: 'conduit.com',
+      title: 'Home',
+    })
   })
   it('réglages et modèle SEO d’article', () => {
-    expect(describeUsage({ _id: 'siteSettings', _type: 'siteSettings' }, ['socialImage'], adminConfig, SITE)).toMatchObject({
+    const settings = { _id: 'siteSettings', _type: 'siteSettings', title: 'Conduit', description: 'Dock scheduling for warehouses.' }
+    expect(describeUsage(settings, ['socialImage'], adminConfig, SITE)).toMatchObject({
       label: 'Site settings — Social image',
       adminHref: '/admin/settings/general',
+      preview: { kind: 'social', domain: 'conduit.com', title: 'Conduit', description: 'Dock scheduling for warehouses.' },
     })
-    expect(describeUsage({ _id: 'articleSeo-post', _type: 'articleSeoTemplate' }, ['ogImage'], adminConfig, SITE)).toMatchObject({
+    // Favicons : aperçu d'onglet au thème du champ ; autre champ des réglages : repli (pas de page où le montrer).
+    expect(describeUsage(settings, ['faviconLight'], adminConfig, SITE).preview).toEqual({ kind: 'favicon', theme: 'light' })
+    expect(describeUsage(settings, ['faviconDark'], adminConfig, SITE).preview).toEqual({ kind: 'favicon', theme: 'dark' })
+    expect(describeUsage(settings, ['logo'], adminConfig, SITE).preview).toBeUndefined()
+    const template = { _id: 'articleSeo-post', _type: 'articleSeoTemplate', metaTitle: '{{title}} — Conduit', metaDescription: '{{excerpt}}' }
+    expect(describeUsage(template, ['ogImage'], adminConfig, SITE)).toMatchObject({
       label: 'Blog › Article page — SEO image',
       adminHref: '/admin/pages/blog/slug/seo',
+      preview: { kind: 'social', domain: 'conduit.com', title: 'Title — Conduit', description: 'Excerpt' },
     })
   })
   it('brouillon et publié d’un même document comptés une fois (libellé du brouillon)', () => {
@@ -91,6 +118,7 @@ const asset = (over: Partial<MediaAsset>): MediaAsset => ({
   altText: '',
   thumb: null,
   preview: null,
+  full: null,
   url: '',
   usages: [],
   ...over,

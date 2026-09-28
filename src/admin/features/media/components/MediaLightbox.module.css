@@ -1,0 +1,62 @@
+/* Grand aperçu (C5, fiche à droite) dans la Modal du kit : image dans son ratio, légende sous l'image. */
+
+.figure {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--k-space-10);
+  margin: 0;
+  padding-bottom: var(--k-space-8);
+}
+
+/* Boîte à la taille calculée (lib/preview.ts) ; fond neutre discret sous les PNG transparents. */
+.media {
+  position: relative;
+  display: block;
+  flex-shrink: 0;
+  max-width: 100%;
+  overflow: hidden;
+  border-radius: var(--k-radius-md);
+  background-color: var(--k-bg-subtle);
+}
+
+.placeholder,
+.image {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* Pleine définition : fondu sur l'aperçu déjà chargé. */
+.image {
+  opacity: 0;
+  transition: opacity var(--k-duration-base) var(--k-ease-out);
+}
+
+.imageLoaded {
+  opacity: 1;
+}
+
+.video {
+  display: block;
+  max-width: 100%;
+  border-radius: var(--k-radius-md);
+  background-color: var(--k-bg-app);
+}
+
+.caption {
+  color: var(--k-text-tertiary);
+  font: var(--k-text-body-small);
+  letter-spacing: var(--k-text-body-small-tracking);
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .image {
+    transition: none;
+  }
+}

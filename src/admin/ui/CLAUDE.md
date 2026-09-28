@@ -5,7 +5,8 @@
 > et « Composites (ui-composites) ». Les composites sont construits SUR les fondations (Button, IconButton, Icon, Tag,
 > Checkbox, Select, Tooltip, Popover, motion-presets) sans les dupliquer.
 > Figma : Design System « Kuartz — Carte système » (`docs/admin/figma/design-system/`, fiches `components/<Nom>.md` + `.png`)
-> · Galerie : `/admin/kit` · Mis à jour : 2026-09-28 (AIUsage / ModelUsage : coût facturé ou inclus dans l'abonnement Claude)
+> · Galerie : `/admin/kit` · Mis à jour : 2026-09-28 (AIUsage / ModelUsage : coût facturé ou inclus dans l'abonnement Claude ;
+> UsageTooltip : miniature `preview` fournie par la feature, FOLLOWUPS #48)
 
 ## Utilité
 
@@ -57,7 +58,8 @@ Pas à ce module : Rich text field (cms-media), Script dialog (code-usage), AI e
   Drawer, FilterPopover, UsageTooltip, SelectionBar, ModelUsage — même découpage que les fondations.
 - Tests des composites : `Modal/Modal.test.tsx`, `Modal/useModalDialog.test.tsx` (focus initial d'une fenêtre montée tard),
   `Drawer/`, `Tabs/`, `Menu/`, `SegmentedControl/`, `StatusSelect/`, `CMSCell/`, `SelectionBar/` (hydratation), `ListItem/`,
-  `TopBar/`, `SectionHeader/`, `ChecklistItem/`, `ToolLink/`, `AIUsage/` (coût facturé / abonnement Claude, notes).
+  `TopBar/`, `SectionHeader/`, `ChecklistItem/`, `ToolLink/`, `AIUsage/` (coût facturé / abonnement Claude, notes),
+  `UsageTooltip/` (miniature `preview` à la place de l'image et du cadre, montée à l'ouverture).
 - Galerie : `src/app/admin/kit/sections/Composites.tsx` compose `CompositesDataDisplay.tsx`, `CompositesNavigation.tsx`,
   `CompositesOverlays.tsx` (Overlays + AI editor) ; liens dans `NAV` (KitGallery.tsx).
 
@@ -174,7 +176,7 @@ import '@/admin/ui/base.css'
 | `Modal` (+ `useModalDialog`, `focusableIn`) | Fenêtre modale 480 | `open`, `onClose(reason: escape/scrim/close/cancel)`, `title`, `description`, `children`, `footer` ou `onConfirm` + `confirmLabel`/`cancelLabel`/`confirmLoading`/`confirmDisabled`, `tone` default/destructive (alertdialog), `width`, `closeOnScrimClick`, `hideClose`, `initialFocusRef` | Modal.md |
 | `Drawer` | Panneau latéral 810 | `open`, `onClose(reason: escape/scrim/close)`, `title`, `status`, `actions`, `children`, `footer`, `width` (810), `closeOnScrimClick`, `initialFocusRef` | Drawer.md, écran C4 |
 | `FilterPopover` + `DEFAULT_FILTER_OPERATORS` | Fenêtre de filtres 420 | `fields [{value, label, operators, options}]`, `conditions`/`defaultConditions`/`onConditionsChange` (`{id, field, operator, value}`), `trigger` ou `open` + `anchorRef`, `placement` (bottom-end), `title` | FilterPopover.md |
-| `UsageTooltip` | Usage d'un média (300) | `title`, `places [{label, image, highlight {x,y,width,height} en fractions, href}]`, `children` (déclencheur), `open`…, `openDelay` 300, `closeDelay` 150, `viewLabel` | UsageTooltip.md |
+| `UsageTooltip` | Usage d'un média (300) | `title`, `places [{label, image, highlight {x,y,width,height} en fractions, preview (nœud : miniature sur mesure à la place d'`image` / `highlight`, montée à l'ouverture), href}]`, `children` (déclencheur), `open`…, `openDelay` 300, `closeDelay` 150, `viewLabel` | UsageTooltip.md |
 | `SelectionBar` | Barre de sélection | `selectedCount`, `totalCount`, `onSelectAll(checked)`, `onClear`, `onDownload`, `deletableCount` + `onDelete` (allowed / partial / blocked déduits), `noun`/`nounSingular`, `children` | SelectionBar.md |
 
 **AI editor (partagé)**
@@ -366,6 +368,8 @@ import '@/admin/ui/base.css'
 - TopBar : « Draft saved automatically » est masqué sous 1 100 px.
 - UsageTooltip : le cadre rouge est transparent (le Figma remplit la zone en #2b2b2b car sa capture est une maquette) ; les
   coordonnées du cadre sont des fractions de la miniature recadrée 278 × 124 (`object-fit: cover`) : à calculer sur la même découpe.
+  Miniature calculée par la feature (médiathèque : copie nettoyée de la page du site en iframe `srcdoc`, FOLLOWUPS #48) : `preview` (nœud posé tel
+  quel dans le cadre 278 × 124 rogné ; la feature dessine alors son propre cadre rouge).
 - AIUsage : la note par défaut est le texte du Figma ; pas de graphique (hors Figma).
 - Contrastes Figma gardés (text/muted sur bg/elevated pour les méta, compteurs, notes : ≈ 3,4:1).
 
@@ -493,7 +497,7 @@ import '@/admin/ui/base.css'
 
 ## Tests
 
-- `npx vitest run src/admin/ui` (143 tests au 2026-09-27) :
+- `npx vitest run src/admin/ui` (149 tests au 2026-09-28) :
   - fondations (96) : Button, Icon (+ fidélité aux SVG), position, Popover, Tooltip, Select, Chip (+ `Chip.css.test.ts` :
     survol limité à l'état), Switch + SettingRow, Checkbox + RadioGroup, SearchField (+ taille small) + Input, ImageUpload
     (+ emplacement `actions`), `motion.test.tsx` (hydratation en mouvement réduit, `reducedVariants`), Toast,
@@ -502,7 +506,7 @@ import '@/admin/ui/base.css'
   - composites : Modal (+ `useModalDialog` : fenêtre montée tard, focus déjà placé), Drawer (dont ouvert au montage), Tabs,
     Menu (dont focus initial d'un panneau encore masqué), SegmentedControl, StatusSelect, CMSCell (poignée focalisable,
     remplissage avant Row open), SelectionBar (balisage serveur identique avec / sans mouvement réduit), ListItem (`textGap`),
-    TopBar (`statusAction`), SectionHeader (h1), ChecklistItem, ToolLink.
+    TopBar (`statusAction`), SectionHeader (h1), ChecklistItem, ToolLink, UsageTooltip (miniature `preview`), AIUsage.
 - Non couvert : rendu visuel (hover, pressed, mesures), contrastes, portails dans un vrai navigateur → galerie.
 - `npx tsc --noEmit -p .` — zéro erreur dans `src/admin/ui` et `src/app/admin/kit`.
 - À la main : `http://127.0.0.1:4040/admin/kit` (dev seulement) — survol (dont Chip actif survolé), Tab, clavier dans Select /

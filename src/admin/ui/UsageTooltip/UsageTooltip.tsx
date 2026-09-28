@@ -32,6 +32,11 @@ export type UsagePlace = {
   image?: string
   /** Cadre rouge sur l'emplacement exact du média, en fractions (0-1) de la miniature. */
   highlight?: { x: number; y: number; width: number; height: number }
+  /**
+   * Miniature sur mesure, à la place de `image` et `highlight` : nœud posé dans le cadre 278 × 124 (radius/sm,
+   * rogné), monté seulement quand la fenêtre est ouverte (médiathèque : la vraie page du site en petit).
+   */
+  preview?: ReactNode
   /** Lien « View ↗ » (nouvel onglet). */
   href?: string
 }
@@ -172,12 +177,14 @@ export function UsageTooltip({
         {places.map((place, i) => (
           <div key={place.id ?? i} className={styles.place}>
             <div className={styles.miniature}>
-              {place.image ? (
+              {place.preview != null ? (
+                place.preview
+              ) : place.image ? (
                 <img src={place.image} alt="" className={styles.image} />
               ) : (
                 <Icon name="image" size={18} className={styles.placeholder} />
               )}
-              {place.highlight ? (
+              {place.preview == null && place.highlight ? (
                 <span
                   className={styles.highlight}
                   style={{

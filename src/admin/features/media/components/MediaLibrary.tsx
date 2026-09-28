@@ -36,6 +36,7 @@ import { UPLOAD_ACCEPT } from '../lib/upload-limits'
 import { deleteAssetsAction } from '../server/actions'
 import { MediaDetails } from './MediaDetails'
 import { downloadAll, uploadFile } from './upload'
+import { usagePlacesFor } from './UsageMiniature'
 import styles from './MediaLibrary.module.css'
 
 /**
@@ -257,7 +258,7 @@ export function MediaLibrary({ assets: initialAssets }: { assets: MediaAsset[] }
                 name={asset.name}
                 size={formatBytes(asset.size)}
                 usage={usageLabel(used)}
-                usagePlaces={asset.usages.map((u) => ({ id: u.id, label: u.label, href: u.siteHref }))}
+                usagePlaces={usagePlacesFor(asset)}
                 type={asset.kind}
                 typeLabel={typeLabel(asset)}
                 src={asset.thumb ?? undefined}

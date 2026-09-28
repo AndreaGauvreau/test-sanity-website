@@ -1,5 +1,6 @@
 /* C5 : corps H gap 24 = grille (wrap, gap 12, cartes 184 du kit) + fiche 320 (V gap 12, pad 16, bg/elevated,
-   border/default 1, radius/lg). Aperçu 288 × 170 bg/subtle radius/md, cadenas en haut à gauche (8, 8). */
+   border/default 1, radius/lg). Aperçu 288 de large dans le ratio du fichier (Figma : 288 × 170), bg/subtle
+   radius/md, cadenas en haut à gauche (8, 8). */
 
 .body {
   position: relative;
@@ -88,13 +89,21 @@
   margin: 0;
 }
 
+/*
+ * Aperçu dans le ratio du fichier (--preview-ratio = dimensions de l'asset ; sans dimensions : cadre Figma 288 × 170).
+ * Hauteur plafonnée à 288 (une image très haute ne pousse pas la fiche), plancher de 96 (bandeau très large) ; l'image
+ * est en `contain` sur un fond neutre discret (bg/subtle), visible sous un PNG transparent et autour d'une image plafonnée.
+ */
 .preview {
   position: relative;
   display: flex;
+  flex-shrink: 0;
   align-items: center;
   justify-content: center;
   width: 100%;
-  height: 170px;
+  aspect-ratio: var(--preview-ratio, 288 / 170);
+  min-height: 96px;
+  max-height: 288px;
   overflow: hidden;
   border-radius: var(--k-radius-md);
   background-color: var(--k-bg-subtle);
@@ -105,13 +114,48 @@
   inset: 0;
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
 }
 
+/* Toute la zone de l'aperçu ouvre le grand aperçu (Modal). */
+.previewButton {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: inherit;
+  background: none;
+  cursor: zoom-in;
+}
+
+/* Survol : contour border/strong 1 px intérieur (comme la Media card), au-dessus de l'image. */
+.previewButton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 0 transparent;
+  pointer-events: none;
+  transition: box-shadow var(--k-duration-fast) ease;
+}
+
+.previewButton:hover::after {
+  box-shadow: inset 0 0 0 1px var(--k-border-strong);
+}
+
+.previewButton:focus-visible {
+  outline-offset: -2px;
+}
+
+/* Cadenas au-dessus du bouton d'aperçu (frère, pas enfant : pas d'élément interactif dans un bouton). */
 .previewLock {
   position: absolute;
   top: var(--k-space-8);
   left: var(--k-space-8);
+  z-index: 1;
 }
 
 .name {
@@ -172,5 +216,9 @@ a.place:focus-visible {
 @media (prefers-reduced-motion: reduce) {
   .dropOverlay {
     animation: none;
+  }
+
+  .previewButton::after {
+    transition: none;
   }
 }

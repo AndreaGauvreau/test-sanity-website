@@ -1,0 +1,157 @@
+/*
+ * Miniatures de l'Usage tooltip (C5) : posées dans le cadre du kit (278 × 124, radius/sm, bg/subtle, rogné).
+ * Cadre rouge : Figma « highlight » (interactive/danger, 2 px intérieur, rayon 2). Dimensions et échelles : TS
+ * (lib/usage-preview.ts), posées en style en ligne.
+ */
+
+.root {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  --k-icon-current: var(--k-icon-default);
+}
+
+/* Page vivante : iframe 1280 × 571 réduite depuis son coin haut gauche, invisible jusqu'au cadrage. */
+.page {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: block;
+  border: 0;
+  transform-origin: 0 0;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--k-duration-base) var(--k-ease-out);
+}
+
+.pageReady {
+  opacity: 1;
+}
+
+.frame {
+  position: absolute;
+  border: 2px solid var(--k-interactive-danger);
+  border-radius: 2px;
+  pointer-events: none;
+}
+
+/* Cadre d'une page vivante : paraît avec la page (fondu apparié, même durée, même courbe). */
+.reveal {
+  animation: reveal var(--k-duration-base) var(--k-ease-out);
+}
+
+@keyframes reveal {
+  from {
+    opacity: 0;
+  }
+}
+
+/* Squelette : blocs d'une page (en-tête, titre, média), pulsation d'opacité discrète comme les autres chargements. */
+.skeleton {
+  position: absolute;
+  inset: 0;
+  animation: pulse 1.6s var(--k-ease-in-out) infinite;
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.55;
+  }
+}
+
+.bone {
+  position: absolute;
+  border-radius: 2px;
+  background-color: var(--k-bg-input-hover);
+}
+
+.logo {
+  top: 10px;
+  left: 12px;
+  width: 30px;
+  height: 6px;
+}
+
+.links {
+  top: 11px;
+  right: 46px;
+  width: 72px;
+  height: 4px;
+}
+
+.cta {
+  top: 9px;
+  right: 12px;
+  width: 26px;
+  height: 8px;
+  border-radius: 4px;
+}
+
+.title {
+  top: 40px;
+  left: 12px;
+  width: 118px;
+  height: 10px;
+}
+
+.line {
+  top: 58px;
+  left: 12px;
+  width: 104px;
+  height: 5px;
+}
+
+.lineShort {
+  top: 68px;
+  width: 84px;
+}
+
+.media {
+  top: 36px;
+  right: 12px;
+  width: 112px;
+  height: 76px;
+  border-radius: 3px;
+}
+
+/* Composant du kit montré à sa taille (favicon) ou réduit (carte sociale) : le dépassement est rogné. */
+.stage {
+  position: absolute;
+  overflow: hidden;
+}
+
+.scaled {
+  transform-origin: 0 0;
+}
+
+/* Repli : l'image dans son ratio (contain), l'icône du type pour une vidéo ou un fichier. */
+.fallbackImage {
+  position: absolute;
+  display: block;
+  object-fit: contain;
+}
+
+.fallbackIcon {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--k-bg-input);
+}
+
+.note {
+  position: absolute;
+  left: 10px;
+  bottom: 8px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page {
+    transition: none;
+  }
+
+  .reveal,
+  .skeleton {
+    animation: none;
+  }
+}
